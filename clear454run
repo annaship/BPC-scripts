@@ -98,8 +98,7 @@ my %tables_for = (
     trim => ["trimseq", "trimseq_deleted", "trimming", "trimqual", "trimflow"],
     runkeys => ["run_info", "run_primer"],
     gast => ["gast_concat", "gast"],
-    taxonomy => ["tagtax", "tax_assignment"],
-    project => ["trimseq", "trimseq_deleted", "run_info", "project"]
+    taxonomy => ["tagtax", "tax_assignment"]
 );
 
 #######################################
@@ -373,11 +372,13 @@ sub delete_by_project
     select_pr_read_ids();
     # 2) remove everethyng with the read_ids from all tables
     delete_by_read_id_pr();
-    # 3) remove project from run_info, project
+    # 3) remove the project from run_info, project
+    delete_project_info();
 }
 
 sub select_pr_read_ids
 {
+  my $rows_affected;
   print "Select all read_ids for the project from trimseq and trimseq_deleted\n";
   my $sql0 = "DROP TABLE IF EXISTS project_read_ids_temp;";
   my $sql1 = "CREATE TABLE project_read_ids_temp (
@@ -401,18 +402,24 @@ sub select_pr_read_ids
   print "\$sql1 = $sql1\n";
   print "\$sql2 = $sql2\n";
   print "\$sql3 = $sql3\n";
-  &prep_exec_query($dbh, $sql0);
-  &prep_exec_query($dbh, $sql1);
-  &prep_exec_query($dbh, $sql2);
-  &prep_exec_query($dbh, $sql3);
+  $rows_affected = &prep_exec_query($dbh, $sql0);
+  print $rows_affected;
+  $rows_affected = &prep_exec_query($dbh, $sql1);
+  print $rows_affected;
+  $rows_affected = &prep_exec_query($dbh, $sql2);
+  print $rows_affected;
+  $rows_affected = &prep_exec_query($dbh, $sql3);
+  print $rows_affected;
 }
 
 sub delete_by_read_id_pr()
 {
+  my $rows_affected;
   my $sql = "";
+  foreign_key_check_no();
   my @table_names_to_clean = (
-    "gast ", "gast_concat ", "gast_concat_mockcomm ", "gast_mockcomm ", "rawflow ", "rawflowindex ", "rawqual ", "rawseq ", 
-    "readid ", "tagtax ", "tax_assignment ", "trimflow ", "trimming ", "trimqual ", "trimseq "
+    "gast", "gast_concat", "gast_concat_mockcomm", "gast_mockcomm", "rawflow", "rawflowindex", "rawqual", "rawseq", 
+    "readid", "tagtax", "tax_assignment", "trimflow", "trimming", "trimqual", "trimseq "
   );
   foreach my $table_name_to_clean (@table_names_to_clean)
   {
@@ -420,5 +427,44 @@ sub delete_by_read_id_pr()
       USING $table_name_to_clean
       JOIN project_read_ids_temp USING(read_id);";
     print "sql = $sql\n";
+    $rows_affected = $dbh->do($sql);
+    print $rows_affected;
+    print "\n";
   }
+  foreign_key_check_yes();
+}
+
+sub delete_project_info
+{
+  my $rows_affected;
+  my $sql0 = "DELETE FROM run_info, project
+    USING run_info JOIN project using(project_id)
+    WHERE project = \"$project\";";
+
+  print "sql0 = $sql0\n";    
+  $rows_affected = &prep_exec_query($dbh, $sql0);
+  print $rows_affected;
+  print "\n";
+}
+
+sub foreign_key_check_no
+{
+  my $rows_affected;
+  my $sql0 = 'SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;';
+  my $sql1 = 'SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;';
+  my $sql2 = 'SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE=\'TRADITIONAL\';';
+  $dbh->do($sql0);
+  $dbh->do($sql1);
+  $dbh->do($sql2);
+}
+
+sub foreign_key_check_yes
+{
+  my $rows_affected;
+  my $sql0 = 'SET SQL_MODE=@OLD_SQL_MODE;';
+  my $sql1 = 'SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;';
+  my $sql2 = 'SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;';
+  $dbh->do($sql0);
+  $dbh->do($sql1);
+  $dbh->do($sql2);
 }
