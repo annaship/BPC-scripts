@@ -55,6 +55,7 @@ my $usage = "
            clear454run -raw -reg 2 -run 20081205
            clear454run -raw -keys -run 20081205
            clear454run -trim -keys -run 20081205
+           clear454run -raw -project HMP_DAWG_Bv5v3
  Options:  
            -run the date of the run to be removed
            -raw | -trim specifies raw data or trimmed data
@@ -62,6 +63,7 @@ my $usage = "
            -keys optionally remove data from run_info, run_primers
            -gast optionally remove data from gast_concat, gast
            -taxonomy optionally remove data from tagtax, tax_assignment
+           -project project_name - optionally remove data by given project
 \n";
 
 #######################################
@@ -76,26 +78,28 @@ my $max_arg_count = 4;
 my $verbose = 0;
 
 #Runtime variables
-my $lane = "";
+my $lane      = "";
 my $set_of_tables = "";
-my $run = "";
-my $runkeys = 0;
-my $gast = 0;
-my $taxonomy = 0;
+my $run       = "";
+my $runkeys   = 0;
+my $gast      = 0;
+my $taxonomy  = 0;
 my $raw_table = "rawseq";
 # my $trim_table = "trimseq";
 my $trimseq_table = "trimseq";
 my $trimseq_deleted_table = "trimseq_deleted";
 my $trimming_table = "trimming";
-my $do_raw = 0;
+my $do_raw  = 0;
 my $do_trim = 0;
+my $project = "";
 
 my %tables_for = (
     raw => ["rawqual", "rawflow", "rawflowindex", "rawseq"],
     trim => ["trimseq", "trimseq_deleted", "trimming", "trimqual", "trimflow"],
     runkeys => ["run_info", "run_primer"],
     gast => ["gast_concat", "gast"],
-    taxonomy => ["tagtax", "tax_assignment"]
+    taxonomy => ["tagtax", "tax_assignment"],
+    project => ["trimseq", "trimseq_deleted", "run_info", "project"]
 );
 
 #######################################
@@ -154,6 +158,10 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/)) {
     $verbose = 1;
     shift @ARGV;
   } 
+    elsif ($ARGV[0] eq "-project") {
+      shift @ARGV;
+      $project = shift @ARGV;      
+  } 
     elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
     print "Unknown commandline flag \"$ARGV[0]\".\n";
     print $usage;
@@ -161,12 +169,28 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/)) {
   }
 }
 
+#######################################
+#
+# Connect to the database
+#
+#######################################
+
+my $db_name = "env454"; 
+my $db_host = "newbpcdb2";
+my $dbh     = &db_connect($db_host, $db_name);
 
 #######################################
 #
 # Parse commandline arguments, ARGV
 #
 #######################################
+
+if ($project)
+{
+  &delete_by_project();
+  print "Deleted everethyng for $project.\n";
+  exit;
+}
 
 if ( (! $run) || ((! $do_trim) && (! $do_raw) && (! $runkeys) && (! $gast) && (! $taxonomy)) ) 
 {
@@ -189,15 +213,6 @@ if ( ($lane) && ($lane !=1) && ($lane != 2) )
     print "$usage\n";
     exit;
 }
-#######################################
-#
-# Connect to the database
-#
-#######################################
-
-my $db_name = "env454"; 
-my $db_host = "newbpcdb2";
-my $dbh     = &db_connect($db_host, $db_name);
 
 #######################################
 #
@@ -349,4 +364,44 @@ sub delete_records
 
     my $delete_query_h = $dbh->prepare($delete_query) or die "Unable to prepare statement: $delete_query. Error: " . $dbh->errstr . "\n";
     $delete_query_h->execute() or die "Unable to execute SQL statement: $delete_query.  Error: " . $delete_query_h->errstr . "\n";
+}
+
+sub delete_by_project
+{
+    print "III: in delete_by_project, project = $project\n";
+    # 1) select all read_ids for the project from trimseq and trimseq_deleted
+    select_pr_read_ids();
+    # 2) remove everethyng with the read_ids from all tables
+    # 3) remove project from run_info, project
+}
+
+sub select_pr_read_ids
+{
+  print "Select all read_ids for the project from trimseq and trimseq_deleted\n";
+  my $sql0 = "DROP TABLE IF EXISTS project_read_ids_temp;";
+  my $sql1 = "CREATE TABLE project_read_ids_temp (
+    read_id_id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    read_id char(15) NOT NULL DEFAULT '',
+    UNIQUE KEY read_id (read_id)
+    );
+  ";
+  
+  my $sql2 = "INSERT IGNORE INTO project_read_ids_temp (read_id)
+    SELECT read_id FROM
+    trimseq JOIN project USING(project_id)
+    WHERE project = \"$project\";
+  ";
+  my $sql3 = "INSERT IGNORE INTO project_read_ids_temp (read_id)
+    SELECT read_id FROM
+    trimseq_deleted JOIN project USING(project_id)
+    WHERE project = \"$project\";
+  ";
+  print "\$sql0 = $sql0\n";
+  print "\$sql1 = $sql1\n";
+  print "\$sql2 = $sql2\n";
+  print "\$sql3 = $sql3\n";
+  &prep_exec_query($dbh, $sql0);
+  &prep_exec_query($dbh, $sql1);
+  &prep_exec_query($dbh, $sql2);
+  &prep_exec_query($dbh, $sql3);
 }
