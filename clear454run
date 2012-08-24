@@ -372,6 +372,7 @@ sub delete_by_project
     # 1) select all read_ids for the project from trimseq and trimseq_deleted
     select_pr_read_ids();
     # 2) remove everethyng with the read_ids from all tables
+    delete_by_read_id_pr();
     # 3) remove project from run_info, project
 }
 
@@ -404,4 +405,20 @@ sub select_pr_read_ids
   &prep_exec_query($dbh, $sql1);
   &prep_exec_query($dbh, $sql2);
   &prep_exec_query($dbh, $sql3);
+}
+
+sub delete_by_read_id_pr()
+{
+  my $sql = "";
+  my @table_names_to_clean = (
+    "gast ", "gast_concat ", "gast_concat_mockcomm ", "gast_mockcomm ", "rawflow ", "rawflowindex ", "rawqual ", "rawseq ", 
+    "readid ", "tagtax ", "tax_assignment ", "trimflow ", "trimming ", "trimqual ", "trimseq "
+  );
+  foreach my $table_name_to_clean (@table_names_to_clean)
+  {
+    $sql = "DELETE FROM $table_name_to_clean 
+      USING $table_name_to_clean
+      JOIN project_read_ids_temp USING(read_id);";
+    print "sql = $sql\n";
+  }
 }
