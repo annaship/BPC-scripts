@@ -95,7 +95,7 @@ my $project = "";
 
 my %tables_for = (
     raw => ["rawqual", "rawflow", "rawflowindex", "rawseq"],
-    trim => ["trimseq", "trimseq_deleted", "trimming", "trimqual", "trimflow"],
+    trim => ["trimseq", "trimseq_deleted", "trimming", "trimqual", "trimflow", "chimeras"],
     runkeys => ["run_info", "run_primer"],
     gast => ["gast_concat", "gast"],
     taxonomy => ["tagtax", "tax_assignment"]
