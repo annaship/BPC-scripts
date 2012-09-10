@@ -1,0 +1,192 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# import_flxrun: imports sff data files into database
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Mon Jan  8 07:21:20 EST 2007
+#
+# Keywords: flx 454 import database
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $scriptHelp = "
+ import_flxrun: imports data in sff files into a 454 database
+\n";
+
+my $usage = "
+         Usage:  import_flxrun -r run -i sff_file -platform platform
+            ex:  import_flxrun -r 20071018 -platform ion_torrent -i EFWL25X01.sff 
+
+       Options:
+                -r        : date of the run
+                -i        : sff file name (*.sff)
+                -skipsff  : do not convert the sff file to text,
+                            assume that this has already been done.
+                -platform : specify if not 454, there is a different process for 'ion_torrent'
+\n";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+my $db_name   = "env454";
+my $seqTable  = "rawseq";
+my $qualTable = "rawqual";
+my $flowTable = "rawflow";
+my $flowIndexTable = "rawflowindex";
+# my $seqTable  = "rawseq_copy";
+# my $qualTable = "rawqual_copy";
+# my $flowTable = "rawflow_copy";
+# my $flowIndexTable = "rawflowindex_copy";
+my $inFilename;
+my $run;
+my $skip_sffinfo = 0;
+my $verbose      = 0;
+my $desc;
+my $platform     = "454";
+my $region;
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) 
+{
+	print $scriptHelp;
+	print $usage;
+	exit -1;
+} 
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+	if ($ARGV[0] =~ /-h/) {
+		print $scriptHelp;
+		print $usage;
+		exit 0;
+	} elsif ($ARGV[0] eq "-d") {
+		shift @ARGV;
+		$db_name = shift @ARGV;
+	} elsif ($ARGV[0] eq "-i") {
+		shift @ARGV;
+		$inFilename = shift @ARGV;
+	} elsif ($ARGV[0] eq "-r") {
+		shift @ARGV;
+		$run = shift @ARGV;
+	} elsif ($ARGV[0] eq "-skipsff") {
+		shift @ARGV;
+		$skip_sffinfo = 1;
+	} elsif ($ARGV[0] eq "-seq") {
+		shift @ARGV;
+		$seqTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-qual") {
+		shift @ARGV;
+		$qualTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-flow") {
+		shift @ARGV;
+		$flowTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-flowindex") {
+		shift @ARGV;
+		$flowIndexTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-desc") {
+		shift @ARGV;
+		$desc = shift @ARGV;
+        warn "The -desc option is no longer used.  Ignoring...\n";
+	} elsif ($ARGV[0] eq "-v") {
+		$verbose = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-platform") {
+		shift @ARGV;
+		$platform = shift @ARGV;	
+	} elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+	    print "Unknown commandline argument $ARGV[0].  Exiting.\n";
+        exit;
+	}
+}
+
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+if ( (! $db_name) || (! $inFilename) || (! $run) )
+{
+	print "Incorrect number of arguments.  Please enter both an sff file and a run\n";
+	print "$usage\n";
+	exit;
+} 
+
+#Test validity of commandline arguments
+if (! -f $inFilename) {
+	print "Unable to locate input sff file: $inFilename.\n";
+	exit;
+}
+
+#######################################
+#
+# Determine the region
+#
+#######################################
+unless ($platform eq "ion_torrent")
+{
+  $region = $inFilename;
+  $region =~ s/\.sff$//;
+  $region = substr($region, -2);
+  $region =~ s/^0//;
+  # print "\n===\ninFilename = $inFilename; \$region = $region\n---\n";  
+}
+elsif ($platform eq "ion_torrent")
+{
+  $region = 1; #only one region
+}
+#######################################
+#
+# Run the sffinfo to create a .sff.txt file 
+#
+#######################################
+
+my $sfftxt = $inFilename;
+if (! $skip_sffinfo) {
+    my $sfftxt = $inFilename . ".txt";
+    my $sffinfoCmd = "sffinfo -t $inFilename > $sfftxt";
+    print("Running: $sffinfoCmd\n");
+    my $sffErr = system($sffinfoCmd);
+    if ($sffErr) {print "Error creating sff.txt file with sffinfo.  Exiting\n\n"; exit;}
+
+    system("chgrp g454 $sfftxt");
+}
+
+#######################################
+#
+# Run import_sfftxt to import the sff.txt file to the database
+#
+#######################################
+
+# todo: on production change to 
+my $importCmd = "import_sfftxt -db $db_name -run $run -reg $region -platform $platform $sfftxt";
+# my $importCmd = "import_sfftxt_it -db $db_name -run $run -reg $region -platform $platform $sfftxt";
+# my $importCmd = "./import_sfftxt_new -db $db_name -run $run -reg $region $sfftxt";
+# my $importCmd = "import_sfftxt_new -db $db_name -seq $seqTable -qual $qualTable -flow $flowTable -index $flowIndexTable -run $run -reg $region $sfftxt";
+
+print "Running: $importCmd\n";
+my $importErr = system($importCmd);
+if ($importErr) {print "Error running import_sfftxt .  Exiting\n\n"; exit;}
+
