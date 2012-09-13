@@ -48,10 +48,9 @@ my $script_help = "
 \n";
 
 my $usage = "
-   Usage:  gast -in input_fasta -ref reference_uniques_fasta -rtax reference_dupes_taxonomy [-mp min_pct_id] [-m majority] -out output_file
+   Usage: gast -in input_fasta -udb ref_region.udb -rtax reference_dupes_taxonomy [-mp min_pct_id] [-m majority] -out output_file
 
-      ex:  gast -in mydata.trimmed.fa -ref refv3v5 -rtax refv3v5.tax -out mydata.gast
-           gast -in mydata.trimmed.fa -ref refv3v5 -rtax refv3v5.tax -mp 0.80 -m 100 -out mydata.gast
+      ex:  gast -in file_to_gast.fa -udb /xraid2-2/g454/blastdbs/gast_distributions/refv6.udb -rtax /xraid2-2/g454/blastdbs/gast_distributions/refv6.tax -out result.gast
 
  Options:  
             -in     input fasta file
