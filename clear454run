@@ -294,7 +294,8 @@ if ( ($do_raw) || ($do_trim) )
         {
             $where_read_like .= "'" . $read_id1 . "%'";
         } else {
-            $where_read_like .= "'" . substr($read_id1, 0, 7) . "%'";
+            # $where_read_like .= "'" . substr($read_id1, 0, 7) . "%'";
+            $where_read_like .= "'" . $run_prefix . "%'";            
         }
     }
 }
