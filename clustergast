@@ -95,9 +95,10 @@ my $trim_table		= "trimseq";
 my $trimsequence_table = "trimsequence";
 my $nodes					= 100;
 my $log_file			= "clustergast.log";
-my $refhvr_wdb;
-# (= refv3v5.wdb or refv4v6.wdb)
-my $refhvr_wdb_dir = "/xraid2-2/g454/blastdbs/";
+my $refhvr_udb;
+# (= refv3v5.udb or refv4v6.udb)
+#my $refhvr_udb_dir = "/xraid2-2/g454/blastdbs/";
+my $refhvr_udb_dir = "/xraid2-2/g454/blastdbs/gast_distributions/";
 my $vRegion				= "v6";
 my $vref_table;
 my $start					= "db2fasta";
@@ -124,7 +125,7 @@ my $pctid_threshold	= 0.70;
 my $sqlimport_cmd = "/usr/local/mysql/bin/mysqlimport";
 # my $sqlimport_cmd = "";
 # "/usr/local/mysql/bin/mysqlimport";
-my $usearch_exe   = "usearch";
+my $usearch_exe   = "usearch6";
 my $tortured_soul	= "shuse\@mbl.edu";
 
 #######################################
@@ -150,9 +151,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-reftable") {
 		shift @ARGV;
 		$vref_table = shift @ARGV;
-	} elsif ($ARGV[0] eq "-refwdb") {
+	} elsif ($ARGV[0] eq "-refudb") {
 		shift @ARGV;
-		$refhvr_wdb = shift @ARGV;
+		$refhvr_udb = shift @ARGV;
 	} elsif ($ARGV[0] eq "-reg") {
 		shift @ARGV;
 		$vRegion = shift @ARGV;
@@ -282,13 +283,13 @@ if ($vRegion =~ /v[0-9]v[0-9]/i)
     }
 }
 
-if (! $refhvr_wdb) { $refhvr_wdb = $refhvr_wdb_dir . "ref" . $vRegion53; }
+if (! $refhvr_udb) { $refhvr_udb = $refhvr_udb_dir . "ref" . $vRegion53; }
 
-# todo: change "blast fasta" in verbose to blast wdb?
+# todo: change "blast fasta" in verbose to blast udb?
 if (! $vref_table) { $vref_table = "refhvr_" . $vRegion53; }
 
     
-if ($verbose) {print "Reference table and blast fasta: $vref_table, $refhvr_wdb\n";}
+if ($verbose) {print "Reference table and blast fasta: $vref_table, $refhvr_udb\n";}
 
 # Create a new gast directory and move into it.
 my $gastDir = $file_prefix;
@@ -308,7 +309,7 @@ open (LOG, ">$log_file") || die ("Unable to write to output log file: $log_file.
 `chgrp g454 $log_file`;
 `chmod g+w $log_file`;
 print LOG "$clustergast_cmd\n";  # print the clustergast command
-print LOG "Reference blast fasta: $refhvr_wdb\n";
+print LOG "Reference blast fasta: $refhvr_udb\n";
 
 #######################################
 #
@@ -439,10 +440,11 @@ if ( ($start eq "db2fasta") || ($start eq "unique") || ($start eq "usearch") )
         my $fastasampler_cmd = "fastasampler -n $start,$end $fasta_uniqs_filename $tmp_fasta_filename";
         $script_text .= "$fastasampler_cmd\n\n";
         if ($verbose) {print "$fastasampler_cmd\n";}
-        my $refhvr_wdb_name = $refhvr_wdb . ".wdb";
+        my $refhvr_udb_name = $refhvr_udb . ".udb";
         
-        my $usearch_cmd = $usearch_exe . " --global --query $tmp_fasta_filename --iddef 3 --gapopen 6I/1E -wdb $refhvr_wdb_name --uc $tmp_usearch_filename --maxaccepts $max_accepts --maxrejects $max_rejects --id $pctid_threshold";
-        # print "URA: \$usearch_cmd = $usearch_cmd\n";
+        my $usearch_cmd = $usearch_exe . " -usearch_global $tmp_fasta_filename -gapopen 6I/1E -uc_allhits -strand plus -db $refhvr_udb_name -uc $tmp_usearch_filename -maxaccepts $max_accepts -maxrejects $max_rejects -id $pctid_threshold";
+        print "URA clustergast: \$usearch_cmd = $usearch_cmd\n";
+        print LOG "From clustergast: \$usearch_cmd = $usearch_cmd\n";
         $script_text .= "$usearch_cmd\n\n";
         if ($verbose) {print "$usearch_cmd\n";}
     
@@ -481,7 +483,7 @@ if ( ($start eq "db2fasta") || ($start eq "unique") || ($start eq "usearch") )
         
         # Clean up the tmp files
         # TODO: check (Doesn't work if previous line (with mail) doesn't work.)
-        # my $clean_qsubfile_cmd = "";
+        #my $clean_qsubfile_cmd = "";
         my $clean_qsubfile_cmd = 
           "/bin/rm -f $tmp_fasta_filename\n" .
           "/bin/rm -f $script_filename\n" ;
