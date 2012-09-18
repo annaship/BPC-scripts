@@ -165,9 +165,9 @@ elsif ($platform eq "ion_torrent")
 
 my $sfftxt = $inFilename;
 if (! $skip_sffinfo) {
-    my $sfftxt = $inFilename . ".txt";
+    $sfftxt = $inFilename . ".txt";
     my $sffinfoCmd = "sffinfo -t $inFilename > $sfftxt";
-    print("Running: $sffinfoCmd\n");
+    print("Running sffinfoCmd: $sffinfoCmd\n");
     my $sffErr = system($sffinfoCmd);
     if ($sffErr) {print "Error creating sff.txt file with sffinfo.  Exiting\n\n"; exit;}
 
@@ -179,14 +179,13 @@ if (! $skip_sffinfo) {
 # Run import_sfftxt to import the sff.txt file to the database
 #
 #######################################
-
 # todo: on production change to 
 my $importCmd = "import_sfftxt -db $db_name -run $run -reg $region -platform $platform $sfftxt";
 # my $importCmd = "import_sfftxt_it -db $db_name -run $run -reg $region -platform $platform $sfftxt";
 # my $importCmd = "./import_sfftxt_new -db $db_name -run $run -reg $region $sfftxt";
 # my $importCmd = "import_sfftxt_new -db $db_name -seq $seqTable -qual $qualTable -flow $flowTable -index $flowIndexTable -run $run -reg $region $sfftxt";
 
-print "Running: $importCmd\n";
+print "Running importCmd: $importCmd\n";
 my $importErr = system($importCmd);
 if ($importErr) {print "Error running import_sfftxt .  Exiting\n\n"; exit;}
 
