@@ -30,6 +30,7 @@
 #
 # Revisions:  Removed the boot levels, defaulting to 80, but reftable now uses other
 #             sources, too.  We can put the boot scores back in later.  
+# Add illumina platform tables from env454. 2012-09-24 A Shipunova
 #
 # Programming Notes:
 #
@@ -49,11 +50,11 @@ my $scriptHelp = "
 \n";
 
 my $usage = "
-   Usage:  otu2tax -l list_file -uc uc_file -w cluster_width -t sourceTaxTable -m majority > outputfile
-      ex:  otu2tax -l ENV1.fa.m2.fn.list -w unique -t tagtax -m 66 > clustertax.txt
-           otu2tax -l ENV1.fa.m2.fn.list -w 0.03  > clustertax.txt
-           otu2tax -u ENV1.readmap.uc  > clustertax.txt
-           otu2tax -c mydata.otu.dist_03.txt  > clustertax.txt
+   Usage:  otu2tax -platform [illumina|454] -l list_file -uc uc_file -w cluster_width -t sourceTaxTable -m majority > outputfile
+      ex:  otu2tax -platform illumina -l ENV1.fa.m2.fn.list -w unique -t tagtax -m 66 > clustertax.txt
+           otu2tax -platform illumina -l ENV1.fa.m2.fn.list -w 0.03  > clustertax.txt
+           otu2tax -platform illumina -u ENV1.readmap.uc  > clustertax.txt
+           otu2tax -platform illumina -c mydata.otu.dist_03.txt  > clustertax.txt
 
  Options:  
            -l   name of the mothur list file containing the read_ids for each cluster 
@@ -65,6 +66,7 @@ my $usage = "
            -g   source gast distance table [default: gast_concat]
            -u   include number of unique sequences per OTU in the output [default: false]
            -db  database name to lookup reads [default: env454]
+           -platform platform name, to know tables (Illumina or 454) [default: 454]
 \n";
 
 #######################################
@@ -87,6 +89,8 @@ my $limit = "";
 my $cluster_width;
 my %clusterTax;
 my $do_uniques = 0;
+my $platform = "454";
+my $selectTax;
 
 #######################################
 #
@@ -140,6 +144,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
     } elsif ($ARGV[0] eq "-u") {
         shift @ARGV;
         $do_uniques = 1;
+    } elsif ($ARGV[0] eq "-platform") {
+        shift @ARGV;
+        $platform = shift @ARGV;
     } elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
         print "Unknown commandline flag \"$ARGV[0]\".";
         print $usage;
@@ -195,6 +202,10 @@ if ( ($list_filename) && (! $cluster_width) )
     exit;
 }
 
+$platform = lc($platform);
+&open_log();
+print LOG "==============\nPlatform = $platform\n==============\n";
+
 #######################################
 #
 # SQL
@@ -205,13 +216,30 @@ my $condb = Conjbpcdb::new($db_host, $db_name);
 my $dbh = $condb->dbh();
 
 # SELECT taxa
-my $selectTax = "SELECT taxonomy, g.distance from $tax_table as x join $gast_table as g using(read_id) where read_id = ?";
+if ($platform eq "454")
+{
+  $selectTax = "SELECT taxonomy, g.distance from $tax_table as x join $gast_table as g using(read_id) where read_id = ?";  
+}
+elsif ($platform eq "illumina")
+{
+  $selectTax = "SELECT taxonomy, gast_distance FROM sequence_uniq_info_ill 
+  JOIN taxonomy using(taxonomy_id)
+  JOIN sequence_pdr_info_ill USING(sequence_ill_id)
+  WHERE sequence_pdr_info_ill_id = ?";
+}
+else
+{
+  print "Please provide a platform (Illumina or 454)\n";
+  exit;
+}
+print LOG "SSS1: $selectTax\n";
+
 my $selectTax_h = $dbh->prepare($selectTax) or die "Unable to prepare statement: $selectTax. Error: " . $dbh->errstr . "\n";
 
 # SELECT sequence
 my $selectSeq;
 my $selectSeq_h;
-if ($do_uniques) 
+if ($do_uniques and $platform eq "454") 
 {
     $selectSeq = "SELECT sequence from $seq_table where read_id = ?";
     $selectSeq_h = $dbh->prepare($selectSeq) or die "Unable to prepare statement: $selectSeq. Error: " . $dbh->errstr . "\n";
@@ -381,4 +409,13 @@ sub print_taxonomy
     print join("\t", $clusterID, $taxReturn[0]->taxstring, $taxReturn[0]->depth, scalar @taxObjects, $min_distance, $avg_distance, $taxReturn[1], $taxReturn[2], $taxReturn[3], $taxReturn[4], $taxReturn[5]);
     if ($do_uniques) {print "\t" . scalar keys %freq_of_uniq;}
     print "\n";
+}
+
+sub open_log
+{
+  my $file_name = time . '.log';
+  # print "LOG in $file_name\n";
+  open LOG, "+>", $file_name or die $!;
+  print LOG print scalar localtime();
+  print LOG "\n\n";
 }
