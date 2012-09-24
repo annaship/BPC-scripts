@@ -29,6 +29,7 @@
 # Assumptions: 
 #
 # Revisions:
+# Add illumina platform tables from env454. 2012-09-24 A Shipunova
 #
 # Programming Notes:
 #
@@ -77,11 +78,10 @@ my $reads_table_illumina = '
 run_info_ill 
 join dataset as d using(dataset_id) 
 join project as p using(project_id)
-join sequence_pdr_info_ill using (run_info_ill_id)
-join sequence_ill using(sequence_ill_id)';
+join sequence_pdr_info_ill using (run_info_ill_id)';
 my $id_field_454 = 'read_id';
 my $id_field_illumina = 'sequence_pdr_info_ill_id';
-my $platform;
+my $platform = "454";
 my $id_field;
 my $reads_table;
 
@@ -159,11 +159,7 @@ open(LOG, ">>$log_filename")  || warn "Unable to open log file, $log_filename, f
 print LOG "$self_cmd\n";
 
 $platform = lc($platform);
-if ( $platform ne "illumina")
-{
-  $platform = "454";
-}
-print "==============\nPlatform = $platform\n==============\n";
+# print "==============\nPlatform = $platform\n==============\n";
 
 #######################################
 #
