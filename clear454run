@@ -230,6 +230,7 @@ unless ($run_id) {print "There is no such run date!\n"; exit;}
 #######################################
 
 my $run_prefix   = &prep_exec_fetch_query($dbh, "select run_prefix from $runTable where run = $run");
+print "HERE111: run_prefix = $run_prefix\n";
 unless ($run_prefix) {print "There is no such run date!\n"; exit;}
 
 #######################################
@@ -288,7 +289,7 @@ if ( ($do_raw) || ($do_trim) )
             $do_trim = 0; # dont' even try
         }
     } else {
-      # print "URA3: Here in else";
+      print "URA3: Here in else; run_prefix = $run_prefix\n";
         my $read_id1 = $get_read_h1->fetchrow();
         if ($lane) 
         {
@@ -309,10 +310,16 @@ my @tables_to_clean;
 
 if ($do_raw) { push (@tables_to_clean, @{$tables_for{raw}}); }
 if ($do_trim) { push (@tables_to_clean, @{$tables_for{trim}}); }
+if ($where_read_like eq "WHERE read_id like")
+{
+  $where_read_like .= "'" . $run_prefix . "%'";              
+}
+
+print "WWW0: where_read_like = $where_read_like\n";
 foreach my $t (@tables_to_clean)
 {
     my $delete_string = "DELETE FROM $t $where_read_like";
-    # print "$delete_string\n";
+    print "QQQ1: $delete_string\n";
     delete_records($delete_string);
 }
 
@@ -360,7 +367,7 @@ if ($runkeys)
 sub delete_records
 {
     my $delete_query = shift;
-    print "$delete_query\n";
+    print "QQQ1: $delete_query\n";
 
     my $delete_query_h = $dbh->prepare($delete_query) or die "Unable to prepare statement: $delete_query. Error: " . $dbh->errstr . "\n";
     $delete_query_h->execute() or die "Unable to execute SQL statement: $delete_query.  Error: " . $delete_query_h->errstr . "\n";
