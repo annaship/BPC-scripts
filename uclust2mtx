@@ -49,7 +49,8 @@ my $script_help = "
 \n";
 
 my $usage = "
-   Usage:  uclust2mtx readmap.uc > output.mtx
+   Usage:  uclust2mtx -platform [Illumina|454] readmap.uc > output.mtx
+   
 
 \n";
 # Options:  
@@ -71,8 +72,15 @@ my $out_filename;
 #my $db_host = "jbpcdb";
 my $db_host = "newbpcdb2";
 my $db_name = "env454";
-my $reads_table = 'trimseq as t join dataset as d using(dataset_id) join project as p using(project_id)';
-my $id_field = 'read_id';
+my $reads_table_454 = 'trimseq as t join dataset as d using(dataset_id) join project as p using(project_id)';
+my $reads_table_Illumina = '
+run_info_ill 
+join dataset as d using(dataset_id) 
+join project as p using(project_id)
+join sequence_pdr_info_ill using (run_info_ill_id)
+join sequence_ill using(sequence_ill_id)';
+my $id_field_454 = 'read_id';
+my $id_field_illumina = 'sequence_pdr_info_ill_id';
 
 #my $log_filename = "./" . $0 . ".log";
 my $log_filename = $0;
@@ -109,6 +117,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-d") {
 		shift @ARGV;
 		$db_name = shift @ARGV;
+	} elsif ($ARGV[0] eq "-platform") {
+		shift @ARGV;
+		$platform = shift @ARGV;
 	} elsif ($ARGV[0] eq "-v") {
 		$verbose = 1;
 		shift @ARGV;
