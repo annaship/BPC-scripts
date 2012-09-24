@@ -73,7 +73,7 @@ my $out_filename;
 my $db_host = "newbpcdb2";
 my $db_name = "env454";
 my $reads_table_454 = 'trimseq as t join dataset as d using(dataset_id) join project as p using(project_id)';
-my $reads_table_Illumina = '
+my $reads_table_illumina = '
 run_info_ill 
 join dataset as d using(dataset_id) 
 join project as p using(project_id)
@@ -81,6 +81,9 @@ join sequence_pdr_info_ill using (run_info_ill_id)
 join sequence_ill using(sequence_ill_id)';
 my $id_field_454 = 'read_id';
 my $id_field_illumina = 'sequence_pdr_info_ill_id';
+my $platform;
+my $id_field;
+my $reads_table;
 
 #my $log_filename = "./" . $0 . ".log";
 my $log_filename = $0;
@@ -155,6 +158,13 @@ if ( ($in_filename ne "stdin") && (! -f $in_filename) )
 open(LOG, ">>$log_filename")  || warn "Unable to open log file, $log_filename, for writing.  Exiting...\n";
 print LOG "$self_cmd\n";
 
+$platform = lc($platform);
+if ( $platform ne "illumina")
+{
+  $platform = "454";
+}
+print "==============\nPlatform = $platform\n==============\n";
+
 #######################################
 #
 # Open the files
@@ -184,6 +194,21 @@ my $dbh = $condb->dbh();
 #######################################
 
 #Select
+if ($platform eq "illumina")
+{
+  $reads_table = $reads_table_illumina;
+  $id_field    = $id_field_illumina;
+}
+elsif ($platform eq "454")
+{
+  $reads_table = $reads_table_454;
+  $id_field    = $id_field_454;
+}
+else
+{
+  print "Please provide a platform: Illumina or 454\n";
+  exit;
+}
 my $select_query = "SELECT project, dataset FROM $reads_table WHERE $id_field = ?";
 my $select_query_h = $dbh->prepare($select_query) or die "Unable to prepare statement: $select_query. Error: " . $dbh->errstr . "\n";
 
