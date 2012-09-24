@@ -47,15 +47,16 @@ my $script_help = "
 \n";
 
 my $usage = "
-   Usage:  uclust_otus -i input.fa -p pct_similarity
+   Usage:  uclust_otus -i input.fa -p pct_similarity -platform [illumina|454]
 
-      ex:  uclust_otus -i lsmv6v4.fa -p 0.96
+      ex:  uclust_otus -i lsmv6v4.fa -p 0.96 -platform illumina
 
  Options:  
            -i input fasta file, not uniqued
            -p percent identity of sequences in a cluster [default: 0.97]
            -go  gap open penalty, default = 6
            -v verbose only, print out uclust pipeline, but don't run it
+           -platform use illumina or 454
 
  Current pipeline entails:
 
@@ -88,6 +89,7 @@ my $min_arg_count = 2;
 my $max_arg_count = 4;
 my $verbose = 0;
 my $self_cmd = join(" ", $0, @ARGV);
+my $platform;
 
 #Runtime variables
 my $in_filename;
@@ -129,6 +131,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-p") {
 		shift @ARGV;
 		$pct_id = shift @ARGV;
+	} elsif ($ARGV[0] eq "-platform") {
+		shift @ARGV;
+		$platform = shift @ARGV;
 	} elsif ($ARGV[0] eq "-v") {
 		$verbose = 1;
 		shift @ARGV;
@@ -201,7 +206,7 @@ push (@uclust_cmds, $usearch_cmd . " --cluster $prefix.derep.sort.fa --id $pct_i
 push (@uclust_cmds, $usearch_cmd . " --sortsize $prefix.cons.pre$pctid_int.fa --output $prefix.cons.pre$pctid_int.sort.fa --stable_sort --log $log_filename");
 push (@uclust_cmds, $usearch_cmd . " --cluster $prefix.cons.pre$pctid_int.sort.fa --id $pct_id --seedsout $prefix.seeds.$pctid_int.fa --consout $prefix.cons.$pctid_int.fa --iddef 3 --xdrop_nw 0 --gapopen \"6.0I/1.0E\" --usersort --sizein --sizeout --stable_sort --w 20 --slots 16769023 --log $log_filename");
 push (@uclust_cmds, $usearch_cmd . " --query $prefix.fa --db $prefix.seeds.$pctid_int.fa --log $log_filename --id $pct_id --global --uc $prefix.otus.$pctid_int.uc --iddef 3 --gapopen \"6.0I/1.0E\" --maxaccepts $final_max_accepts --maxrejects $final_max_rejects");
-push (@uclust_cmds, "uclust2mtx $prefix.otus.$pctid_int.uc > $prefix.otus.$pctid_int.mtx");
+push (@uclust_cmds, "uclust2mtx -platform $platform $prefix.otus.$pctid_int.uc > $prefix.otus.$pctid_int.mtx");
 
 for my $c (@uclust_cmds)
 {
