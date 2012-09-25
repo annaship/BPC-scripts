@@ -91,6 +91,7 @@ my %clusterTax;
 my $do_uniques = 0;
 my $platform = "454";
 my $selectTax;
+my $seq_freq;
 
 #######################################
 #
@@ -229,7 +230,8 @@ elsif ($platform eq "illumina")
 }
 else
 {
-  print "Please provide a platform (Illumina or 454)\n";
+  print LOG "Please provide a platform name (Illumina or 454)\n";
+  print "Please provide a platform name (Illumina or 454)\n";
   exit;
 }
 print LOG "SSS1: $selectTax\n";
@@ -242,7 +244,15 @@ my $selectSeq_h;
 if ($do_uniques and $platform eq "454") 
 {
     $selectSeq = "SELECT sequence from $seq_table where read_id = ?";
+    print LOG "SSS2: $selectSeq\n";
     $selectSeq_h = $dbh->prepare($selectSeq) or die "Unable to prepare statement: $selectSeq. Error: " . $dbh->errstr . "\n";
+}
+elsif ($do_uniques and $platform eq "illumina")
+{
+  $selectSeq = "SELECT seq_count FROM sequence_pdr_info_ill 
+  WHERE sequence_pdr_info_ill_id = ?";  
+  print LOG "SSS2: $selectSeq\n";
+  $selectSeq_h = $dbh->prepare($selectSeq) or die "Unable to prepare statement: $selectSeq. Error: " . $dbh->errstr . "\n";
 }
 
 #######################################
@@ -310,7 +320,7 @@ if ($list_filename)
         if ($line !~ /^H/) {next;}  # skip comment lines at the top, and anything that is not a hit
         chomp $line;
         my @line_data = split(/\t/, $line);
-
+        # print LOG "LLL: $line\n";
         #clean read id just in case
         my $read_id = $line_data[8];
         $read_id =~ s/\|.*$//;
@@ -388,13 +398,30 @@ sub print_taxonomy
         }
 
         # Tally up the unique sequences while we are at it
-        if ($do_uniques) 
+        if ($do_uniques and $platform eq "454") 
         {
             $selectSeq_h->execute($id) || die "Unable to execute SQL statement ($selectSeq).  Error: " . $selectSeq_h->errstr . "\n";
             my ($seq) = $selectSeq_h->fetchrow(); 
+            # print LOG "SSS333: \$seq = $seq\n";
             $freq_of_uniq{$seq}++; 
         }
+        elsif ($do_uniques and $platform eq "illumina") 
+        {
+          # $selectSeq = "SELECT seq_count FROM sequence_pdr_info_ill 
+          # WHERE sequence_pdr_info_ill_id = ?";  
+          $selectSeq_h->execute($id) || die "Unable to execute SQL statement ($selectSeq).  Error: " . $selectSeq_h->errstr . "\n";
+          ($seq_freq) = $selectSeq_h->fetchrow(); 
+          print LOG "FFF0: seq_freq = $seq_freq\n";
+        }
     }
+    print LOG "KKK1: " . scalar keys %freq_of_uniq;
+    
+    print LOG "\n==================\n";
+    while( my ($k, $v) = each %freq_of_uniq ) {
+        print LOG "key: $k, value: $v.\n";
+    }
+    print LOG "\n==================\n";
+    
 
     # Lookup the consensus taxonomy for the array
     my @taxReturn = Taxonomy->consensus(@taxObjects, $majority);
@@ -407,7 +434,15 @@ sub print_taxonomy
     # Print out the returns
     # (read_id, taxonomy, rank, altlgi_count, vote, minrank, taxa_counts, max_pcts, na_pcts, uniqseqs)
     print join("\t", $clusterID, $taxReturn[0]->taxstring, $taxReturn[0]->depth, scalar @taxObjects, $min_distance, $avg_distance, $taxReturn[1], $taxReturn[2], $taxReturn[3], $taxReturn[4], $taxReturn[5]);
-    if ($do_uniques) {print "\t" . scalar keys %freq_of_uniq;}
+    
+    if ($do_uniques) {
+      if ($platform eq "454")
+      {
+        $seq_freq = scalar keys %freq_of_uniq
+      }
+      print LOG "FFF1: seq_freq = $seq_freq\n";
+      print "\t" . $seq_freq;
+    }
     print "\n";
 }
 
@@ -416,6 +451,7 @@ sub open_log
   my $file_name = time . '.log';
   # print "LOG in $file_name\n";
   open LOG, "+>", $file_name or die $!;
-  print LOG print scalar localtime();
-  print LOG "\n\n";
+  my $time_start = scalar localtime();
+  print LOG $time_start;
+  print LOG "\n";
 }
