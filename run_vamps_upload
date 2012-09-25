@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# Export the project and dataset information
+#
+time vamps_upload -e -i -s projectdataset -stop projectdataset vamps
+
+#
+# Export data taxonomy tables
+#
+time vamps_upload -e -i -skip -s taxonomy -stop taxonomy vamps &
+sleep 300
+
+#
+# Export sequences table
+#
+time vamps_upload -e -i -skip -s sequences -stop sequences vamps &
+
+#
+# Export the reads and anything else after
+#
+time vamps_upload -e -i -skip -s reads vamps &
+
+# check if we done with work before run the next command
+echo "CHECK_STATUS before = _"$CHECK_STATUS"_"
+CHECK_STATUS=$(jobs | grep "vamps_upload" | grep -v "grep" | grep "Running")
+echo "CHECK_STATUS after the checking = _"$CHECK_STATUS"_"
+
+until [ "$CHECK_STATUS" == "" ]
+do
+  sleep 300
+  CHECK_STATUS=$(jobs | grep "vamps_upload" | grep -v "grep" | grep "Running")
+  echo "CHECK_STATUS for vamps_upload = $CHECK_STATUS"
+done
+
+echo "check_vamps_upload.pl -t"
+time check_vamps_upload.pl -t
+
+if [ "$CHECK_STATUS" == "" ]; then
+  echo "run vamps_upload to new tables"
+  time vamps_upload -e -i -s norm_tables vamps
+fi
+
+# echo "rename norm tansfer tables"
+# time vamps_upload -i -s rename_norm vamps
+# check vamps tables count
+
+grep -in --color "ERROR" vamps_upload.log
+# grep -in --color "failed" vamps_upload.log
+echo "=========================="
+echo "Manually: Repeat any mysqlimport failed lines if any. Take care of foreign key errors."
+echo "NO! rename norm tansfer tables not done. Do that and vamps_upload_transfer after. Check. Then vamps_upload_ill, check. Then run_vamps_upload_ill_add"
+
+
+

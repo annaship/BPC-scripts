@@ -1,0 +1,22 @@
+#echo "rename norm transfer tables"
+#time vamps_upload -i -s rename_norm vamps
+
+#
+# Transfer the project and dataset information
+#
+vamps_upload -t -s projectdataset -stop projectdataset vamps
+
+#
+# Transfer data taxonomy tables
+#
+vamps_upload -t -skip -s taxonomy -stop taxonomy vamps &
+
+#
+# Transfer sequences table
+#
+vamps_upload -t -skip -s sequences -stop sequences vamps &
+
+#
+# Transfer the reads and anything else after
+#
+vamps_upload -t -skip -s reads vamps &

@@ -1,0 +1,9 @@
+#!/bin/bash
+# First run run_vamps_upload_ill!
+
+echo "add illumina data to current tables"
+time vamps_upload_ill -i -s add_illumina vamps
+
+grep -in --color "ERROR" vamps_upload.log
+# grep -in --color "failed" vamps_upload.log
+echo "=========================="
