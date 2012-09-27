@@ -65,8 +65,10 @@ my $usage = "
 
             usearch --cluster myfile.sort.fa --derep_subseq --seedsout myfile.derep.fa --sizeout --stable_sort --log uclust_otus.log
 
+            (for illumina use frequency information instead of de-replication)
+            
             usearch --sortsize myfile.derep.fa --output myfile.derep.sort.fa --stable_sort --log uclust_otus.log
-
+            
             usearch --cluster myfile.derep.sort.fa --id 0.97 --consout myfile.cons.pre97.fa --iddef 3 --xdrop_nw 0 --gapopen \"6.0I/1.0E\" --w 20 --slots 16769023 --sizein --sizeout --usersort --stable_sort --log uclust_otus.log
 
             usearch --sortsize myfile.cons.pre97.fa --output myfile.cons.pre97.sort.fa --stable_sort --log uclust_otus.log
@@ -90,7 +92,7 @@ my $min_arg_count = 2;
 my $max_arg_count = 4;
 my $verbose = 0;
 my $self_cmd = join(" ", $0, @ARGV);
-my $platform;
+my $platform = "454";
 
 #Runtime variables
 my $in_filename;
@@ -145,7 +147,6 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	}
 }
 
-
 #######################################
 #
 # Parse commandline arguments, ARGV
@@ -192,13 +193,14 @@ if (int(100 * $pct_id) != 100 * $pct_id)
 
 my $pctid_int = int(100 * $pct_id);
 my $preclust_prefix = $prefix . ".p" . $pctid_int;
+$platform = lc($platform);
 
 #######################################
 #
 # Step through the pipeline of usearch commands
 #
 #######################################
-# TODO: add 454 by default; add lowcase for illumina; test
+
 my @uclust_cmds;
 push (@uclust_cmds, $usearch_cmd . " --sort $prefix.fa --output $prefix.sort.fa --stable_sort --log $log_filename");
 if ($platform eq "454")
