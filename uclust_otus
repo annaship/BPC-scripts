@@ -198,10 +198,19 @@ my $preclust_prefix = $prefix . ".p" . $pctid_int;
 # Step through the pipeline of usearch commands
 #
 #######################################
-
+# TODO: add 454 by default; add lowcase for illumina; test
 my @uclust_cmds;
 push (@uclust_cmds, $usearch_cmd . " --sort $prefix.fa --output $prefix.sort.fa --stable_sort --log $log_filename");
-push (@uclust_cmds, $usearch_cmd . " --cluster $prefix.sort.fa --derep_subseq --seedsout $prefix.derep.fa --sizeout --stable_sort --log $log_filename");
+if ($platform eq "454")
+{
+  push (@uclust_cmds, $usearch_cmd . " --cluster $prefix.sort.fa --derep_subseq --seedsout $prefix.derep.fa --sizeout --stable_sort --log $log_filename");  
+}
+elsif ($platform eq "illumina")
+{
+  my $illumina_derep = "awk 'BEGIN {FS = \"|\"; OFS = \"|\";} {if (\$1~/^>/) gsub(/(.*)/, \";size=&\", \$5);  print}' < $prefix.sort.fa > $prefix.derep.fa"; 
+  # print "III: illumina_derep cmd = $illumina_derep\n";
+  push (@uclust_cmds, $illumina_derep);
+}
 push (@uclust_cmds, $usearch_cmd . " --sortsize $prefix.derep.fa --output $prefix.derep.sort.fa --stable_sort --log $log_filename");
 push (@uclust_cmds, $usearch_cmd . " --cluster $prefix.derep.sort.fa --id $pct_id --consout $prefix.cons.pre$pctid_int.fa --iddef 3 --xdrop_nw 0 --gapopen \"6.0I/1.0E\" --w 20 --slots 16769023 --sizein --sizeout --usersort --stable_sort --log $log_filename");
 push (@uclust_cmds, $usearch_cmd . " --sortsize $prefix.cons.pre$pctid_int.fa --output $prefix.cons.pre$pctid_int.sort.fa --stable_sort --log $log_filename");
