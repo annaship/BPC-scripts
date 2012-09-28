@@ -266,7 +266,11 @@ my $clusterID = 1;
 
 # Print out the header information
 print join("\t", "Cluster_ID", "Taxonomy", "Rank", "Cluster_Size", "Min_GDist", "Avg_GDist", "Vote", "Min_rank", "Taxa_counts", "Max_pcts", "Na_pcts");
-if ($do_uniques) { print "\tCount_Uniq_Seqs";}
+if ($do_uniques) 
+{ 
+  print "\tCount_Uniq_Seqs";
+  print LOG "CCC1: print Count_Uniq_Seqs\n";
+}
 print "\n";
 
 #
