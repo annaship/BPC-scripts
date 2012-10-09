@@ -235,6 +235,23 @@ unless ($run_prefix) {print "There is no such run date!\n"; exit;}
 
 #######################################
 #
+# Check what to delete
+#
+#######################################
+
+if ($runkeys) 
+{
+  my $trim_exist = &prep_exec_fetch_query($dbh, "SELECT * FROM $trimseq_table WHERE read_id LIKE '" . $run_prefix . "%' LIMIT 1");
+  print "EEE1: trim_exist = $trim_exist";
+  if ($trim_exist) {print "Please clear the trim tables first\n"; exit;}
+  my $raw_exist = &prep_exec_fetch_query($dbh, "SELECT * FROM $raw_table WHERE read_id LIKE '" . $run_prefix . "%' LIMIT 1");
+  print "EEE2: raw_exist = $raw_exist";
+  if ($raw_exist) {print "Please clear the raw tables first\n"; exit;}
+}
+
+
+#######################################
+#
 # Get read_ids
 #
 #######################################
@@ -254,43 +271,45 @@ if ( ($do_raw) || ($do_trim) )
     $get_read_h1 = $dbh->prepare($get_read_query1);
     $get_read_h1->execute() or die "Unable to execute SQL statement: \"$get_read_query1\".  Error: " . $get_read_h1->errstr . "\n";
 
-    if ($get_read_h1 && $get_read_h1->rows < 1) 
-    {
-        # nothing in rawseq, check trimseq.  May have cleaned rawseq first
-        if ($do_raw) {print "This run is no longer in the raw tables.\n";}
-        $do_raw = 0;  # don't do it even if they asked
-    
-        # rerun the query, but now on trimseq
-        my $get_read_query1 = "select substring(read_id, 1, $substr_length) from $trimseq_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
-        # print "URA21: \$get_read_query1 = $get_read_query1\n";
-        my $get_read_query2 = "select substring(read_id, 1, $substr_length) from $trimseq_deleted_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
-        # print "URA22: \$get_read_query2 = $get_read_query2\n";
-        my $get_read_query3 = "select substring(read_id, 1, $substr_length) from $trimming_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
-        # print "URA23: \$get_read_query3 = $get_read_query3\n";
-        $get_read_h1 = $dbh->prepare($get_read_query1);
-        $get_read_h2 = $dbh->prepare($get_read_query2);
-        $get_read_h3 = $dbh->prepare($get_read_query3);
-        $get_read_h1->execute() or die "Unable to execute SQL statement: \"$get_read_query1\".  Error: " . $get_read_h1->errstr . "\n";
-        $get_read_h2->execute() or die "Unable to execute SQL statement: \"$get_read_query2\".  Error: " . $get_read_h2->errstr . "\n";
-        $get_read_h3->execute() or die "Unable to execute SQL statement: \"$get_read_query3\".  Error: " . $get_read_h3->errstr . "\n";
-        if ($get_read_h1->rows < 1) 
-        {
-            if ($do_trim) {print "This run is no longer in the trimseq table.\n";}
-            $do_trim = 0; # dont' even try
-        }
-        if ($get_read_h2->rows < 1) 
-        {
-            if ($do_trim) {print "This run is no longer in the trimseq_deleted table.\n";}
-            $do_trim = 0; # dont' even try
-        }
-        if ($get_read_h3->rows < 1) 
-        {
-            if ($do_trim) {print "This run is no longer in the trimming table.\n";}
-            $do_trim = 0; # dont' even try
-        }
-    } else {
-      print "URA3: Here in else; run_prefix = $run_prefix\n";
-        my $read_id1 = $get_read_h1->fetchrow();
+    # if ($get_read_h1 && $get_read_h1->rows < 1) 
+    #    {
+    #      my $a = $get_read_h1->rows;
+    #      print "URA030: Here in if; run_prefix = $run_prefix;get_read_h1 = $get_read_h1; \$get_read_h1->rows = $a\n";
+    #        # nothing in rawseq, check trimseq.  May have cleaned rawseq first
+    #        if ($do_raw) {print "This run is no longer in the raw tables.\n";}
+    #        $do_raw = 0;  # don't do it even if they asked
+    #    
+    #        # rerun the query, but now on trimseq
+    #        my $get_read_query1 = "select substring(read_id, 1, $substr_length) from $trimseq_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
+    #        # print "URA21: \$get_read_query1 = $get_read_query1\n";
+    #        my $get_read_query2 = "select substring(read_id, 1, $substr_length) from $trimseq_deleted_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
+    #        # print "URA22: \$get_read_query2 = $get_read_query2\n";
+    #        my $get_read_query3 = "select substring(read_id, 1, $substr_length) from $trimming_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
+    #        # print "URA23: \$get_read_query3 = $get_read_query3\n";
+    #        $get_read_h1 = $dbh->prepare($get_read_query1);
+    #        $get_read_h2 = $dbh->prepare($get_read_query2);
+    #        $get_read_h3 = $dbh->prepare($get_read_query3);
+    #        $get_read_h1->execute() or die "Unable to execute SQL statement: \"$get_read_query1\".  Error: " . $get_read_h1->errstr . "\n";
+    #        $get_read_h2->execute() or die "Unable to execute SQL statement: \"$get_read_query2\".  Error: " . $get_read_h2->errstr . "\n";
+    #        $get_read_h3->execute() or die "Unable to execute SQL statement: \"$get_read_query3\".  Error: " . $get_read_h3->errstr . "\n";
+    #        if ($get_read_h1->rows < 1) 
+    #        {
+    #            if ($do_trim) {print "This run is no longer in the trimseq table.\n";}
+    #            $do_trim = 0; # dont' even try
+    #        }
+    #        if ($get_read_h2->rows < 1) 
+    #        {
+    #            if ($do_trim) {print "This run is no longer in the trimseq_deleted table.\n";}
+    #            $do_trim = 0; # dont' even try
+    #        }
+    #        if ($get_read_h3->rows < 1) 
+    #        {
+    #            if ($do_trim) {print "This run is no longer in the trimming table.\n";}
+    #            $do_trim = 0; # dont' even try
+    #        }
+    #    } else {
+      # print "URA3: Here in else; run_prefix = $run_prefix\n";
+        $read_id1 = $get_read_h1->fetchrow();
         if ($lane) 
         {
             $where_read_like .= "'" . $read_id1 . "%'";
@@ -298,7 +317,7 @@ if ( ($do_raw) || ($do_trim) )
             # $where_read_like .= "'" . substr($read_id1, 0, 7) . "%'";
             $where_read_like .= "'" . $run_prefix . "%'";            
         }
-    }
+    # }
 }
 
 #######################################
