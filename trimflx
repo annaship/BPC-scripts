@@ -361,9 +361,9 @@ my $ti_rcBadaptor     = "CTGAGACTGCCAAGGCACACAGGGGATAGG";
     v6v4 => [420, 525, 400, "internal"],
     v6v4a => [325, 425, 325, "internal"],
     v3v5 => [375, 450, 350, "internal"],
-    v4v5 => [0, -1, 350, "distal"]    
+    v4v5 => [0, -1, 350, "distal"],    
+    v4v6 => [350, 420, 350, "internal"]
     );
-    # TODO: add with correct data: v4v5 => [0, -1, 350, "distal"]
     
 
 #######################################
