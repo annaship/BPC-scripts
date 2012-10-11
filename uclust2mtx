@@ -207,6 +207,7 @@ else
 }
 my $select_query = "SELECT project, dataset FROM $reads_table WHERE $id_field = ?";
 my $select_query_h = $dbh->prepare($select_query) or die "Unable to prepare statement: $select_query. Error: " . $dbh->errstr . "\n";
+print LOG "localtime: ". localtime() ."\nselect_query = $select_query\n";
 
 #######################################
 #
@@ -218,13 +219,13 @@ my %closest_otu; # for each read the best matching OTU
 my %closest_otu_size; # for each read size of the best matching OTU (used for ties)
 my %best_similarity; # for each read, the highest percent similarity
 my %dataset_names;  # list of otu names
+my %seq_counts; # sequence counts for each read per project/dataset
 
 # Load the OTU assignments for each read
 # because reads can map to more than one OTU, 
 # we have to map all reads to a single OTU before we can tally by dataset
 while (my $line = <IN>) 
 {
-
     #
     # Parse the line
     # 0 = H hit or N nonhit, 3 = pct identity, 8 = read id, 9 = OTU or Chimera name
@@ -236,6 +237,7 @@ while (my $line = <IN>)
     # Grab the read id and OTU#
     my $read_id = $line_data[8];
     $read_id =~ s/\|.*$//;
+    print LOG "OOO-1: read_id = $read_id\n";
 
     my $otu = $line_data[9];
     if ( ($line_data[0] eq "H") && ($otu =~ /^CHIMERA/) )
@@ -246,12 +248,14 @@ while (my $line = <IN>)
     } else {
         $otu =~ s/;.*//;
     }
+    print LOG "OOO1: otu = $otu\n";
 #    if ($otu =~ /Cluster1021/) {warn "$line\n";}
 
     my $otu_size = $line_data[9];
     $otu_size =~ s/^.*;size=//;
+    print LOG "OOO2: otu_size = $otu_size\n";
     my $similarity = $line_data[3];
-
+    print LOG "OOO3: similarity = $similarity\n";
 
     # Need to account for parallel mapping of reads to multiple OTUs, 
     # Map each read to the closest OTU, in case of ties, map it to the purported largest otu
@@ -275,6 +279,16 @@ while (my $line = <IN>)
         $closest_otu_size{$read_id} = $otu_size;
         $best_similarity{$read_id} = $similarity;
     }
+    print LOG "OOO4: \$closest_otu{\$read_id} = $closest_otu{$read_id}; \$closest_otu_size{\$read_id} = $closest_otu_size{$read_id}\n";
+    if ($platform eq "illumina")
+    {
+      my $seq_count      = &get_seq_count($line_data[8]);
+      my $ill_pr_dataset = &get_project_dataset($line_data[8]);
+      print LOG "SSS10: seq_count = $seq_count\n";      
+      # $seq_count    =~ s/^.*\|//;
+      print LOG "SSS20: ill_pr_dataset = $ill_pr_dataset\n";      
+      $seq_counts{$read_id} = $seq_count;
+    }
 }
 
 #
@@ -292,6 +306,7 @@ undef %closest_otu_size;
 foreach my $read_id (keys %closest_otu)
 {
     my $otu = $closest_otu{$read_id};
+    print  LOG "TTT1: in Tally the OTU Counts by Dataset otu = $otu; read_id = $read_id\n";
 
     #
     # look up project and dataset for each read
@@ -307,10 +322,23 @@ foreach my $read_id (keys %closest_otu)
     } else {
         my ($project, $dataset) = $select_query_h->fetchrow();
         $project_dataset = $project . "--" . $dataset;
+        print LOG "TTT2: in Tally the OTU Counts by Dataset project_dataset = $project_dataset\n";        
     }
-    
-    $otu_counts{$otu}{total}++;
-    $otu_counts{$otu}{$project_dataset}++;
+        
+    if ($platform eq "illumina")
+    {
+      $otu_counts{$otu}{total} += $seq_counts{$read_id};
+      $otu_counts{$otu}{$project_dataset} += $seq_counts{$read_id};
+      print  LOG "TTT3: in Tally the OTU Counts by Dataset \$otu_counts{\$otu}{total} = $otu_counts{$otu}{total}; 
+                  \$seq_counts{\$read_id} = $seq_counts{$read_id};
+                  otu = $otu;
+                  \$otu_counts{\$otu}{\$project_dataset} = $otu_counts{$otu}{$project_dataset}; project_dataset = $project_dataset\n";
+    }
+    else
+    {
+      $otu_counts{$otu}{total}++;
+      $otu_counts{$otu}{$project_dataset}++;
+    }
     $dataset_names{$project_dataset}++;
 }
 
@@ -327,6 +355,7 @@ print join("\t", "Cluster ID", "Total", "Count", sort keys %dataset_names) . "\n
 foreach my $o (sort keys %otu_counts) 
 {
     my $count_of_datasets = (scalar keys %{$otu_counts{$o}} ) - 1;
+    print LOG "PPP1: Print out the results o = $o, \$otu_counts{\$o}{total} = $otu_counts{$o}{total}; count_of_datasets = $count_of_datasets\n";        
     if ($o eq "ZZChimeras") 
     {
         print join("\t", "Chimeras", $otu_counts{$o}{total}, $count_of_datasets); 
@@ -338,10 +367,36 @@ foreach my $o (sort keys %otu_counts)
     {
         if (exists $otu_counts{$o}{$pd}) 
         {
+          print LOG "PPP2: Print out the results pd = $pd, \$otu_counts{\$o}{\$pd} = $otu_counts{$o}{$pd}\n";        
             print "\t" . $otu_counts{$o}{$pd} ;
         } else {
             print "\t0";
+            print LOG "PPP2: Print out the results pd = $pd, \$otu_counts{\$o}{\$pd} = ?\n";        
         }
     }
     print "\n";
 }
+#######################################
+# Sub
+#######################################
+sub get_seq_count()
+{
+  my $line = shift;
+  print LOG "SSS1: line = $line\n";      
+  $line    =~ s/^.*\|//;
+  return $line;
+}
+
+sub get_project_dataset()
+{
+  my $line = shift;
+  my $substring;
+  print LOG "SSS2: line = $line\n";     
+  if( $line =~ /^.+?\|(.+?)\|(.+?)\|.+/i )
+  {
+    $substring = $1 . "--" . $2;
+  } 
+  print LOG "SSS3: substring = $substring\n";     
+  return $substring;
+}
+
