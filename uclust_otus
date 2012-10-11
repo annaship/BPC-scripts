@@ -209,7 +209,7 @@ if ($platform eq "454")
 }
 elsif ($platform eq "illumina")
 {
-  my $illumina_derep = "awk 'BEGIN {FS = \"|\"; OFS = \"|\";} {if (\$1~/^>/) gsub(/(.*)/, \";size=&\", \$5);  print}' < $prefix.sort.fa > $prefix.derep.fa"; 
+  my $illumina_derep = "awk 'BEGIN {FS = \"|\"; OFS = \"|\";} {if (\$1~/^>/) gsub(/(.*)/, \"&;size=&\", \$5);  print}' < $prefix.sort.fa > $prefix.derep.fa"; 
   # print "III: illumina_derep cmd = $illumina_derep\n";
   push (@uclust_cmds, $illumina_derep);
 }
