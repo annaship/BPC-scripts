@@ -28,9 +28,9 @@
 # 
 # Assumptions: 
 #
-# Revisions:  Removed the boot levels, defaulting to 80, but reftable now uses other
+# Revisions:  1) Removed the boot levels, defaulting to 80, but reftable now uses other
 #             sources, too.  We can put the boot scores back in later.  
-# Add illumina platform tables from env454. 2012-09-24 A Shipunova
+#             2) Add illumina platform tables from env454. 2012-09-24 A Shipunova
 #
 # Programming Notes:
 #
@@ -51,10 +51,11 @@ my $scriptHelp = "
 
 my $usage = "
    Usage:  otu2tax -platform [illumina|454] -l list_file -uc uc_file -w cluster_width -t sourceTaxTable -m majority > outputfile
-      ex:  otu2tax -platform illumina -l ENV1.fa.m2.fn.list -w unique -t tagtax -m 66 > clustertax.txt
-           otu2tax -platform illumina -l ENV1.fa.m2.fn.list -w 0.03  > clustertax.txt
-           otu2tax -platform illumina -u ENV1.readmap.uc  > clustertax.txt
-           otu2tax -platform illumina -c mydata.otu.dist_03.txt  > clustertax.txt
+      ex:  otu2tax -l ENV1.fa.m2.fn.list -w unique -t tagtax -m 66 > clustertax.txt
+           otu2tax -l ENV1.fa.m2.fn.list -w 0.03  > clustertax.txt
+           otu2tax -c mydata.otu.dist_03.txt  > clustertax.txt
+           The only option tested for Illumina at present (2012-10-12):
+           otu2tax -platform illumina -uc my_file.uc -u > clustertax.txt
 
  Options:  
            -l   name of the mothur list file containing the read_ids for each cluster 
@@ -207,6 +208,7 @@ $platform = lc($platform);
 &open_log();
 print LOG "==============\nPlatform = $platform\n==============\n";
 
+
 #######################################
 #
 # SQL
@@ -234,7 +236,7 @@ else
   print "Please provide a platform name (Illumina or 454)\n";
   exit;
 }
-print LOG "SSS1: $selectTax\n";
+print LOG "SSS1: selectTax = $selectTax\n";
 
 my $selectTax_h = $dbh->prepare($selectTax) or die "Unable to prepare statement: $selectTax. Error: " . $dbh->errstr . "\n";
 
@@ -247,11 +249,11 @@ if ($do_uniques and $platform eq "454")
     print LOG "SSS2: $selectSeq\n";
     $selectSeq_h = $dbh->prepare($selectSeq) or die "Unable to prepare statement: $selectSeq. Error: " . $dbh->errstr . "\n";
 }
-elsif ($do_uniques and $platform eq "illumina")
+elsif ($platform eq "illumina")
 {
   $selectSeq = "SELECT seq_count FROM sequence_pdr_info_ill 
   WHERE sequence_pdr_info_ill_id = ?";  
-  print LOG "SSS2: $selectSeq\n";
+  print LOG "SSS3: selectSeq = $selectSeq\n";
   $selectSeq_h = $dbh->prepare($selectSeq) or die "Unable to prepare statement: $selectSeq. Error: " . $dbh->errstr . "\n";
 }
 
@@ -269,7 +271,7 @@ print join("\t", "Cluster_ID", "Taxonomy", "Rank", "Cluster_Size", "Min_GDist", 
 if ($do_uniques) 
 { 
   print "\tCount_Uniq_Seqs";
-  print LOG "CCC1: print Count_Uniq_Seqs\n";
+  # print LOG "CCC1: print Count_Uniq_Seqs\n";
 }
 print "\n";
 
@@ -282,6 +284,7 @@ if ($list_filename)
     open (IN, $list_filename) or die "Unable to open mothur list file: $list_filename.  Exiting\n\n";
     while (my $line = <IN>) 
     {
+      print LOG "LLL1: in # Step through the mothur list file: line = $line\n";
         # Check for the chosen cluster width
         if ($line =~ /^$cluster_width/)
         {
@@ -324,7 +327,7 @@ if ($list_filename)
         if ($line !~ /^H/) {next;}  # skip comment lines at the top, and anything that is not a hit
         chomp $line;
         my @line_data = split(/\t/, $line);
-        # print LOG "LLL: $line\n";
+        # print LOG "LLL2, in Read in the uclust readmap file: line = $line\n";
         #clean read id just in case
         my $read_id = $line_data[8];
         $read_id =~ s/\|.*$//;
@@ -334,6 +337,7 @@ if ($list_filename)
         $cluster_id =~ s/;.*$//;
 
         push (@{$reads_in_cluster{$cluster_id}}, $read_id);
+        print LOG "LLL3, in Read in the uclust readmap file: read_id = $read_id; cluster_id = $cluster_id\n";
     }
 
     foreach my $c (sort keys %reads_in_cluster)
@@ -382,9 +386,12 @@ sub print_taxonomy
     my %freq_of_uniq;
     my $min_distance = 1;
     my $avg_distance = 0;
+    print LOG "TTT-1 in print_taxonomy: \$clusterID = $clusterID\n";
     
     foreach my $id (@$idArrayRef)
     {
+        get_seq_freq(\%freq_of_uniq, $id);
+        # print LOG "FFF10: \$seq_freq = $seq_freq\n";
         $selectTax_h->execute($id) || die "Unable to execute SQL statement ($selectTax).  Error: " . $selectTax_h->errstr . "\n";
         if ($selectTax_h->rows == 0) 
         {
@@ -392,33 +399,29 @@ sub print_taxonomy
         } else {
             while(my ($tax, $distance) = $selectTax_h->fetchrow()) 
             { 
+              print LOG "TTT0 in print_taxonomy: \$id = $id; \$tax = $tax;\n";
                 # Load the taxonomy object
                 push (@taxObjects, Taxonomy->new($tax)); 
 
                 # check for min distance and tally the distances for the average
                 if ($min_distance > $distance) {$min_distance = $distance;}
-                $avg_distance += $distance;
+                if ($platform eq "illumina")
+                {
+                  my $a = $distance * $seq_freq;
+                  print LOG "AAA0: avg_distance before = $avg_distance; \$distance * \$seq_freq = $a\n";
+                  $avg_distance += $a;                  
+                  print LOG "AAA1: seq_freq = $seq_freq; distance = $distance; avg_distance = $avg_distance\n";
+                }
+                else
+                {
+                  $avg_distance += $distance;                  
+                }
+                print LOG "TTT1 in print_taxonomy: distance = $distance; \$min_distance = $min_distance; \$avg_distance = $avg_distance;\n";
             }
         }
-
-        # Tally up the unique sequences while we are at it
-        if ($do_uniques and $platform eq "454") 
-        {
-            $selectSeq_h->execute($id) || die "Unable to execute SQL statement ($selectSeq).  Error: " . $selectSeq_h->errstr . "\n";
-            my ($seq) = $selectSeq_h->fetchrow(); 
-            # print LOG "SSS333: \$seq = $seq\n";
-            $freq_of_uniq{$seq}++; 
-        }
-        elsif ($do_uniques and $platform eq "illumina") 
-        {
-          # $selectSeq = "SELECT seq_count FROM sequence_pdr_info_ill 
-          # WHERE sequence_pdr_info_ill_id = ?";  
-          $selectSeq_h->execute($id) || die "Unable to execute SQL statement ($selectSeq).  Error: " . $selectSeq_h->errstr . "\n";
-          ($seq_freq) = $selectSeq_h->fetchrow(); 
-          print LOG "FFF0: seq_freq = $seq_freq\n";
-        }
     }
-    print LOG "KKK1: " . scalar keys %freq_of_uniq;
+    print LOG "KKK0: " . scalar keys %freq_of_uniq;
+    # print LOG "\nKKK1: seq_freq = $seq_freq\n";
     
     print LOG "\n==================\n";
     while( my ($k, $v) = each %freq_of_uniq ) {
@@ -429,10 +432,21 @@ sub print_taxonomy
 
     # Lookup the consensus taxonomy for the array
     my @taxReturn = Taxonomy->consensus(@taxObjects, $majority);
+    foreach my $m1 (@{$taxReturn[0]}) 
+    {
+	    print LOG "HERE2 = $m1\n";
+    }
+    foreach my $m (@taxReturn) 
+    {
+      print LOG "HERE1 = $m\n";
+    } 
+    
+    print LOG "\n==================\n";
     
     # Finish calculating the average gast distance and round the distances
     $avg_distance = $avg_distance / (scalar @$idArrayRef);
     $avg_distance = int(($avg_distance * 10000) + 0.5) / 10000;
+    print LOG "MMM1: avg_distance = $avg_distance; majority = $majority\n";
     $min_distance = int(($min_distance * 10000) + 0.5) / 10000;
 
     # Print out the returns
@@ -452,10 +466,35 @@ sub print_taxonomy
 
 sub open_log
 {
-  my $file_name = time . '.log';
+  # my $file_name = time . '.log';
   # print "LOG in $file_name\n";
+  my $file_name = 'otu2tax.log';
   open LOG, "+>", $file_name or die $!;
   my $time_start = scalar localtime();
   print LOG $time_start;
   print LOG "\n";
+}
+
+sub get_seq_freq()
+{
+  my ($freq_of_uniq_ref, $id) = @_;
+  my %freq_of_uniq = %{$freq_of_uniq_ref};
+  # Tally up the unique sequences while we are at it
+  if ($do_uniques and $platform eq "454") 
+  {
+      $selectSeq_h->execute($id) || die "Unable to execute SQL statement ($selectSeq).  Error: " . $selectSeq_h->errstr . "\n";
+      my ($seq) = $selectSeq_h->fetchrow(); 
+      print LOG "SSS333: \$seq = $seq\n";
+      $freq_of_uniq{$seq}++; 
+  }
+  elsif ($platform eq "illumina") 
+  {
+    # $selectSeq = "SELECT seq_count FROM sequence_pdr_info_ill 
+    # WHERE sequence_pdr_info_ill_id = ?";  
+    $selectSeq_h->execute($id) || die "Unable to execute SQL statement ($selectSeq).  Error: " . $selectSeq_h->errstr . "\n";
+    ($seq_freq) = $selectSeq_h->fetchrow(); 
+    $freq_of_uniq{$id} = $seq_freq;
+    print LOG "FFF0: seq_freq = $seq_freq\n";
+  }
+  # return %freq_of_uniq;
 }
