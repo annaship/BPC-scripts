@@ -403,7 +403,18 @@ sub print_taxonomy
             { 
               print LOG "TTT0 in print_taxonomy: \$id = $id; \$tax = $tax;\n";
                 # Load the taxonomy object
-                push (@taxObjects, Taxonomy->new($tax)); 
+                if ($platform eq "illumina") 
+                {
+                  my $count = 0;
+                  for ($count = $seq_freq; $count >= 1; $count--) {
+                  	print LOG "$count ";
+                    push (@taxObjects, Taxonomy->new($tax));                   
+                  }                 
+                }
+                else
+                {
+                  push (@taxObjects, Taxonomy->new($tax));                   
+                }
 
                 # check for min distance and tally the distances for the average
                 if ($min_distance > $distance) {$min_distance = $distance;}
@@ -433,6 +444,14 @@ sub print_taxonomy
     
 
     # Lookup the consensus taxonomy for the array
+    foreach my $m0 (@taxObjects) 
+    {
+      foreach my $m01 (@{$m0}) 
+      {
+        print LOG "HERE0 = $m01\n";        
+      }
+      print LOG "\n==================\n";
+    } 
     my @taxReturn = Taxonomy->consensus(@taxObjects, $majority);
     foreach my $m1 (@{$taxReturn[0]}) 
     {
