@@ -386,12 +386,14 @@ sub print_taxonomy
     my %freq_of_uniq;
     my $min_distance = 1;
     my $avg_distance = 0;
+    my $seq_amount   = 0;
     print LOG "TTT-1 in print_taxonomy: \$clusterID = $clusterID\n";
     
     foreach my $id (@$idArrayRef)
     {
         get_seq_freq(\%freq_of_uniq, $id);
-        # print LOG "FFF10: \$seq_freq = $seq_freq\n";
+        $seq_amount += $seq_freq;
+        print LOG "FFF10: \$seq_amount = $seq_amount\n";
         $selectTax_h->execute($id) || die "Unable to execute SQL statement ($selectTax).  Error: " . $selectTax_h->errstr . "\n";
         if ($selectTax_h->rows == 0) 
         {
@@ -408,9 +410,9 @@ sub print_taxonomy
                 if ($platform eq "illumina")
                 {
                   my $a = $distance * $seq_freq;
-                  print LOG "AAA0: avg_distance before = $avg_distance; \$distance * \$seq_freq = $a\n";
+                  print LOG "AAA0: avg_distance before = $avg_distance; seq_freq = $seq_freq; distance = $distance;\n\$distance * \$seq_freq = $a\n";
                   $avg_distance += $a;                  
-                  print LOG "AAA1: seq_freq = $seq_freq; distance = $distance; avg_distance = $avg_distance\n";
+                  print LOG "AAA1: avg_distance = $avg_distance\n";
                 }
                 else
                 {
@@ -421,7 +423,7 @@ sub print_taxonomy
         }
     }
     print LOG "KKK0: " . scalar keys %freq_of_uniq;
-    # print LOG "\nKKK1: seq_freq = $seq_freq\n";
+    print LOG "\nKKK1: seq_amount = $seq_amount\n";
     
     print LOG "\n==================\n";
     while( my ($k, $v) = each %freq_of_uniq ) {
@@ -444,19 +446,32 @@ sub print_taxonomy
     print LOG "\n==================\n";
     
     # Finish calculating the average gast distance and round the distances
-    $avg_distance = $avg_distance / (scalar @$idArrayRef);
+    if ($platform eq "illumina") 
+    {
+      $avg_distance = $avg_distance / $seq_amount;
+    }
+    else
+    {
+      $avg_distance = $avg_distance / (scalar @$idArrayRef);      
+    }
+    print LOG "MMM0: avg_distance = $avg_distance; majority = $majority\n";
     $avg_distance = int(($avg_distance * 10000) + 0.5) / 10000;
     print LOG "MMM1: avg_distance = $avg_distance; majority = $majority\n";
     $min_distance = int(($min_distance * 10000) + 0.5) / 10000;
 
     # Print out the returns
     # (read_id, taxonomy, rank, altlgi_count, vote, minrank, taxa_counts, max_pcts, na_pcts, uniqseqs)
+    print LOG "avg_distance = $avg_distance; \$taxReturn[5] = $taxReturn[5]\n";
     print join("\t", $clusterID, $taxReturn[0]->taxstring, $taxReturn[0]->depth, scalar @taxObjects, $min_distance, $avg_distance, $taxReturn[1], $taxReturn[2], $taxReturn[3], $taxReturn[4], $taxReturn[5]);
     
     if ($do_uniques) {
       if ($platform eq "454")
       {
         $seq_freq = scalar keys %freq_of_uniq
+      }
+      elsif ($platform eq "illumina")
+      {
+        $seq_freq = $seq_amount
       }
       print LOG "FFF1: seq_freq = $seq_freq\n";
       print "\t" . $seq_freq;
