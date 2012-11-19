@@ -58,7 +58,7 @@ my $usage = "
            -ref    reference fasta file containing unique sequences of known taxonomy
                    The definition line should include the ID used in the reference taxonomy file.
                    Any other information on the definition line should be separated by a space or a \"|\" symbol.
-           -wdb    use a USearch formatted wdb indexed version of the reference for speed.
+           -udb    use a USearch formatted udb indexed version of the reference for speed.
            -rtax   reference taxa file with taxonomy for all copies of the sequences in the reference fasta file
                    This is a tab-delimited file, three columns, describing the taxonomy of the reference sequences
                    The ID matching the reference fasta, the taxonomy and the number of reference sequences with this 
@@ -93,7 +93,7 @@ my $log_filename = "gast.log";
 my $in_filename;
 my $in_prefix;
 my $ref_filename = '';
-my $wdb_filename = '';
+my $udb_filename = '';
 my $reftax_filename;
 my $out_filename;
 my $terse = 0;
@@ -107,7 +107,7 @@ my $mysqlimport_cmd = "mysqlimport -C -v -L -h $db_host $db_name ";
 my $gast_table;
 
 # USearch variables
-my $usearch_cmd = "usearch64";
+my $usearch_cmd = "usearch6";
 my $min_pctid = 0.80;
 my $max_accepts = 15;
 my $max_rejects = 0;
@@ -149,9 +149,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-ref") {
 		shift @ARGV;
 		$ref_filename = shift @ARGV;
-	} elsif ($ARGV[0] eq "-wdb") {
+	} elsif ($ARGV[0] eq "-db") {
 		shift @ARGV;
-		$wdb_filename = shift @ARGV;
+		$udb_filename = shift @ARGV;
 	} elsif ($ARGV[0] eq "-rtax") {
 		shift @ARGV;
 		$reftax_filename = shift @ARGV;
@@ -205,7 +205,7 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 #
 #######################################
 
-if ( (! $in_filename) || ( (! $ref_filename) && (! $wdb_filename) ) ) 
+if ( (! $in_filename) || ( (! $ref_filename) && (! $udb_filename) ) ) 
 {
 	print "Incorrect number of arguments.\n";
 	print "$usage\n";
@@ -232,9 +232,9 @@ if ( ($ref_filename) && (! -f $ref_filename) )
 	exit -1;
 }
 
-if ( ($wdb_filename) && (! -f $wdb_filename) )
+if ( ($udb_filename) && (! -f $udb_filename) )
 {
-	print "Unable to locate reference wdb file: $wdb_filename.\n";
+	print "Unable to locate reference udb file: $udb_filename.\n";
 	exit -1;
 }
 
@@ -297,9 +297,12 @@ if ($ref_filename)
 {
     $usearch_cmd .= " --db $ref_filename ";
 } else {
-    $usearch_cmd .= " --wdb $wdb_filename";
+    $usearch_cmd .= " --db $udb_filename";
 }
-$usearch_cmd .= " --gapopen 6I/1E --iddef 3 --global --query $uniques_filename --uc $uclust_filename --maxaccepts $max_accepts --maxrejects $max_rejects --id $min_pctid";
+#$usearch_cmd .= " --gapopen 6I/1E --iddef 3 --global --query $uniques_filename --uc $uclust_filename --maxaccepts $max_accepts --maxrejects $max_rejects --id $min_pctid";
+#$usearch_cmd .= "usearch6 -db /xraid2-2/g454/blastdbs/gast_distributions/refv6.udb -gapopen 6I/1E -usearch_global J2_613_21A_CaymanRock-PERFECT_reads.fa.unique.unique -strand plus -uc_allhits -uc J2_613_21A_CaymanRock-PERFECT_reads.fa.unique.unique.uc -maxaccepts 15 -maxrejects 0 -id 0.8";
+$usearch_cmd .= " -gapopen 6I/1E -usearch_global $uniques_filename -strand plus -uc_allhits -uc $uclust_filename -maxaccepts $max_accepts -maxrejects $max_rejects -id $min_pctid";
+
 
 run_command($usearch_cmd);
 my $gast_results_ref = parse_uclust($uclust_filename);
