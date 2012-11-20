@@ -92,7 +92,8 @@ my %clusterTax;
 my $do_uniques = 0;
 my $platform = "454";
 my $selectTax;
-my $seq_freq;
+my $seq_freq = 0;
+my %freq_of_uniq;
 
 #######################################
 #
@@ -246,7 +247,7 @@ my $selectSeq_h;
 if ($do_uniques and $platform eq "454") 
 {
     $selectSeq = "SELECT sequence from $seq_table where read_id = ?";
-    print LOG "SSS2: $selectSeq\n";
+    print LOG "SSS21: $selectSeq\ndo_uniques = $do_uniques, platform = $platform\n";
     $selectSeq_h = $dbh->prepare($selectSeq) or die "Unable to prepare statement: $selectSeq. Error: " . $dbh->errstr . "\n";
 }
 elsif ($platform eq "illumina")
@@ -337,7 +338,7 @@ if ($list_filename)
         $cluster_id =~ s/;.*$//;
 
         push (@{$reads_in_cluster{$cluster_id}}, $read_id);
-        print LOG "LLL3, in Read in the uclust readmap file: read_id = $read_id; cluster_id = $cluster_id\n";
+        # print LOG "LLL3, in Read in the uclust readmap file: read_id = $read_id; cluster_id = $cluster_id\n";
     }
 
     foreach my $c (sort keys %reads_in_cluster)
@@ -383,17 +384,17 @@ sub print_taxonomy
     my $idArrayRef = shift;
 
     my @taxObjects;
-    my %freq_of_uniq;
     my $min_distance = 1;
     my $avg_distance = 0;
     my $seq_amount   = 0;
+    print LOG "========================\n";  
     print LOG "TTT-1 in print_taxonomy: \$clusterID = $clusterID\n";
     
     foreach my $id (@$idArrayRef)
     {
-        get_seq_freq(\%freq_of_uniq, $id);
+        %freq_of_uniq = get_seq_freq(\%freq_of_uniq, $id);
         $seq_amount += $seq_freq;
-        print LOG "FFF10: \$seq_amount = $seq_amount\n";
+        print LOG "FFF9: \$seq_amount = $seq_amount; seq_freq = $seq_freq\n";
         $selectTax_h->execute($id) || die "Unable to execute SQL statement ($selectTax).  Error: " . $selectTax_h->errstr . "\n";
         if ($selectTax_h->rows == 0) 
         {
@@ -407,7 +408,7 @@ sub print_taxonomy
                 {
                   my $count = 0;
                   for ($count = $seq_freq; $count >= 1; $count--) {
-                  	print LOG "$count ";
+                  	print LOG "CCC2: count = $count\n";
                     push (@taxObjects, Taxonomy->new($tax));                   
                   }                 
                 }
@@ -438,6 +439,7 @@ sub print_taxonomy
     
     print LOG "\n==================\n";
     while( my ($k, $v) = each %freq_of_uniq ) {
+        print LOG "FFF22: freq_of_uniq = ";
         print LOG "key: $k, value: $v.\n";
     }
     print LOG "\n==================\n";
@@ -486,7 +488,8 @@ sub print_taxonomy
     if ($do_uniques) {
       if ($platform eq "454")
       {
-        $seq_freq = scalar keys %freq_of_uniq
+        $seq_freq = scalar keys %freq_of_uniq;
+        print LOG "FFF01: seq_freq = $seq_freq\n";
       }
       elsif ($platform eq "illumina")
       {
@@ -520,6 +523,7 @@ sub get_seq_freq()
       my ($seq) = $selectSeq_h->fetchrow(); 
       print LOG "SSS333: \$seq = $seq\n";
       $freq_of_uniq{$seq}++; 
+      print LOG "FFF333: \$freq_of_uniq{\$seq} = $freq_of_uniq{$seq}\n"
   }
   elsif ($platform eq "illumina") 
   {
@@ -530,5 +534,5 @@ sub get_seq_freq()
     $freq_of_uniq{$id} = $seq_freq;
     print LOG "FFF0: seq_freq = $seq_freq\n";
   }
-  # return %freq_of_uniq;
+  return %freq_of_uniq;
 }
