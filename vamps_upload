@@ -1,0 +1,2252 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# vamps_upload: Create a data cube for VAMPS
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Tue Aug 12 07:37:52 EDT 2008
+#
+# Copyright (C) 2008 Marine Biological Laborotory, Woods Hole, MA
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# For a copy of the GNU General Public License, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# or visit http://www.gnu.org/copyleft/gpl.html
+#
+# Keywords: vamps datacube taxonomy upload
+#
+# Assumptions:
+#
+# Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
+#
+# Programming Notes:
+#    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
+#
+########################################
+use strict;
+use warnings;
+#use lib '/usr/local/www/vamps/special/perl/lib';
+use Conjbpcdb;
+use IO::Handle;
+require 'pipeline_subs.pl'; #subroutines
+use Time::HiRes qw(gettimeofday tv_interval);
+use Time::Format qw(%time %strftime %manip);
+use File::Temp qw/ tempfile tempdir /;
+
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $scriptHelp = "
+  vamps_upload - refreshes tables: vamps_data_cube, vamps_sequences and vamps_export FROM pokey
+  to VAMPS.
+  \n";
+
+my $usage = "
+  Usage:  vamps_upload [-e -i -t -a] [-s startpoint] vampsHostName
+
+  Ex:  vamps_upload -a vampsdev [export the data, import to dev, and transfer on the dev side]
+  vamps_upload -i -t vamps [update the production website!]
+
+  Options:
+  -e export records to text files
+  -i import FROM text file to transfer table
+  -t swap data FROM transfer tables to production tables
+  -a do it all! (-e -i -t)
+  -s start point (projectdataset, taxonomy, sequences, reads, keys)
+  -stop  stop immediately after selected step (projectdataset, taxonomy, sequences, reads, keys)
+  -skip skip recreating the vamps_projects_datasets table on env454
+  -no_analyze prevents the mysql analyze table query
+  
+  \n";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+my $argNum       = 1;
+my $tblSuffix    = "_transfer";
+my $tblSuffixOld = "_previous";
+my $fileSuffix   = ".txt";
+my $subdir       = "exports/";
+my $chunk_size_reads = 500000;  # dump data to transfer files 500K records at a time FOR READS
+my $chunk_size_seqs  = 250000;  # dump data to transfer files 250K records at a time FOR SEQS
+my $do_not_analyze   = 0;
+my $test_only    = 0;
+# my $rename_norm = 0;
+
+# Host, database, log etc
+my $logFile = "vamps_upload.log";
+#my $publicVAMPSHostName = "vamps.mbl.edu";
+my $publicVAMPSHostName = "bpcweb8";
+#my $privateVAMPSHostName = "vampsdev.mbl.edu";
+my $privateVAMPSHostName = "bpcweb7";
+# my $publicVAMPSHostName = "bpcweb7"; (dev)
+my $sourceHost = "newbpcdb2";
+my $sourceDB   = "env454";
+my $vampsHost  = ''; # user-specified below
+my $vampsDB    = "vamps";
+# my $vampsDB = "vamps2";
+
+# New normalized tables on vamps
+# TODO: remove "new_" when ready
+# TODO: remove "_copy"  after testing
+my $class_table             = "new_class";
+my $family_table            = "new_family";
+my $genus_table             = "new_genus";
+my $orderx_table            = "new_orderx";
+my $phylum_table            = "new_phylum";
+my $species_table           = "new_species";
+my $strain_table            = "new_strain";
+my $superkingdom_table      = "new_superkingdom";
+
+my $env_sample_source_table = "new_env_sample_source";
+
+my $contact_table           = "new_contact";
+my $dataset_table           = "new_dataset";
+my $project_table           = "new_project";
+my $project_dataset_table   = "new_project_dataset";
+my $rank_table              = "new_rank";
+my $rank_number_table       = "new_rank_number";
+my $sequence_table          = "new_sequence";
+my $summed_data_cube_table  = "new_summed_data_cube";
+my $taxon_string_table      = "new_taxon_string";
+my $taxonomy_table          = "new_taxonomy";
+my $user_table              = "new_user";
+my $user_contact_table      = "new_user_contact";
+# todo: new_read_id on prod!!!
+my $read_id_table           = "new_read_id";
+# dop table
+my $vamps_auth_table        = "vamps_auth";
+my $vamps_sequences_transfer_temp_table = "vamps_sequences_transfer_temp";
+
+my %previous_res_count;
+my %new_res_count;
+my @table_names_update;
+my @query_names_exec;
+my $missed_read_ids_list = "";
+my $query_to_norm_number = 0;
+
+my %norm_table_names =
+(
+ "class" 						=> $class_table,
+ "contact" 					=> $contact_table,
+ "dataset" 					=> $dataset_table,
+ "family" 					=> $family_table,
+ "genus" 						=> $genus_table,
+ "orderx" 					=> $orderx_table,
+ "phylum" 					=> $phylum_table,
+ "project" 					=> $project_table,
+ "project_dataset" 	=> $project_dataset_table,
+ # "read_id"          => $read_id_table,
+ # "sequence"         => $sequence_table,
+ "species" 					=> $species_table,
+ "strain" 					=> $strain_table,
+ "summed_data_cube" => $summed_data_cube_table,
+ "superkingdom" 		=> $superkingdom_table,
+ "taxon_string" 		=> $taxon_string_table,
+ "taxonomy" 				=> $taxonomy_table,
+ "user" 						=> $user_table,
+ "user_contact"     => $user_contact_table,
+);
+# todo:
+# "sequence"         => $sequence_table,
+
+# Taxonomy data cube (un-integrated)
+my $final_taxes_table = "vamps_data_cube";
+my $tmp_taxes_table = $final_taxes_table . $tblSuffix;
+my $previous_taxes_table = $final_taxes_table . $tblSuffixOld;
+my $taxesFile = $subdir . $tmp_taxes_table . $fileSuffix;
+
+# Integrated (summed) data cube
+my $final_summed_taxes_table = "vamps_junk_data_cube";
+my $tmp_summed_taxes_table = $final_summed_taxes_table . $tblSuffix;
+my $previous_summed_taxes_table = $final_summed_taxes_table . $tblSuffixOld;
+my $summedTaxesFile = $subdir . $tmp_summed_taxes_table . $fileSuffix;
+
+# Table grouped by sequence
+my $final_seqs_table = "vamps_sequences";
+my $tmp_seqs_table = $final_seqs_table . $tblSuffix;
+my $previous_seqs_table = $final_seqs_table . $tblSuffixOld;
+my $seqsFile = $subdir . $tmp_seqs_table . $fileSuffix;
+
+# Table by individual reads
+my $final_reads_table = "vamps_export";
+my $tmp_reads_table = $final_reads_table . $tblSuffix;
+my $previous_reads_table = $final_reads_table . $tblSuffixOld;
+my $readsFile = $subdir . $tmp_reads_table . $fileSuffix;
+
+# Table containing unique project/dataset combos, used for community visualization
+# on the vamps side
+my $final_project_dataset_table = "vamps_projects_datasets";
+my $tmp_project_dataset_table = $final_project_dataset_table . $tblSuffix;
+my $previous_project_dataset_table = $final_project_dataset_table . $tblSuffixOld;
+my $projectDatasetFile = $subdir . $tmp_project_dataset_table . $fileSuffix;
+
+# Unique list of taxa and whether or not they have kids (need to open in the SELECT menu)
+my $final_distinct_taxa_table = "vamps_taxonomy";
+my $tmp_distinct_taxa_table = $final_distinct_taxa_table . $tblSuffix;
+my $previous_distinct_taxa_table = $final_distinct_taxa_table . $tblSuffixOld;
+my $distinctTaxaFile = $subdir . $tmp_distinct_taxa_table . $fileSuffix;
+
+# Table containing descriptions for each project
+my $final_project_desc_table = "vamps_projects_info";
+my $tmp_project_desc_table = $final_project_desc_table . $tblSuffix;
+my $previous_project_desc_table = $final_project_desc_table . $tblSuffixOld;
+my $projectDescFile = $subdir . $tmp_project_desc_table . $fileSuffix;
+
+# Table containing project/dataset counts for each project
+# local env454 copy for use in joining
+my $final_project_dataset_counts_table = "vamps_projects_datasets";
+my $tmp_project_dataset_counts_table = $final_project_dataset_counts_table . $tblSuffix;
+my $previous_project_dataset_counts_table = $final_project_dataset_counts_table . $tblSuffixOld;
+my $projectDatasetCountsFile = $subdir . $tmp_project_dataset_counts_table . $fileSuffix;
+
+# env454 source tables
+my $source_tax_table											= "tagtax";
+my $source_tax_assignment_table						= "tax_assignment";
+my $source_trim_table											= "trimseq";
+my $source_trimsequence_table							= "trimsequence";
+my $source_gast_table											= "gast_concat";
+my $source_longs_tax_table								= "tagtax_longs";
+my $source_project_table									= "project";
+my $source_dataset_table									= "dataset";
+my $source_run_table											= "run";
+my $source_taxonomy_table									= "taxonomy";
+my $source_rank_table											= "rank";
+my $source_trimseq_not_chimera_temp_table	= "trimseq_not_chimera_temp";
+my $source_vamps_sequences_temp_table			= "vamps_sequences_temp";
+# my $target_vamps_sequences_temp_table     = "vamps_sequences_temp";
+#my $source_unique_trim_table = "trimseq_illumina";
+#my $source_unique_tax_table = "tagtax_uniques";
+# env454 destination table
+#my $icomm_dates_table = "icomm2vamps";
+# final_project_dataset_counts_table = vamps_projects_datasets
+
+# env454 source of dataset information
+# my $datasets_info_table = 'vamps_projects_datasets_info';
+
+## Chimera filter added 2011-03-15
+my $source_chimera_table = 'chimeras';
+
+# vamps source tables
+my $user_uploads_table = "vamps_data_cube_uploads";
+
+# other
+my $sqlImportCommand = "/usr/local/mysql/bin/mysqlimport";
+
+my $export = 0;
+my $import = 0;
+my $transfer = 0;
+
+# Define the list of ranks
+#my @ranks = ('superkingdom','phylum','class','orderx','family','genus','species','strain');
+# Andy -- I moved this FROM below so it would be available throughout the code
+my @ranks = ('superkingdom','phylum','class','orderx','family','genus','species','strain');
+
+my $start = 'projectdataset';
+my $stop = 'final';
+my $skip = 0;
+my $commandline = $0 . " " . join(" ", @ARGV);
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] )
+{
+  print $scriptHelp;
+  print $usage;
+  exit -1;
+}
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+  if ($ARGV[0] =~ /-h/)
+  {
+    print $scriptHelp;
+    print $usage;
+    exit 0;
+  } elsif ($ARGV[0] eq "-e")
+  {
+    shift @ARGV;
+    $export = 1;
+  } elsif ($ARGV[0] eq "-i")
+  {
+    shift @ARGV;
+    $import = 1;
+  } elsif ($ARGV[0] eq "-t")
+  {
+    shift @ARGV;
+    $transfer = 1;
+  } elsif ($ARGV[0] eq "-a")
+  {
+    shift @ARGV;
+    $export = 1;
+    $import = 1;
+    $transfer = 1;
+  } elsif ( ($ARGV[0] eq "-s") || ($ARGV[0] eq "-start") )
+  {
+    shift @ARGV;
+    $start = shift @ARGV;
+  } elsif ($ARGV[0] eq "-stop")
+  {
+    shift @ARGV;
+    $stop = shift @ARGV;
+  } elsif ($ARGV[0] eq "-skip")
+  {
+    shift @ARGV;
+    $skip = 1;
+  } elsif ($ARGV[0] eq "-test")
+  {
+    shift @ARGV;
+    $test_only = 1;
+  } elsif ($ARGV[0] eq "-no_analyze")
+  {
+    shift @ARGV;
+    $do_not_analyze = 1;
+  } elsif ($ARGV[0] =~ /^-/) #unknown parameter, just get rid of it
+  {
+    print "Unknown commandline flag \"$ARGV[0]\".\n";
+    print $usage;
+    exit -1;
+  }
+}
+
+if (scalar @ARGV != 1)
+{
+  print "Incorrect commandline arguments.  Please try again.\n";
+  print $usage;
+  exit -1;
+}
+
+$vampsHost = $ARGV[0];
+if ( ( ($vampsHost ne "vamps") && ($vampsHost ne "vampsdev") ) || (scalar @ARGV > 1) )
+{
+  print "Unrecognized vamps hostname, $vampsHost.  Host name must be either vamps or vampsdev\n";
+  print $usage;
+  exit -1;
+}
+
+# Correct to full hostname
+if ($vampsHost eq "vamps") {$vampsHost = $publicVAMPSHostName;} else {$vampsHost = $privateVAMPSHostName;}
+
+# Check for valid start
+if ( ($start ne "projectdataset") && ($start ne "taxonomy") && ($start ne "sequences") && ($start ne "reads") && ($start ne "keys") && ($start ne "norm_tables") && ($start ne "rename_norm") )
+{
+  print "Please SELECT a valid start option\n";
+  print $usage;
+  exit -1;
+}
+
+$stop = "norm_tables" if ($start eq "norm_tables");
+$stop = "rename_norm" if ($start eq "rename_norm");
+
+# Check for valid stop
+if ( ($stop ne "projectdataset") && ($stop ne "final") && ($stop ne "taxonomy") && ($stop ne "sequences") && ($stop ne "reads") && ($stop ne "keys") && ($stop ne "norm_tables") && ($stop ne "rename_norm") )
+{
+  print "Please SELECT a valid stop option\n";
+  print $usage;
+  exit -1;
+}
+
+if ( (! $export) && (! $import) && (! $transfer)  )
+{
+  print "SELECT one of -e -i -t or -a to upload data, or
+  set start to run phpscripts only (-s phpscripts)\n";
+  print $usage;
+  exit -1;
+}
+
+# Check for the subdirectory
+
+if (! -d $subdir)
+{
+  my $can_mkdir = mkdir $subdir;
+  if (! $can_mkdir)
+  {
+    print "Unable to locate or create subdirectory, $subdir, for exporting files.\nExiting.\n";
+    exit -1;
+  }
+}
+
+#######################################
+#
+# Open the LOG file for writing
+#
+#######################################
+open(LOG, ">>$logFile") or warn "Unable to write to log file: $logFile. (" . (localtime) .")\n";
+open(STDERR, ">>$logFile");
+print LOG "\n\n" . (localtime) . "\n$commandline\n";
+
+#######################################
+#
+# Connect to the databases
+#
+#######################################
+
+my $conSource = Conjbpcdb::new($sourceHost, $sourceDB);
+my $dbhSource = $conSource->dbh();
+
+my $conVamps = Conjbpcdb::new($vampsHost, $vampsDB);
+my $dbhVamps = $conVamps->dbh();
+
+$dbhSource->do("set sql_mode=traditional");
+$dbhVamps->do("set sql_mode=traditional");
+#######################################
+#
+# Run the taxonomy tables, the list of datasets and taxonomy and dataset counts
+#
+#######################################
+
+if ($start eq "projectdataset")
+{
+
+  #######################################
+  #
+  # First get read counts for each dataset
+  #     to be used for adding normalization (percent) for all read counts by dataset
+  #     and send out to project_dataset_counts
+  #
+  #######################################
+
+  if ($export)
+  {
+    if (! $skip)
+    {
+      # create an auxilary table
+      PrintUpdate( "PPP1: \$test_only = $test_only\n");
+      PrintUpdate("Calculating project / dataset counts\n");
+      # create new project_dataset_counts table in env454 (so can be used in joins)  and populate with this query
+
+      # q 0b)
+      my $truncatePDCQuery = "TRUNCATE $final_project_dataset_counts_table";
+      # my $truncatePDCQuery_h = $dbhSource->prepare($truncatePDCQuery) or warn print LOG "Unable to prepare statement: $truncatePDCQuery.  Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+      # $truncatePDCQuery_h->execute or warn print LOG "Unable to execute SQL statement: $truncatePDCQuery.  Error:     " . $truncatePDCQuery_h->errstr . " (" . (localtime) . ")\n";
+      PrintUpdate("q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n");
+      ExecuteInsert_newbpcdb2($truncatePDCQuery);
+
+      # Insert the regular 454 tag sequence counts
+      # q 1)
+      # my $insert_project_datasets =
+      #   "INSERT IGNORE INTO $final_project_dataset_counts_table (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info, project_id, dataset_id, rev_project_name)
+      #   SELECT DISTINCT project, dataset, count(read_id) AS dataset_count, 1, date_trimmed, dataset_description AS dataset_info, project_id, dataset_id, rev_project_name
+      #     FROM trimseq 
+      #     LEFT JOIN chimeras USING(read_id)
+      #     LEFT JOIN $source_tax_table USING(read_id)
+      #     JOIN $source_tax_assignment_table USING(read_id)
+      #     JOIN $source_project_table USING(project_id)
+      #     JOIN $source_dataset_table USING(dataset_id)
+      #     JOIN $source_run_table USING(run_id)
+      #     WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )        
+      #     GROUP BY project, dataset
+      # ";
+
+#TODO: uncomment when cimeric moved from trimseq
+      my $insert_project_datasets =
+        "INSERT IGNORE INTO $final_project_dataset_counts_table (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info, project_id, dataset_id, rev_project_name)
+        SELECT DISTINCT project, dataset, count(read_id) AS dataset_count, 1, date_trimmed, dataset_description AS dataset_info, project_id, dataset_id, rev_project_name
+          FROM trimseq 
+          LEFT JOIN $source_tax_table USING(read_id)
+          JOIN $source_tax_assignment_table USING(read_id)
+          JOIN $source_project_table USING(project_id)
+          JOIN $source_dataset_table USING(dataset_id)
+          JOIN $source_run_table USING(run_id)
+          GROUP BY project, dataset
+      ";
+
+
+      PrintUpdate("q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n");
+
+      ExecuteInsert_newbpcdb2($insert_project_datasets);
+      #
+      # my $insert_project_datasets_h = $dbhSource->prepare($insert_project_datasets) or warn print LOG "Unable to prepare statement: $insert_project_datasets. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+      # $insert_project_datasets_h->execute or warn print LOG "Unable to execute SQL statement: $insert_project_datasets.  Error: " . $insert_project_datasets_h->errstr . " (" . (localtime) . ")\n";
+
+      # Insert the sequence counts for the additional full length taxonomy (tagtax_longs)
+      # q 1a)
+      my $insert_project_datasets_a =
+        "INSERT IGNORE INTO $final_project_dataset_counts_table (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info, project_id, dataset_id, rev_project_name)
+        SELECT DISTINCT project, dataset, count(read_id) AS dataset_count, 0, 'unknown', dataset_description AS dataset_info, project_id, dataset_id, rev_project_name
+        FROM $source_longs_tax_table
+        LEFT JOIN $source_project_table USING(project_id)
+        LEFT JOIN $source_dataset_table USING(dataset_id)
+        GROUP BY project, dataset
+      ";
+        # "INSERT INTO $final_project_dataset_counts_table
+        # SELECT 0, project, dataset, count(*), 0, 'unknown', dataset
+        # FROM $source_longs_tax_table
+        # GROUP BY project, dataset";
+      # $insert_project_datasets_h = $dbhSource->prepare($insert_project_datasets) or warn print LOG "Unable to prepare statement: $insert_project_datasets. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+      # $insert_project_datasets_h->execute or warn print LOG "Unable to execute SQL statement: $insert_project_datasets.  Error: " . $insert_project_datasets_h->errstr . " (" . (localtime) . ")\n";
+      PrintUpdate("q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n");
+
+      ExecuteInsert_newbpcdb2($insert_project_datasets_a);
+
+    }
+
+    # Dump the table for importing to vamps (SELECT FROM sourceHost)
+    # q 2)
+    my $select_project_datasets = "SELECT DISTINCT id, project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info FROM $final_project_dataset_counts_table";
+    ExecuteDump($select_project_datasets, $projectDatasetCountsFile);
+  }
+
+  if ($import)
+  {
+    PrintUpdate("Inserting into $tmp_project_dataset_table");
+    CreateEmpty($tmp_project_dataset_table);
+    ExecuteLoad($projectDatasetFile, $tmp_project_dataset_table);
+
+    unless($do_not_analyze)
+    {
+      PrintUpdate("Analyzing $tmp_project_dataset_table");
+      AnalyzeTable($tmp_project_dataset_table);
+    }
+  }
+
+  if ($transfer)
+  {
+    PrintUpdate("Swapping $final_project_dataset_table tables");
+    SwapNew($tmp_project_dataset_table, $final_project_dataset_table, $previous_project_dataset_table);
+    
+    # add code here to update the *NEW* (as of 2012-04-26) vamps_datasets_date table after swapping  -AAV
+    #  insert ignore into vamps_datasets_date select 0,project,dataset,curdate() from vamps_projects_datasets
+    my $insert_date_query = "INSERT IGNORE into vamps_datasets_date SELECT 0,project,dataset,curdate() FROM vamps_projects_datasets";
+    ExecuteInsert($insert_date_query);
+  }
+}
+if ($stop eq "projectdataset") {exit 0;}
+
+######################################
+#
+# SELECT data for vamps_data_cube
+#
+#######################################
+
+if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
+{
+  if ($export)
+  {
+
+    PrintUpdate("Selecting data for $final_taxes_table");
+
+    open(OUTTAX, ">$taxesFile") or warn print LOG "Unable to open SQL file: $taxesFile (". (localtime) . ")\n";
+
+    # SELECT the taxonomy and project/dataset information
+    #count(*) / dataset_count as frequency, dataset_count, concat(project, '--', dataset) as projectDataset
+    #count(*) / dataset_count as frequency, dataset_count, concat(project, '--', dataset) as projectDataset
+    #concat(project, '--', dataset) as projectDataset
+    # q 3)
+    # my $selectCube =
+    # "
+    # SELECT 0, project, dataset, taxonomy, rank, count(read_id) AS cnt,
+    #   count(read_id) / dataset_count as frequency, dataset_count, 'GAST'
+    #   FROM trimseq 
+    #   LEFT JOIN chimeras USING(read_id)
+    #   LEFT JOIN $source_tax_table USING(read_id)
+    #   JOIN $source_tax_assignment_table USING(read_id)
+    #   JOIN $final_project_dataset_counts_table USING (project_id, dataset_id)
+    #   JOIN $source_taxonomy_table USING(taxonomy_id)
+    #   JOIN $source_rank_table USING(rank_id)
+    #   WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )      
+    # GROUP BY project, dataset, taxonomy
+    # UNION
+    # SELECT 0, project, dataset, taxonomy, rank, count(read_id) as cnt,
+    #     count(read_id) / vamps_projects_datasets.dataset_count as frequency, vamps_projects_datasets.dataset_count, 'RDP'
+    # FROM $source_longs_tax_table
+    #   LEFT JOIN $final_project_dataset_counts_table as vamps_projects_datasets USING (project_id, dataset_id)
+    #   LEFT JOIN $source_taxonomy_table USING(taxonomy_id)
+    #   LEFT JOIN $source_rank_table USING(rank_id)
+    # GROUP BY project, dataset, taxonomy;
+    # ";
+
+    # TODO: uncomment when cimeric moved from trimseq
+    my $selectCube =
+    "
+    SELECT DISTINCT 0, project, dataset, taxonomy, rank, count(read_id) AS cnt,
+      count(read_id) / dataset_count as frequency, dataset_count, 'GAST'
+      FROM trimseq 
+      LEFT JOIN $source_tax_table USING(read_id)
+      JOIN $source_tax_assignment_table USING(read_id)
+      JOIN $final_project_dataset_counts_table USING (project_id, dataset_id)
+      JOIN $source_taxonomy_table USING(taxonomy_id)
+      JOIN $source_rank_table USING(rank_id)
+    GROUP BY project, dataset, taxonomy
+    UNION
+    SELECT DISTINCT 0, project, dataset, taxonomy, rank, count(read_id) as cnt,
+        count(read_id) / vamps_projects_datasets.dataset_count as frequency, vamps_projects_datasets.dataset_count, 'RDP'
+    FROM $source_longs_tax_table
+      LEFT JOIN $final_project_dataset_counts_table as vamps_projects_datasets USING (project_id, dataset_id)
+      LEFT JOIN $source_taxonomy_table USING(taxonomy_id)
+      LEFT JOIN $source_rank_table USING(rank_id)
+    GROUP BY project, dataset, taxonomy;
+    ";
+
+
+    PrintUpdate("q 3) selectCube = $sourceHost.$selectCube\n");
+    my $selectCube_h = ExecuteSelect($selectCube);
+
+    #######################################
+    #
+    # Insert the data into the VAMPS "junk" summed data cube table
+    # this must be done in perl because the records are edited as they are moved
+    #
+    #######################################
+    PrintUpdate("Exporting data for $final_taxes_table to $taxesFile");
+
+    # For each row in the SELECT statement, calculate remaining taxa ranks and write to file
+    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "orderx", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
+    while(my @dataRow = $selectCube_h->fetchrow())
+    {
+      # Need to split apart the taxonomy to create separate values for each taxonomic rank
+      my @taxes = split(';', $dataRow[3]);
+      my @insertRow = @dataRow;
+
+      # Double check for empty taxonomy strings -- no agreement at superkingdom
+      # 2010-05-18 changed FROM adding 'NA' table to 'superkinkdom_NA'
+      if ($dataRow[3] eq '') {$dataRow[3] = 'Domain_NA';}
+
+      # pop off the these to make room for rank-specific taxa, put on again later
+
+      my $classifier = pop(@insertRow);
+      my $pdcount = pop(@insertRow);
+      my $frequency = pop(@insertRow);
+      my $cnt = pop(@insertRow);
+      my $rank = pop(@insertRow);
+
+      # For each rank (superkingdom --> strain) insert NAs for missing taxonomy off the end
+      # 2010-05-18 changed FROM adding 'NA' table to $ranks[$i]."_NA";
+      for (my $i = 0; $i <= 7; $i++)
+      {
+        if ($#taxes < $i) { $taxes[$i] = $ranks[$i] . "_NA"; }
+      }
+
+      # add the taxonomy by ranks and put the count back on the end
+      push @insertRow, @taxes;
+      push @insertRow, $rank;
+      push @insertRow, $cnt;
+      push @insertRow, $frequency;
+      push @insertRow, $pdcount;
+      push @insertRow, $classifier;
+
+      # Print to the text file
+      print OUTTAX join("\t", @insertRow) . "\n";
+    }
+  }
+
+  #
+  # Load the taxes data
+  #
+  if ($import)
+  {
+    PrintUpdate("Inserting data into $tmp_taxes_table");
+
+    # vamps_data_cube_transfer
+    CreateEmpty($tmp_taxes_table);
+    ExecuteLoad($taxesFile, $tmp_taxes_table);
+
+    # my $update_new_taxa_name = "INSERT IGNORE INTO ? (?) SELECT distinct superkingdom FROM $tmp_taxes_table";
+    # my $update_new_taxa_name_prepered = &prep_query($update_new_taxa_name);
+    # foreach my $taxa_name ("superkingdom", "phylum", "class", "orderx", "family", "genus", "species", "strain")
+    # {
+    #   my $table_name = "\$".$taxa_name."_table";
+    #   $update_new_taxa_name_prepered->execute($table_name, $taxa_name) || die "Unable to execute MySQL statement: $update_new_taxa_name\nError: " . $dbh->errstr . "(" . (localtime) . ")\n";
+    # }
+
+
+    #
+    # Create the summed (junk) data cube FROM the regular data cube
+    #
+
+    PrintUpdate("Creating interim summed taxa table");
+    # vamps_junk_data_cube_transfer
+    CreateEmpty($tmp_summed_taxes_table);
+
+    # Step through each rank, FROM superkingdom down to strain
+    # NOTE: user uploads is entirely separate FROM the env454 side
+    # junk_data_cube is equivalent to junk_data_cube_pipe
+    # and data_cube is equivalent to data_cube_uploads
+    #for my $source_table ($tmp_taxes_table, $user_uploads_table)
+    #{
+    my $source_table = $tmp_taxes_table;
+
+    #PrintUpdate("Loading summed taxa FROM $source_table to $tmp_summed_taxes_table");
+    PrintUpdate("Loading summed taxa FROM $tmp_taxes_table to $tmp_summed_taxes_table");
+    my @ranks_subarray; # array for building the growing list of taxonomic ranks
+    for (my $i = 0; $i <= $#ranks; $i++)
+    {
+      #print "i: $i\n";
+      # Create the working list of taxonomic ranks
+      push(@ranks_subarray, $ranks[$i]);
+      my $ranks_list = join(", ", @ranks_subarray); # i.e., superkingdom, phylum, class
+      PrintUpdate( "ranks list: $ranks_list\n");
+
+      # Insert statement, to insert integrated counts into the output data cube
+      # Prefer to have only one prepare statement, but can't effectively include the
+      # field names USING the "?" syntax.
+      # q 4)
+      my $insertQuery =
+        "INSERT INTO $tmp_summed_taxes_table
+        SELECT DISTINCT 0, concat_ws(';', $ranks_list) as taxonomy,
+        sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
+        ? AS rank, project, dataset, concat(project,'--',dataset), classifier
+        FROM $source_table
+        WHERE taxon_string != ''
+        GROUP BY project, dataset, $ranks_list
+        HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= $i";
+        # ORDER BY project, taxonomy";
+      PrintUpdate("q 4) insertQuery = dbhVamps.$insertQuery\n");
+
+      # Use the ranks_list and the rank index to execute the query
+      ExecuteInsertPassVar($insertQuery, $i);
+    }
+
+    # # q 4_1)
+    # my $insertQuery4_1 =
+    #   "INSERT IGNORE INTO $taxon_string_table (taxon_string, rank_number)
+    #     SELECT distinct taxon_string, rank_number
+    #     FROM $tmp_summed_taxes_table
+    #     JOIN $rank_number_table on ($tmp_summed_taxes_table.rank = $rank_number_table.rank_number)
+    #   ";
+    # print "q 4_1) insertQuery = dbhVamps.$insertQuery4_1\n";
+    # print LOG "q 4_1) insertQuery = dbhVamps.$insertQuery4_1\n";
+    # ExecuteInsert($insertQuery4_1);
+    #
+    # # q 4_2)
+    # my $insertQuery4_2 =
+    #   "INSERT IGNORE INTO $summed_data_cube_table
+    #   (taxon_string_id, knt, frequency, dataset_count, rank_number, project_id, dataset_id, project_dataset_id, classifier)
+    #   SELECT
+    #   taxon_string_id, knt, frequency, dataset_count, $rank_number_table.rank_number, project_id, dataset_id, project_dataset_id, classifier
+    #   FROM $tmp_summed_taxes_table
+    #     JOIN $taxon_string_table USING(taxon_string)
+    #     JOIN $rank_number_table on $tmp_summed_taxes_table.rank = $rank_number_table.rank_number
+    #     JOIN $project_dataset_table USING(project_dataset)";
+    # print "q 4_2) insertQuery = dbhVamps.$insertQuery4_2\n";
+    # print LOG "q 4_2) insertQuery = dbhVamps.$insertQuery4_2\n";
+    # ExecuteInsert($insertQuery4_2);
+
+
+    # # q 4a)
+    # my $insert_domain =
+    # "INSERT INTO $tmp_summed_taxes_table
+    #     SELECT 0, concat_ws(';', superkingdom) as taxonomy,
+    #     sum(knt) as sum_tax_counts, sum(knt) / dataset_count as frequency, dataset_count,
+    #     0 as rank, project, dataset, concat(project,'--',dataset), classifier
+    #     FROM $source_table
+    #     WHERE taxon_string != ''
+    #     GROUP BY project, dataset, superkingdom
+    #     HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= 0
+    #     ORDER BY project, taxonomy";
+    #
+    #     print "q 4a) insertQuery = dbhVamps.$insert_domain\n";
+    #     print LOG "q 4a) insertQuery = dbhVamps.$insert_domain\n";
+    #
+    # ExecuteInsert($insert_domain);
+    #}
+
+    #
+    # Create Distinct Taxonomy Table (vamps_taxonomy))
+    #
+    PrintUpdate("Creating $tmp_distinct_taxa_table");
+    # vamps_taxonomy_transfer
+    CreateEmpty($tmp_distinct_taxa_table);
+    # q 5)
+    my $insertDistinctTaxaQuery =
+      "INSERT INTO $tmp_distinct_taxa_table
+      SELECT DISTINCT 0, taxon_string, rank,
+      (CASE WHEN (taxon_string LIKE '%;NA' or taxon_string LIKE '%_NA') OR rank = 7 THEN 0 ELSE 1 END) AS num_kids
+      FROM $tmp_summed_taxes_table
+      ";
+
+      # WHERE taxon_string not LIKE '%;NA;NA' and taxon_string not LIKE '%_NA;%_NA' and taxon_string != 'NA;NA'";
+
+    #         my $insertDistinctTaxaQuery =
+    #         "INSERT INTO $tmp_distinct_taxa_table SELECT DISTINCT taxon_string, rank,
+    #         (CASE WHEN taxon_string LIKE '%;NA' or rank = 7 THEN 0 ELSE 1 END) as num_kids
+    #         FROM $tmp_summed_taxes_table
+    #         WHERE taxon_string not LIKE '%;NA;NA' and taxon_string != 'NA;NA'";
+    PrintUpdate("q 5) insertDistinctTaxaQuery = dbhVamps.$insertDistinctTaxaQuery\n\n\n");
+    ExecuteInsert($insertDistinctTaxaQuery);
+
+    unless($do_not_analyze)
+    {
+      PrintUpdate("Analyzing $tmp_taxes_table");
+      AnalyzeTable($tmp_taxes_table);
+
+      PrintUpdate("Analyzing $tmp_summed_taxes_table");
+      AnalyzeTable($tmp_summed_taxes_table);
+
+      PrintUpdate("Analyzing $tmp_distinct_taxa_table");
+      AnalyzeTable($tmp_distinct_taxa_table);
+    }
+  }
+
+  if ($transfer)
+  {
+    PrintUpdate("Swapping $final_taxes_table tables");
+    SwapNew($tmp_taxes_table, $final_taxes_table, $previous_taxes_table);
+
+    PrintUpdate("Swapping $final_summed_taxes_table tables");
+    SwapNew($tmp_summed_taxes_table, $final_summed_taxes_table, $previous_summed_taxes_table);
+
+    PrintUpdate("Swapping $final_distinct_taxa_table tables");
+    SwapNew($tmp_distinct_taxa_table, $final_distinct_taxa_table, $previous_distinct_taxa_table);
+  }
+} # End start = taxonomy
+
+if ($stop eq "taxonomy") {exit 0;}
+
+#######################################
+#
+# SELECT data for vamps_sequences
+#
+#######################################
+if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") )
+{
+  # ON ENV454
+  # 1) increase join_buffer - doesn't work
+  # 2) drop vamps_sequences_transfer_temp
+  # 3) create vamps_sequences_transfer_temp
+  # 4) decrease join_buffer - doesn't work
+  # 5) dump vamps_sequences_transfer_temp on disc
+  # change ON VAMPS  
+  # 6) drop vamps_sequences_transfer_temp table on VAMPS
+  # 7) upload vamps_sequences_transfer_temp to VAMPS  
+  # 8) drop transfer table
+  # 9) create vamps_sequences_transfer
+  # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
+  my $seq_file_name = $subdir . "vamps_sequences_transfer.sql";
+  
+  if ($export)
+  {
+    PrintUpdate("Dumping data for $final_seqs_table");
+
+    # mysql> show global variables like "join_BUFFER_SIZE";
+    # +------------------+---------+
+    # | Variable_name    | Value   |
+    # +------------------+---------+
+    # | join_buffer_size | 8388608 |
+    my $join_buffer_size_old = 8388608;
+    my $join_buffer_size_new = 8388608*1024*1024;
+    PrintUpdate("TTT: \$test_only = $test_only\n");
+    
+    # # 1) increase join_buffer
+    # # q 6-1)
+    # my $join_buffer_increase_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_new;";
+    # &print_query_out("q 6-1) join_buffer_increase_temp", $sourceHost." ".$join_buffer_increase_temp);
+    # ExecuteInsert_newbpcdb2($join_buffer_increase_temp) unless ($test_only == 1);
+    # q 6-2)
+    # 2) drop vamps_sequences_transfer table on env454
+    my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
+    &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
+    `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    ExecuteInsert_newbpcdb2($drop_temp_seq);
+    
+    # q 6-3)
+    # 3) create vamps_sequences_transfer table on env454 (5 h)
+    # SET SESSION join_buffer_size = $join_buffer_size_new;
+    # my $CREATE_temp_seq = "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
+    #     id int(11) unsigned NOT NULL AUTO_INCREMENT,
+    #     seq_count int(11) unsigned NOT NULL,
+    #     frequency double NOT NULL,
+    #     rep_id char(15) NOT NULL DEFAULT '',
+    #     project_dataset varchar(100) NOT NULL DEFAULT '',
+    #     PRIMARY KEY (id)
+    #   ) 
+    #   SELECT distinct sequence_comp, project, dataset, taxonomy, refhvr_ids,  rank, count(read_id) as seq_count,
+    #         count(read_id) / dataset_count as frequency, distance, read_id as rep_id
+    #         FROM trimseq
+    #         JOIN trimsequence using(trimsequence_id)
+    #         LEFT JOIN chimeras USING(read_id)
+    #         LEFT JOIN tagtax USING(read_id)
+    #         JOIN gast_concat USING(read_id)
+    #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
+    #         JOIN taxonomy USING(taxonomy_id)
+    #         JOIN rank USING(rank_id)
+    #         WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )
+    #       GROUP BY sequence_comp, project, dataset";
+    #       # ; SET SESSION join_buffer_size = $join_buffer_size_old;
+          
+    #TODO: uncomment when cimeric moved from trimseq
+    my $CREATE_temp_seq = "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
+        id int(11) unsigned NOT NULL AUTO_INCREMENT,
+        seq_count int(11) unsigned NOT NULL,
+        frequency double NOT NULL,
+        rep_id char(15) NOT NULL DEFAULT '',
+        project_dataset varchar(100) NOT NULL DEFAULT '',
+        PRIMARY KEY (id)
+      ) 
+      SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids,  rank, count(read_id) as seq_count,
+            count(read_id) / dataset_count as frequency, distance, read_id as rep_id
+            FROM trimseq
+            JOIN trimsequence using(trimsequence_id)
+            LEFT JOIN tagtax USING(read_id)
+            JOIN gast_concat USING(read_id)
+            JOIN vamps_projects_datasets USING(project_id, dataset_id)
+            JOIN taxonomy USING(taxonomy_id)
+            JOIN rank USING(rank_id)
+          GROUP BY sequence_comp, project, dataset";
+          # ; SET SESSION join_buffer_size = $join_buffer_size_old;
+      
+    
+          
+    &print_query_out("q 6-3) CREATE_temp_seq", $sourceHost." ".$CREATE_temp_seq);
+    ExecuteInsert_newbpcdb2($CREATE_temp_seq);
+    
+    
+    # # 4) decrease join_buffer
+    # # q 6-4)
+    # my $join_buffer_decrease_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_old;";
+    # &print_query_out("q 6-4) join_buffer_decrease_temp", $sourceHost." ".$join_buffer_decrease_temp);
+    # ExecuteInsert_newbpcdb2($join_buffer_decrease_temp) unless ($test_only == 1);
+    # 5) dump vamps_sequences_transfer to a disc  
+    # q 6-5)
+    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
+    &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
+    unless ($test_only == 1)
+    {
+      my $dump_sys = system($dump_seq);
+      if ($dump_sys) {PrintUpdate("Error dumping vamps_sequences_transfer_temp from env454\n");}
+    }    
+  }
+    
+  if ($import)
+  {
+    # -------- change on vamps --------
+    # 6) drop vamps_sequences_transfer_temp table on VAMPS
+    # q 6-6)
+    my $drop_vamps_sequences_transfer_temp = "DROP TABLE IF EXISTS vamps_sequences_transfer_temp";
+    &print_query_out("q 6-6) drop_vamps_sequences_transfer_temp", $vampsHost." ".$drop_vamps_sequences_transfer_temp);
+    ExecuteInsert($drop_vamps_sequences_transfer_temp);
+    # 7) upload vamps_sequences_transfer_temp to VAMPS  
+    # q 6-7)
+    my $upload_seq = "time mysql -h $vampsHost $vampsDB < $seq_file_name";
+    &print_query_out("q 6-7) upload_seq", $vampsHost." ".$upload_seq);
+    unless ($test_only == 1)
+    {
+      my $upload_sys = system($upload_seq);
+      if ($upload_sys) {PrintUpdate("Error uploading vamps_sequences_transfer_temp on VAMPS\n");}
+    }    
+    # 8) drop vamps_sequences_transfer table on VAMPS
+    # q 6-8)
+    my $drop_vamps_sequences_transfer = "DROP TABLE IF EXISTS vamps_sequences_transfer";
+    &print_query_out("q 6-8) drop_vamps_sequences_transfer", $vampsHost." ".$drop_vamps_sequences_transfer);
+    ExecuteInsert($drop_vamps_sequences_transfer);
+    # 9) create vamps_sequences_transfer
+    # q 6-9)
+    my $create_vamps_sequences_transfer = "CREATE TABLE `vamps_sequences_transfer` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `sequence` text NOT NULL,
+      `project` varchar(64) NOT NULL,
+      `dataset` varchar(64) NOT NULL,
+      `taxonomy` varchar(255) NOT NULL,
+      `refhvr_ids` text NOT NULL,
+      `rank` varchar(20) NOT NULL,
+      `seq_count` int(11) NOT NULL,
+      `frequency` double NOT NULL,
+      `distance` decimal(7,5) DEFAULT NULL,
+      `rep_id` char(15) NOT NULL,
+      `project_dataset` varchar(100) NOT NULL DEFAULT '',
+      PRIMARY KEY (`id`),
+      KEY `project_dataset` (`project`,`dataset`),
+      KEY `dataset` (`dataset`),
+      KEY `sequence` (`sequence`(350)),
+      KEY `project_dataset_conc_seq` (`project_dataset`,`sequence`(350)),
+      KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)
+    ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";
+    &print_query_out("q 6-9) create_vamps_sequences_transfer", $vampsHost." ".$create_vamps_sequences_transfer);
+    ExecuteInsert($create_vamps_sequences_transfer);
+    # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
+    # q 6-10)
+    my $insert_vamps_sequences_transfer = 'insert into vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
+      select DISTINCT uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
+      from vamps_sequences_transfer_temp';
+    &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
+    ExecuteInsert($insert_vamps_sequences_transfer);
+
+    unless($do_not_analyze)
+    {
+      PrintUpdate("Analyzing vamps_sequences_transfer");
+      AnalyzeTable("vamps_sequences_transfer");
+    }
+  }
+  # TODO: move table names to a variable
+
+  if ($transfer)
+  {
+    PrintUpdate("Swapping $final_seqs_table tables");
+    SwapNew($tmp_seqs_table, $final_seqs_table, $previous_seqs_table);
+  }
+} # END start = sequences
+if ($stop eq "sequences") {exit 0;}
+
+#######################################
+#
+# SELECT data for vamps_exports
+#
+#######################################
+if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "reads") )
+{
+  if($export)
+  {
+    PrintUpdate("Dumping data for $final_reads_table into $readsFile");
+
+    unless ($test_only == 1)
+    {
+      # Clear out the old files, just in case
+      my $rm_err = system("rm $readsFile*");
+      if ($rm_err) {
+        PrintUpdate("Error removing old files $readsFile*\n");
+      }
+    }
+
+    #
+    # SELECT the data
+    #
+
+    # q 7)
+    # my $selectReads =
+    # "
+    # SELECT 0, read_id, project, dataset,
+    #   refhvr_ids, distance, taxonomy, uncompress(sequence_comp) as sequence, rank, date_trimmed
+    #   FROM trimseq 
+    #   JOIN trimsequence using(trimsequence_id)
+    #   LEFT JOIN chimeras USING(read_id)
+    #   JOIN $source_gast_table USING(read_id)
+    #   LEFT JOIN $source_tax_table USING(read_id)
+    #   JOIN $source_tax_assignment_table USING(read_id)
+    #   JOIN $source_taxonomy_table USING(taxonomy_id)
+    #   JOIN $source_rank_table USING(rank_id)
+    #   JOIN $final_project_dataset_counts_table USING(project_id, dataset_id)
+    #   WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )    
+    # ";
+    # 
+    #TODO: uncomment when cimeric moved from trimseq
+    my $selectReads =
+    "
+    SELECT DISTINCT 0, read_id, project, dataset,
+      refhvr_ids, distance, taxonomy, uncompress(sequence_comp) as sequence, rank, date_trimmed
+      FROM trimseq 
+      JOIN trimsequence using(trimsequence_id)
+      JOIN $source_gast_table USING(read_id)
+      LEFT JOIN $source_tax_table USING(read_id)
+      JOIN $source_tax_assignment_table USING(read_id)
+      JOIN $source_taxonomy_table USING(taxonomy_id)
+      JOIN $source_rank_table USING(rank_id)
+      JOIN $final_project_dataset_counts_table USING(project_id, dataset_id)
+    ";
+      PrintUpdate("q 7) selectReads = $sourceHost.$selectReads\n");
+    my $selectReads_h = ExecuteSelect($selectReads);
+
+    # q 7b)
+    # step through and export individual pieces
+    my $i = 1;
+    my $file_number = 1;
+    my $out_file = $readsFile . "_" . $file_number;
+    open(READS, ">$out_file");
+    print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
+
+    while(my @row = $selectReads_h->fetchrow_array)
+    {
+      # if at a multiple of 500K, create a new output file
+      if ( int($i / $chunk_size_reads) == ($i / $chunk_size_reads) )
+      {
+        # Close out the last one and import it to the database
+        close(READS);
+
+        # open up the new one
+        $file_number++;
+        $out_file = $readsFile . "_" . $file_number;
+        open(READS, ">$out_file");
+        print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";        
+      }
+      print READS join("\t", @row) . "\n";
+      $i++;
+    }
+    PrintUpdate("There should be $file_number files of type ${readsFile}_XX in export directory\n");
+    # Finish out the last one
+    close(READS);
+  }
+
+  if($import)
+  {
+    CreateEmpty($tmp_reads_table);
+
+    opendir SUBDIR, $subdir or die "Cannot open subdirectory\n";
+
+    my @files = readdir SUBDIR;
+    foreach my $out_file (@files)
+    {
+      #print "$out_file $readsFile\n";   # $readsFile: exports/vamps_export_transfer.txt
+      # $tmp_reads_table . $fileSuffix
+      my $reads_fileName = $subdir . $out_file;
+      if("$reads_fileName" =~ /$readsFile/)
+      {
+        #print "$reads_fileName\n";
+        ExecuteLoad($reads_fileName, $tmp_reads_table);
+      }
+    }
+    close(SUBDIR);
+
+    unless($do_not_analyze)
+    {
+      PrintUpdate("Analyzing $tmp_reads_table");
+      AnalyzeTable($tmp_reads_table);
+    }
+  }
+
+  if ($transfer)
+  {
+    PrintUpdate("Swapping $final_reads_table tables");
+    SwapNew($tmp_reads_table, $final_reads_table, $previous_reads_table);
+  }
+}
+# END start = reads
+if ($stop eq "reads") {exit 0;}
+
+#######################################
+#
+# SELECT data for vamps_projects_info
+#
+#######################################
+if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "reads") || ($start eq "keys") )
+{
+  if ($export)
+  {
+    PrintUpdate("Dumping data for $final_project_desc_table into $projectDescFile");
+    #my $selectProjects = "SELECT project, title, new_description FROM $source_project_table JOIN $final_project_dataset_counts_table USING(project) ORDER BY project";
+    #my $selectProjects = "SELECT distinctrow project, title, description, contact, email, institution
+    #    FROM projects WHERE substring_index(project, '_', -1)  LIKE '_v_' ORDER BY project";
+    # q 8)
+    # todo: If project_name standard changed - add OR clause!!!
+    my $selectProjects =
+    # "SELECT distinctrow null, project, title, description, contact, email, institution, env_source_id
+    #   FROM $source_project_table WHERE project LIKE '%v%' ORDER BY project";
+    "SELECT distinctrow null, project, title, project_description as description, contact, email, institution, env_sample_source_id as env_source_id
+      FROM $source_project_table
+      JOIN contact USING(contact_id)
+      WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS';
+    ";
+    # WHERE project LIKE '%v%' OR project LIKE '%Bfl%' ORDER BY project;
+    
+    PrintUpdate("q 8) selectProjects = $selectProjects\n");
+    ExecuteDump($selectProjects, $projectDescFile);
+  }
+
+  if ($import)
+  {
+    PrintUpdate("Inserting into $vampsHost.$tmp_project_desc_table");
+    CreateEmpty($tmp_project_desc_table);
+    ExecuteLoad($projectDescFile, $tmp_project_desc_table);
+
+    unless($do_not_analyze)
+    {
+      PrintUpdate("Analyzing $tmp_project_desc_table");
+      AnalyzeTable($tmp_project_desc_table);
+    }
+  }
+
+  if ($transfer)
+  {
+    PrintUpdate("Swapping $final_project_desc_table tables");
+    SwapNew($tmp_project_desc_table, $final_project_desc_table, $previous_project_desc_table);
+  }
+}
+# END start = keys
+if ($stop eq "keys") {exit 0;}
+
+#######################################
+#
+# Update new tables
+#
+#######################################
+if ( ($start eq "norm_tables") )
+{
+  PrintUpdate("HHH1: start norm tables\n");
+
+  # create _transfer copies
+  PrintUpdate("AAA1: create_norm_transfer_tables\n");
+  &create_norm_transfer_tables();
+  
+  PrintUpdate("truncate_norm_transfer_tables\n");
+  &truncate_norm_transfer();
+  # store_previous_count for new tables
+  PrintUpdate("AAA2: new_tables_count_all\n");
+  %previous_res_count = new_tables_count_all();
+
+  my $update_new_superkingdom = "INSERT IGNORE INTO $superkingdom_table" . $tblSuffix . " (superkingdom) SELECT DISTINCT superkingdom FROM $tmp_taxes_table";
+  my $update_new_phylum       = "INSERT IGNORE INTO $phylum_table" . $tblSuffix . " (phylum) SELECT DISTINCT phylum FROM $tmp_taxes_table";
+  my $update_new_class        = "INSERT IGNORE INTO $class_table" . $tblSuffix . " (class) SELECT DISTINCT class FROM $tmp_taxes_table";
+  my $update_new_orderx       = "INSERT IGNORE INTO $orderx_table" . $tblSuffix . " (orderx) SELECT DISTINCT orderx FROM $tmp_taxes_table";
+  my $update_new_family       = "INSERT IGNORE INTO $family_table" . $tblSuffix . " (family) SELECT DISTINCT family FROM $tmp_taxes_table";
+  my $update_new_genus        = "INSERT IGNORE INTO $genus_table" . $tblSuffix . " (genus) SELECT DISTINCT genus FROM $tmp_taxes_table";
+  my $update_new_species      = "INSERT IGNORE INTO $species_table" . $tblSuffix . " (species) SELECT DISTINCT species FROM $tmp_taxes_table";
+  my $update_new_strain       = "INSERT IGNORE INTO $strain_table" . $tblSuffix . " (strain) SELECT DISTINCT strain FROM $tmp_taxes_table";
+  # update manually???
+  # my $update_new_rank         = "INSERT IGNORE INTO $rank_table (rank) SELECT distinct rank FROM $tmp_taxes_table";
+
+  my $update_new_taxon_string =
+    "INSERT IGNORE INTO $taxon_string_table" . $tblSuffix . " (taxon_string, rank_number)
+      SELECT distinct taxon_string, rank_number
+      FROM $tmp_summed_taxes_table
+      JOIN $rank_number_table on ($tmp_summed_taxes_table.rank = $rank_number_table.rank_number)
+    ";
+
+  my $update_new_user = "INSERT IGNORE INTO $user_table" . $tblSuffix . " (user, passwd, active, security_level)
+          SELECT distinct user, passwd, active, security_level
+          FROM $vamps_auth_table";
+
+  my $update_new_contact1 = "INSERT IGNORE INTO $contact_table" . $tblSuffix . " (first_name, last_name, email, institution, contact)
+    SELECT distinct first_name, last_name, email, institution, concat(first_name, ' ', last_name)
+    FROM $vamps_auth_table";
+
+  my $update_new_contact2 = "INSERT IGNORE INTO $contact_table" . $tblSuffix . " (email, institution, contact)
+    SELECT distinct email, institution, contact FROM $tmp_project_desc_table";
+
+  # update new_taxonomy
+  my $update_new_taxonomy = "INSERT IGNORE INTO $taxonomy_table" . $tblSuffix . " (taxon_string_id, superkingdom_id, phylum_id, class_id, orderx_id, family_id, genus_id, species_id, strain_id, rank_id, classifier)
+    SELECT distinct taxon_string_id, superkingdom_id, phylum_id, class_id, orderx_id, family_id, genus_id, species_id, strain_id, $rank_table.rank_id, classifier
+    FROM $tmp_taxes_table
+    JOIN $taxon_string_table" . $tblSuffix . " using(taxon_string)
+    JOIN $superkingdom_table" . $tblSuffix . " using(superkingdom)
+    JOIN $phylum_table" . $tblSuffix . " using(phylum)
+    JOIN $class_table" . $tblSuffix . " using(class)
+    JOIN $orderx_table" . $tblSuffix . " using(orderx)
+    JOIN $family_table" . $tblSuffix . " using(family)
+    JOIN $genus_table" . $tblSuffix . " using(genus)
+    JOIN $species_table" . $tblSuffix . " using(species)
+    JOIN $strain_table" . $tblSuffix . " using(strain)
+    JOIN $rank_table using(rank)
+  ";
+
+  my $update_new_summed_data_cube =
+    "INSERT IGNORE INTO $summed_data_cube_table" . $tblSuffix . "
+    (taxon_string_id, knt, frequency, dataset_count, rank_number, project_id, dataset_id, project_dataset_id, classifier)
+    SELECT distinct
+    taxon_string_id, knt, frequency, dataset_count, $rank_number_table.rank_number, project_id, dataset_id, project_dataset_id, classifier
+    FROM $tmp_summed_taxes_table
+      JOIN $taxon_string_table" . $tblSuffix . " USING(taxon_string)
+      JOIN $rank_number_table on $tmp_summed_taxes_table.rank = $rank_number_table.rank_number
+      JOIN $project_dataset_table" . $tblSuffix . " USING(project_dataset)";
+
+  my $update_new_user_contact = "INSERT IGNORE INTO $user_contact_table" . $tblSuffix . " (contact_id, user_id)
+    SELECT distinct contact_id, user_id
+    FROM $vamps_auth_table
+      JOIN $contact_table" . $tblSuffix . " USING(first_name, last_name, email, institution)
+      JOIN $user_table" . $tblSuffix . " USING(USER, passwd, active, security_level)
+      WHERE contact_id IS NOT null";
+
+  my $update_new_project1 = "INSERT IGNORE INTO $project_table" . $tblSuffix . " (project, title, project_description, env_sample_source_id, contact_id)
+    SELECT distinct project_name, title, description, env_source_id, contact_id
+    FROM $tmp_project_desc_table
+    JOIN $contact_table" . $tblSuffix . " USING(contact, email, institution)";
+
+  my $update_new_project2 = "UPDATE $project_table SET env_sample_source_id = 0 WHERE env_sample_source_id IS NULL";
+
+  my $update_new_dataset = "INSERT IGNORE INTO $dataset_table" . $tblSuffix . " (dataset, dataset_description, reads_in_dataset, has_sequence, project_id, date_trimmed)
+    SELECT distinct dataset, dataset_info, dataset_count, has_sequence, project_id, date_trimmed
+    FROM $tmp_project_dataset_table
+    JOIN $project_table" . $tblSuffix . " using(project)";
+
+  my $update_new_project_dataset = "INSERT IGNORE INTO $project_dataset_table" . $tblSuffix . " (project_dataset, dataset_id, project_id)
+    SELECT distinct $tmp_summed_taxes_table.project_dataset, dataset_id, pr.project_id
+    FROM $tmp_summed_taxes_table
+    LEFT JOIN $project_table" . $tblSuffix . " as pr using(project)
+    LEFT JOIN $dataset_table" . $tblSuffix . " using(dataset)
+  ";
+# too slow!!!
+  # my $update_new_read_id1 = "insert ignore into $read_id_table" . $tblSuffix . " (read_id, project_dataset_id, sequence_id)
+  #   SELECT rep_id, project_dataset_id, sequence_id
+  #   FROM $tmp_seqs_table
+  #   left join $project_table using(project)
+  #   left join $dataset_table using(dataset, project_id)
+  #   left join $project_dataset_table using(project_id, dataset_id)
+  #   left join $sequence_table using(sequence)";
+
+  my $update_new_read_id1 = "insert ignore into $read_id_table" . $tblSuffix . " (read_id, project_dataset_id, sequence_id)
+    SELECT distinct rep_id, project_dataset_id, sequence_id
+    FROM $tmp_seqs_table
+    left join $project_dataset_table using(project_dataset)
+    left join $sequence_table using(sequence)";
+
+  my $update_new_read_id2 = "insert ignore into $read_id_table" . $tblSuffix . " (read_id, project_dataset_id, sequence_id)
+     SELECT distinct read_id, project_dataset_id, sequence_id
+     FROM $tmp_reads_table
+     left join $project_table using(project)
+     left join $dataset_table using(dataset, project_id)
+     left join $project_dataset_table using(project_id, dataset_id)
+     left join $sequence_table using(sequence)";
+
+  my $update_new_sequence1 = "INSERT IGNORE INTO $sequence_table" . $tblSuffix . " (sequence) SELECT DISTINCT sequence FROM $tmp_seqs_table";
+
+  my $update_new_sequence2 = "INSERT IGNORE INTO $sequence_table" . $tblSuffix . " (sequence)
+    SELECT distinct sequence FROM $tmp_reads_table WHERE read_id IN
+      ($missed_read_ids_list)";
+      
+  # ================
+  # Part I
+  @table_names_update = ($superkingdom_table, $phylum_table, $class_table, $orderx_table, $family_table, $genus_table, $species_table, $strain_table, $taxon_string_table, $user_table, $contact_table);
+  @query_names_exec   = ($update_new_superkingdom, $update_new_phylum, $update_new_class, $update_new_orderx, $update_new_family,
+                               $update_new_genus, $update_new_species, $update_new_strain, $update_new_taxon_string, $update_new_user, $update_new_contact1, $update_new_contact2);
+  PrintUpdate("AAA3: run_count_and_update\n");
+
+  &run_count_and_update(\@query_names_exec, \@table_names_update);
+  
+  # Part II
+  @table_names_update = ($taxonomy_table, $project_table, $dataset_table, $project_dataset_table, $summed_data_cube_table, $user_contact_table);
+  @query_names_exec   = ($update_new_taxonomy, $update_new_project1, $update_new_dataset, $update_new_project_dataset, $update_new_summed_data_cube, $update_new_user_contact, $update_new_project2);
+
+  PrintUpdate("AAA4: run_count_and_update Part2\n");
+  &run_count_and_update(\@query_names_exec, \@table_names_update);
+
+  PrintUpdate("AAA5: add_foreign_key\n");
+  &add_foreign_key();
+
+  PrintUpdate("URA555\n");
+  
+      
+  # # Part sequence
+  # 
+  # my $missed_read_ids_list = &get_missed_read_ids();
+  # print "MMM1: missed_read_ids_list = $missed_read_ids_list\n";
+  # # 
+  # # my $update_new_sequence2 = "INSERT IGNORE INTO $sequence_table (sequence)
+  # #   SELECT sequence FROM $tmp_reads_table WHERE read_id IN
+  # #     ($missed_read_ids_list)";
+      
+}
+
+#TODO: change to if ($transfer)
+if ( ($start eq "rename_norm") )
+{
+  PrintUpdate("HHH2: start rename norm tables\n");
+  my $suffix_from = "";
+  my $suffix_to   = "";
+  # my $tblSuffix = "_transfer";
+  # my $tblSuffixOld = "_previous";
+
+  &drop_norm_previous();
+  # current -> _previous
+  &rename_tables($suffix_from = "", $suffix_to = $tblSuffixOld);
+
+  # _transfer -> current
+  &rename_tables($suffix_from = $tblSuffix, $suffix_to = "");  
+}
+
+#######################################
+#
+# Close the database connections
+#
+#######################################
+$dbhSource->disconnect;
+$dbhVamps->disconnect;
+
+#######################################
+#
+# Done and Exit!
+#
+#######################################
+exit 0;
+
+#######################################
+#  ---------- Subroutines ------------
+#######################################
+#
+# Prepare, execute query and print out
+#
+#######################################
+
+sub prep_exec_query_print()
+{
+  my $dbh = shift;
+  my $sql = shift || die("Please provide an sql statement");
+  my $sql_prep = $dbh->prepare($sql) || die "Unable to prepare query: $sql\nError: " . $dbh->errstr . "\n";
+  # print "Executing: dbh = $dbh;\nsql = $sql;\nsql_prep = $sql_prep\n";
+  PrintUpdate("Executing: sql = $sql\n");
+  unless ($test_only == 1)
+  {
+    $sql_prep->execute() || die "Unable to execute MySQL statement: $sql\nError: " . $dbh->errstr . "(" . (localtime) . ")\n";
+    PrintUpdate("All right!\n");
+  }
+}
+
+#######################################
+#
+# Print out updates to screen and log file
+#
+#######################################
+sub PrintUpdate
+{
+  my $msg = shift;
+
+  print "$msg\n";
+  print LOG "$msg (" . (localtime) . ")\n";
+}
+
+#######################################
+#
+# Create and Truncate Subroutine
+#
+#######################################
+sub CreateEmpty
+{
+  my $tmpTable = shift;
+  my $createQuery;
+  my $dropQuery =   "DROP TABLE IF EXISTS $tmpTable" ;
+
+  if($tmpTable eq 'vamps_projects_datasets_transfer')
+  {
+    $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `project` varchar(64) NOT NULL default '',
+      `dataset` varchar(50) NOT NULL default '',
+      `dataset_count` mediumint(8) unsigned NOT NULL COMMENT 'number of reads in the dataset',
+      `has_sequence` char(1) NOT NULL COMMENT 'whether the dataset has sequence information for taxonomic counts, fasta, or clusters',
+      `date_trimmed` varchar(10) NOT NULL default '',
+      `dataset_info` varchar(100) NOT NULL default '',
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `project_dataset` (`project`,`dataset`)      
+      ) ENGINE=MyISAM DEFAULT CHARSET=latin1; ";
+  }
+  elsif($tmpTable eq 'vamps_export_transfer')
+  {
+    $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `read_id` varchar(32) NOT NULL default '',
+      `project` varchar(255) NOT NULL default '',
+      `dataset` varchar(50) NOT NULL default '',
+      `refhvr_ids` text NOT NULL,
+      `distance` decimal(8,5) NOT NULL,
+      `taxonomy` varchar(255) NOT NULL default '',
+      `sequence` text NOT NULL,
+      `rank` varchar(20) NOT NULL default '',
+      `date_trimmed` date NOT NULL,
+      PRIMARY KEY (`id`),
+      unique KEY  (`read_id`),
+      key project (project),
+      key dataset (dataset),
+      key project_dataset (`project`,`dataset`),
+      KEY `taxonomy` (`taxonomy`)
+      ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1; ";
+  }
+  elsif($tmpTable eq 'vamps_junk_data_cube_transfer')
+  {
+    $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `taxon_string` varchar(255) NOT NULL default '',
+      `knt` bigint(20) NOT NULL default 0,
+      `frequency` double NOT NULL default 0,
+      `dataset_count` mediumint(9) unsigned NOT NULL,
+      `rank` int(11) NOT NULL default 0,
+      `project` varchar(64) NOT NULL default '',
+      `dataset` varchar(64) NOT NULL default '',
+      `project_dataset` varchar(100) NOT NULL default '',
+      `classifier` varchar(8) NOT NULL default '',
+      PRIMARY KEY (`id`),
+      KEY `rank` (`rank`),
+      KEY `project_dataset` (`project`,`dataset`),
+      KEY `taxon_string` (`taxon_string`),
+      KEY `project_dataset_conc` (`project_dataset`),
+      UNIQUE KEY `project_dataset_conc_tax` (`project_dataset`,`taxon_string`)
+      ) ENGINE=MyISAM DEFAULT CHARSET=latin1;";
+  }
+  elsif($tmpTable eq 'vamps_data_cube_transfer')
+  {
+    $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `project` varchar(100) NOT NULL default '',
+      `dataset` varchar(255) NOT NULL default '',
+      `taxon_string` varchar(255) NOT NULL default '',
+      `superkingdom` varchar(60) NOT NULL default '',
+      `phylum` varchar(60) NOT NULL default '',
+      `class` varchar(60) NOT NULL default '',
+      `orderx` varchar(60) NOT NULL default '',
+      `family` varchar(60) NOT NULL default '',
+      `genus` varchar(60) NOT NULL default '',
+      `species` varchar(60) NOT NULL default '',
+      `strain` varchar(60) NOT NULL default '',
+      `rank` varchar(16) NOT NULL default '',
+      `knt` mediumint(20) unsigned NOT NULL default '0',
+      `frequency` double NOT NULL default 0,
+      `dataset_count` mediumint(9) unsigned NOT NULL,
+      `classifier` varchar(8) NOT NULL default '',
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `project_dataset_taxon` (`project`,`dataset`,`taxon_string`),
+      KEY taxon_string (taxon_string)
+      ) ENGINE=MyISAM DEFAULT CHARSET=latin1;";
+  }
+  elsif($tmpTable eq 'vamps_projects_info_transfer')
+  {
+    $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `project_name` varchar(64) NOT NULL default '',
+      `title` varchar(255) NOT NULL default '',
+      `description` varchar(255) NOT NULL default '',
+      `contact` varchar(32) NOT NULL default '',
+      `email` varchar(64) NOT NULL default '',
+      `institution` varchar(128) NOT NULL default '',
+      `env_source_id` int(8) NOT NULL default 0,
+      `edits` varchar(255) NOT NULL default '',
+      PRIMARY KEY (`id`),
+      UNIQUE KEY pr_cont_email_inst (project_name, contact, email, institution),
+      KEY cont_email_inst (contact, email, institution)
+      ) ENGINE=MyISAM DEFAULT CHARSET=latin1;";
+  }
+  elsif($tmpTable eq 'vamps_sequences_transfer')
+  {
+    $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable like vamps_sequences";
+
+    # $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable (
+    #   `id` int(11) NOT NULL AUTO_INCREMENT,
+    #   `sequence` text NOT NULL,
+    #   `project` varchar(64) NOT NULL default '',
+    #   `dataset` varchar(64) NOT NULL default '',
+    #   `project_dataset` varchar(100) NOT NULL default '',
+    #   `taxonomy` varchar(255) NOT NULL default '',
+    #   `refhvr_ids` text NOT NULL,
+    #   `rank` varchar(20) NOT NULL default '',
+    #   `seq_count` int(11) NOT NULL default 0,
+    #   `frequency` double NOT NULL default 0,
+    #   `distance` decimal(7,5) NOT NULL default 0,
+    #   `rep_id` varchar(40) NOT NULL default '',
+    #   PRIMARY KEY (`id`),
+    #   KEY `project_dataset` (`project`,`dataset`),
+    #   KEY project (project),
+    #   KEY dataset (dataset),
+    #   KEY `sequence` (`sequence`(350)),
+    #   KEY `project_dataset_conc` (`project_dataset`),
+    # UNIQUE KEY `project_dataset_conc_seq` (`project_dataset`,`sequence`(550)),
+    #   KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)
+    #   ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1;";
+  }
+
+  elsif($tmpTable eq 'vamps_taxonomy_transfer')
+  {
+    $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `taxon_string` varchar(255) NOT NULL default '',
+      `rank` int(11) NOT NULL default '0',
+      `num_kids` bigint(20) NOT NULL default 0,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `taxon_string` (`taxon_string`),      
+      KEY taxon_string_rank (`taxon_string`,`rank`)
+      ) ENGINE=MyISAM DEFAULT CHARSET=latin1;";
+  }
+
+  ExecuteInsert($dropQuery);
+  ExecuteInsert($createQuery);
+  my $truncateQuery = "TRUNCATE $tmpTable";
+  ExecuteInsert($truncateQuery);
+
+  # my $dropQuery_h = $dbhVamps->prepare($dropQuery) or warn print LOG "Unable to prepare statement: $dropQuery. Err: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  # $dropQuery_h->execute or warn print LOG "Unable to execute SQL statement: $dropQuery.  Error: " . $dropQuery_h->errstr . " (" . (localtime) . ")\n";
+  #
+  # #my $createQuery = "CREATE TABLE IF NOT EXISTS $tmpTable LIKE $finalTable";
+  # my $createQuery_h = $dbhVamps->prepare($createQuery) or warn print LOG "Unable to prepare statement: $createQuery. Err: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  # $createQuery_h->execute or warn print LOG "Unable to execute SQL statement: $createQuery.  Error: " . $createQuery_h->errstr . " (" . (localtime) . ")\n";
+  #
+  # my $truncateQuery = "TRUNCATE $tmpTable";
+  # my $truncateQuery_h = $dbhVamps->prepare($truncateQuery) or warn print LOG "Unable to prepare statement: $truncateQuery.  Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  # $truncateQuery_h->execute or warn print LOG "Unable to execute SQL statement: $truncateQuery.  Error: " . $truncateQuery_h->errstr . " (" . (localtime) . ")\n";
+}
+ # unless ($test_only == 1)
+#######################################
+#
+# Prepare and Execute SELECT Statements
+#
+#######################################
+sub ExecuteSelect
+{
+  my $selectSQL = shift;
+
+  # PrintUpdate("$selectSQL\n") if ($test_only == 1);
+  my $selectSQL_h = $dbhSource->prepare($selectSQL) or warn print LOG "Unable to prepare statement: $selectSQL. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+  $selectSQL_h->execute or warn print LOG "Unable to execute SQL statement: $selectSQL.  Error: " . $selectSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
+
+  return $selectSQL_h;
+}
+
+#######################################
+#
+# on Vamps
+# Prepare and Execute INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("prepare" and "execute" only, no return)
+#
+#######################################
+sub ExecuteInsert
+{
+  my $insertSQL = shift;
+  PrintUpdate("EEE11: I'm in ExecuteInsert\n");
+  PrintUpdate("$insertSQL\n");
+   # if ($test_only == 1);
+  my $insertSQL_h = $dbhVamps->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
+}
+
+#######################################
+#
+# On newbpcdb2
+# Prepare and Execute INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("prepare" and "execute" only, no return)
+#
+#######################################
+sub ExecuteInsert_newbpcdb2
+{
+  my $insertSQL = shift;
+  PrintUpdate("EEE12: I'm in ExecuteInsert_newbpcdb2\n");
+  # print "$insertSQL\n";
+  # if ($test_only == 1);
+  my $insertSQL_h = $dbhSource->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+  $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
+}
+
+#######################################
+#
+# Turn on and off indexing
+#
+#######################################
+sub ToggleKeys
+{
+  my $table = shift;
+  my $toggle = shift;
+
+  unless ($test_only == 1)
+  {
+    $dbhVamps->do("ALTER TABLE $table $toggle KEYS");
+  }
+}
+
+#######################################
+#
+# Prepare and Execute INSERT Statements (with query value)
+#
+#######################################
+sub ExecuteInsertPassVar
+{
+  my $insertSQL = shift;
+  my $query_val = shift;  #passing a query value
+
+  # print "HHH1: inside ExecuteInsertPassVar: query_val = $query_val\ninsertSQL = $insertSQL\n\n";
+
+  my $insertSQL_h = $dbhVamps->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  $insertSQL_h->execute($query_val) or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
+}
+
+#######################################
+#
+# Export selected to file
+#
+#######################################
+sub ExecuteDump
+{
+  my $selectSQL = shift;
+  my $transferFilename = shift;
+  my $sqlCmd = "mysql --compress -h $sourceHost -D $sourceDB -e \"$selectSQL\" > $transferFilename" ;
+  unless ($test_only == 1)
+  {
+    my $sqlErr = system($sqlCmd);
+    if ($sqlErr) {warn print LOG "Unable to execute MySQL statement: $sqlCmd.  Error:  $sqlErr. (" . (localtime) . ")\n";}
+  }
+}
+
+#######################################
+#
+# Import transfer file
+#
+#######################################
+sub ExecuteLoad
+{
+  my $transferFilename = shift;
+  my $transferTable = shift;
+  my $sqlCmd = "$sqlImportCommand -C -v --ignore-lines=1 -L -h $vampsHost -P 3306 $vampsDB $transferFilename; ";
+  # my $sqlCmd = "mysql -h $vampsHost $vampsDB --show-warnings -e 'LOAD DATA LOCAL INFILE $transferFilename IGNORE INTO TABLE $transferTable'"
+  # print "Here01: \$sqlCmd = $sqlCmd\n";
+
+  # until we have Myisam and locked tables
+  # my $sqlCmd = "$sqlImportCommand -C -v --ignore-lines=1 -L -h $vampsHost -P 3306 $vampsDB $transferFilename & ";
+  unless ($test_only == 1)
+  {
+    my $sqlErr = system($sqlCmd);
+    if ($sqlErr) {warn print LOG "Unable to execute MySQL statement: $sqlCmd.  Error:  $sqlErr (" . (localtime) . ")\n";}
+  }
+}
+
+#######################################
+#
+# Swap in new tables Subroutine
+#
+#######################################
+sub SwapNew
+{
+  my $tmpTable = shift;
+  my $finalTable = shift;
+  my $previousTable = shift;
+
+  my $dropQuery = "DROP TABLE IF EXISTS $previousTable";
+  my $dropQuery_h = $dbhVamps->prepare($dropQuery) or warn print LOG "Unable to prepare statement $dropQuery.  Err: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+
+  my $renameOldQuery = "RENAME TABLE $finalTable TO $previousTable";
+  my $renameOldQuery_h = $dbhVamps->prepare($renameOldQuery) or warn print LOG "Unable to prepare statement $renameOldQuery.  Err: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+
+  my $renameNewQuery = "RENAME TABLE $tmpTable TO $finalTable";
+  my $renameNewQuery_h = $dbhVamps->prepare($renameNewQuery) or warn print LOG "Unable to prepare statement $renameNewQuery. Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+
+  unless ($test_only == 1)
+  {
+    $dropQuery_h->execute() or warn print LOG "Unable to execute statement: $dropQuery.  Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+    #print "$renameOldQuery\n";
+    $renameOldQuery_h->execute() or warn print LOG "Unable to execute statement: $renameOldQuery.  Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+    #print "$renameNewQuery\n";
+    $renameNewQuery_h->execute() or warn print LOG "Unable to execute statement: $renameNewQuery.  Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  }
+}
+#######################################
+#
+# Analyze temp tables Subroutine
+#
+#######################################
+sub AnalyzeTable
+{
+  my $tmpTable = shift;
+  my $analyzeQuery = "ANALYZE TABLE $tmpTable";
+  my $analyzeQuery_h = $dbhVamps->prepare($analyzeQuery) or warn print LOG "Unable to prepare statement $analyzeQuery.  Err: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  $analyzeQuery_h->execute() or warn print LOG "Unable to execute statement: $analyzeQuery.  Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n"  unless ($test_only == 1);
+  my $optimizeQuery = "OPTIMIZE TABLE $tmpTable";
+  my $optimizeQuery_h = $dbhVamps->prepare($optimizeQuery) or warn print LOG "Unable to prepare statement $optimizeQuery.  Err: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
+  $optimizeQuery_h->execute() or warn print LOG "Unable to execute statement: $optimizeQuery.  Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n"  unless ($test_only == 1);
+}
+
+
+#######################################
+#
+# Printing queri to screen and LOG
+# Call with a query_name and query
+#
+#######################################
+
+sub print_query_out
+{
+  my $query_name   = shift;
+  my $message_part = shift;
+  my $message      = "\$query_name = $query_name; $message_part\n";
+  print $message;
+  print LOG $message;
+}
+
+#######################################
+#
+# new_tables_count for new tables
+#
+#######################################
+
+sub new_tables_count_all
+{
+  my %res_count;
+  while (my ($key, $value) = each %norm_table_names)
+  {
+    PrintUpdate("key = $key:  value = $value\n");
+     # if ($test_only == 1);
+    my $id = $key."_id";
+    my $table_name = "$value";
+    my $table_name_query = "SELECT count($id) FROM $table_name";
+    PrintUpdate("table_name_query = $table_name_query\n") if ($test_only == 1);
+    # my $temp_h = $dbhSource->prepare($table_name_query) or warn print LOG "Unable to prepare statement: $table_name_query. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+    # $temp_h->execute or warn print LOG "Unable to execute SQL statement: $table_name_query.  Error: " . $temp_h->errstr . " (" . (localtime) . ")\n";
+    #
+    # if ($table_name eq "new_user_contact")
+    # {
+    #   $res_count{$user_contact_table} = &prep_exec_fetch_query($dbhVamps, "SELECT count(*) FROM $user_contact_table");
+    #   PrintUpdate("$user_contact_table: ".$res_count{$user_contact_table}."\n") if ($test_only == 1);
+    # }
+    # else
+    # {
+      $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, $table_name_query);
+      # print "HEREEE\n";
+      PrintUpdate("table_name = $table_name; res_count = $res_count{$table_name}\n") if ($test_only == 1);
+    # }
+
+  }
+  return %res_count;
+
+}
+
+sub new_tables_count
+{
+  my $table_names = shift;
+  my %res_count;
+
+  while (my ($key, $value) = each %norm_table_names)
+  {
+      if (in_array(\@$table_names, $value))
+      {
+        PrintUpdate("key = $key:  value = $value\n") if ($test_only == 1);
+        my $id = $key."_id";
+        my $table_name = "$value";
+        $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, "SELECT count($id) FROM $table_name" . $tblSuffix);
+         # unless ($test_only == 1);
+        PrintUpdate("$res_count{$table_name}\n") if ($test_only == 1);
+      }
+    # else
+    # # count all (not transfer)
+    # {
+    #   PrintUpdate("key = $key:  value = $value\n") if ($test_only == 1);
+    #   my $id = $key."_id";
+    #   my $table_name = "$value";
+    #   $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, "SELECT count($id) FROM $table_name");
+    #    # unless ($test_only == 1);
+    #    print "HEREEE\n";
+    #   PrintUpdate("table_name = $table_name; res_count = $res_count{$table_name}\n") if ($test_only == 1);
+    # }
+  }
+
+  # todo: 1) refactor to DRY!
+  # 2) move what's below to the loop
+  # $res_count{$user_contact_table} = &prep_exec_fetch_query($dbhVamps, "SELECT count(*) FROM $user_contact_table");
+  # PrintUpdate("$user_contact_table: ".$res_count{$user_contact_table}."\n") if ($test_only == 1);
+
+  return %res_count;
+}
+#######################################
+#
+# create norm transfer tables
+#
+#######################################
+
+sub create_norm_transfer_tables()
+{
+  while (my ($key, $value) = each %norm_table_names)
+  {
+    PrintUpdate("key = $key:  value = $value\n") if ($test_only == 1);
+    my $transfer_name = $value."_transfer";
+    PrintUpdate("transfer_name = $transfer_name\n" ) if ($test_only == 1);
+    my $copy_query1 = "CREATE TABLE if not exists $transfer_name LIKE $value;";
+    PrintUpdate("copy_query1 = $copy_query1\n==========\n") if ($test_only == 1);
+    &prep_exec_query($dbhVamps, $copy_query1) unless ($test_only == 1);
+  }
+}
+
+#######################################
+#
+# copy existing new_tables to transfer by table name
+#
+#######################################
+
+sub copy_norm_table_to_transfer()
+{
+  my @table_names = shift;
+
+  foreach my $table_name (@table_names)
+  {
+    PrintUpdate("table_name = $table_name\n") if ($test_only == 1);
+    my $transfer_name = $table_name."_transfer";
+    PrintUpdate("transfer_name = $transfer_name\n") if ($test_only == 1);
+    my $copy_query2 = "INSERT INTO $transfer_name SELECT DISTINCT * FROM $table_name;";
+    PrintUpdate("copy_query2 = $copy_query2\n==========\n") if ($test_only == 1);
+    &prep_exec_query($dbhVamps, $copy_query2) unless ($test_only == 1);
+  }
+}
+
+
+  # /* 9:37:09 AM  vampsdb */ CREATE TABLE `new_superkingdom_copy` (   `superkingdom_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,   `superkingdom` char(10) NOT NULL DEFAULT '',   PRIMARY KEY (`superkingdom_id`),   UNIQUE KEY `superkingdom` (`superkingdom`) ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=latin1;
+  # /* 9:37:10 AM  vampsdb */ INSERT INTO `new_superkingdom_copy` SELECT * FROM `new_superkingdom`;
+
+#######################################
+#
+# execute query, print out time. Provide an array of query names
+#
+#######################################
+
+sub prep_exec_query_with_time()
+{
+  my $query_names = shift;
+  # foreach my $query_name (@$query_names)
+  # {
+  #   print "OOO2: in prep_exec_query_with_time; query_name = $query_name\n";
+  # }
+
+  foreach my $query_name (@$query_names)
+  {
+    $query_to_norm_number++;
+    PrintUpdate("=======================\nQuery #$query_to_norm_number\n");
+    my $start_time = $time{'hhmmss', time()};
+    PrintUpdate("Query started at $start_time (hhmmss)\n");
+    &prep_exec_query_print($dbhVamps, $query_name);
+    my $warning_str = $dbhVamps->{mysql_info};
+    PrintUpdate("$warning_str\n") if ($warning_str);
+    my $end_time = $time{'hhmmss', time()};
+    my $diff = $end_time - $start_time;
+    PrintUpdate("Query ended at $end_time (hhmmss)\n");
+    PrintUpdate("Run time for the query: $diff sec\n");
+  }
+}
+
+sub compare_amount()
+{
+  # while (my ($key_new, $value_new) = each %new_res_count)
+  # {
+  #   print "NNN1: new_res_count: key_new = $key_new; value_new = $value_new\n";
+  # }
+  # while (my ($key_new, $value_new) = each %previous_res_count)
+  # {
+  #   print "NNN2: previous_res_count: key_new = $key_new; value_new = $value_new\n";
+  # }
+
+  PrintUpdate("III2: in compare_amount\n") if ($test_only == 1);
+  while (my ($key_previous, $value_previous) = each %previous_res_count)
+  {
+    # print "KKK01: \$key_previous: = $key_previous; \$value_previous =: $value_previous\n";
+    PrintUpdate("KKK1: key_previous = $key_previous; \$value_previous = $value_previous\n") if ($test_only == 1);
+    while (my ($key_new, $value_new) = each %new_res_count)
+    {
+      # print "KKK2: \$key_new: = $key_new; \$value_new = $value_new\n";
+       # if ($test_only == 1);
+      if ($key_new eq $key_previous)
+      {
+        if ($value_new >= $value_previous)
+        {
+          
+          PrintUpdate("The numbers are good!\n");
+          PrintUpdate("Table name: $key_new".$tblSuffix."; value = $value_new;\n");
+          # $key_new: \$value_previous == \$value_new: $value_new\n";
+          PrintUpdate("PPP1: \$key_previous = $key_previous; \$value_previous = $value_previous\n") if ($test_only == 1);
+          PrintUpdate("KKK3: \$key_new      = $key_new;      \$value_new      = $value_new\n") if ($test_only == 1);
+           # if ($test_only == 1);
+          
+          # &rename_from_transfer($key_previous, $key_new);
+        }
+        else
+        {
+          PrintUpdate("\$value_previous is less then \$value_new:\n");
+          PrintUpdate("Previous: $key_previous is $value_previous\n");
+          PrintUpdate("New: $key_new".$tblSuffix." is $value_new\n");
+          PrintUpdate("Take care of the tables and rerun vamps_upload -norm!\n");
+          # todo: uncommented on production
+          # if ($key_previous ne "new_contact")
+          # {
+          #   exit;            
+          # }
+        }
+
+      }
+      # $key_new not eq $key_previous
+      # else {next;} 
+    }
+  }
+}
+
+sub in_array {
+    my ($arr, $search_for) = @_;
+    foreach my $value (@$arr)
+    {
+        return 1 if $value eq $search_for;
+    }
+    return 0;
+}
+
+
+sub rename_from_transfer()
+{  
+  my $key_previous = shift;
+  my $key_new      = shift;
+ 
+  PrintUpdate("HHHHEEERE\nkey_previous = $key_previous; key_new = $key_new\n") if ($test_only == 1);
+
+  # my $delete_previous = "DROP TABLE IF EXISTS $key_previous"."_previous";
+  my $rename1 = "RENAME TABLE $key_previous TO $key_previous"."_previous";
+  my $rename2 = "RENAME TABLE $key_new      TO $key_previous";
+
+  # PrintUpdate("\$delete_previous = $delete_previous\n";#) if ($test_only == 1);
+  # &prep_exec_query($dbhVamps, $delete_previous) unless ($test_only == 1);
+  PrintUpdate("\$rename1 = $rename1\n") if ($test_only == 1);
+  &prep_exec_query($dbhVamps, $rename1) unless ($test_only == 1);
+  PrintUpdate("\$rename2 = $rename2\n") if ($test_only == 1);
+  &prep_exec_query($dbhVamps, $rename2) unless ($test_only == 1);  
+}
+
+#######################################
+#
+# run everethyng for given tables
+#
+#######################################
+
+sub run_count_and_update()
+{
+  my $query_names_exec   = shift;
+  my $table_names_update = shift;
+  
+  # print "AAA12: copy_norm_table_to_transfer table_names_update\n";
+  # &copy_norm_table_to_transfer(@table_names_update);
+
+  # print "AAA13: prep_exec_query_with_time(query_names_exec)\n";
+  # my @transfer_table_names = &rename_names_to_transfer($table_names_update);
+  
+  # foreach my $transfer_table_name (@transfer_table_names)
+  # {
+  #   print "NNN1: transfer_table_name = $transfer_table_name\n";
+  # }
+  
+  # prepare and execute
+  PrintUpdate("AAA10: prep_exec_query_with_time\n");  
+  &prep_exec_query_with_time($query_names_exec);
+  
+  # PrintUpdate("AAA14: new_res_count = new_tables_count(table_names_update)\n");
+  # %new_res_count = new_tables_count(\@transfer_table_names);
+  PrintUpdate("AAA11: new_tables_count\n");  
+  %new_res_count = new_tables_count($table_names_update);
+  
+  # ----------
+  while (my ($key_new, $value_new) = each %new_res_count)
+  {
+    PrintUpdate("NNN1: $key_new".$tblSuffix.": $value_new\n");
+  }
+  
+  # ----------
+  
+  # compare size with old and exit <
+  PrintUpdate("AAA12: compare_amount\n");
+  &compare_amount();
+  
+  # &update_table_w_file();
+  # &copy_norm_table_to_transfer(@table_names_update);
+}
+
+sub rename_names_to_transfer()
+{
+  my $table_names = shift;
+  my @transfer_table_names;
+  foreach my $table_name (@$table_names)
+  {
+    $table_name = $table_name . $tblSuffix;
+    push (@transfer_table_names, $table_name);    
+  }
+  return @transfer_table_names;
+}
+
+sub get_missed_read_ids()
+{
+  my $start_time = $time{'hhmmss', time()};
+  PrintUpdate("Query started at $start_time (hhmmss)\n");
+  
+  my $get_missed_read_ids = "SELECT DISTINCT read_id FROM $read_id_table
+    LEFT JOIN $sequence_table using(sequence_id)
+    WHERE $sequence_table.sequence_id IS NULL";
+  PrintUpdate("GGG1: get_missed_read_ids = $get_missed_read_ids\n") if ($test_only == 1);
+  
+  my @missed_read_ids      = &prep_exec_fetchrow_array_query($dbhVamps, $get_missed_read_ids);
+  my $missed_read_ids_list = join(',', @missed_read_ids);
+  PrintUpdate("MMM: $missed_read_ids_list\n") if ($test_only == 1);
+  
+  my $end_time = $time{'hhmmss', time()};
+  my $diff     = $end_time - $start_time;
+  PrintUpdate("Query ended at $end_time (hhmmss)\n");
+  PrintUpdate("Run time for the query: $diff sec\n");
+  return $missed_read_ids_list;
+}
+
+sub prep_exec_fetchrow_array_query()
+{
+  my @result;
+  PrintUpdate("III222: in prep_exec_fetchrow_array_query\n") if ($test_only == 1);
+  my $dbh = shift;
+  my $sql = shift || die("Please provide an sql statement");
+  my $sql_prep = $dbh->prepare_cached($sql) || die "Unable to prepare MySQL statement: $sql\n. Error: " . $dbh->errstr . "\n";    
+  $sql_prep->execute() || die "Unable to execute MySQL statement: $sql. Error: " . $dbh->errstr . "\n";
+  # my (@result) = $sql_prep->fetchrow_array();
+  while (my @data = $sql_prep->fetchrow_array()) 
+  {
+    push @result, @data;
+  }
+  
+  return @result;
+}
+
+sub update_table_w_file()
+{
+  my $tmp_path = "/usr/local/tmp/";
+
+  # changed to match mysqlimport requirements, mysql LOAD DATA LOCAL INFILE throws inconsistent errors
+  my ( $temp_aux_fh, $temp_aux_filename )   = tempfile( SUFFIX => '.temp_aux', DIR => $tmp_path );
+  PrintUpdate("FFF1: temp_aux_fh = $temp_aux_fh; temp_aux_filename = $temp_aux_filename\n") if ($test_only == 1);
+ 
+ 
+  # if ($temp_aux_filename !~ /$outtemp_auxTable/)
+  # {
+  #     $new_prefix = $tmpDir . $outtemp_auxTable . ".";
+  #     $temp_aux_filename =~ s/$tmpDir/$new_prefix/;
+  # }
+  
+  my $table = "new_superkingdom";
+  my $select_query  = "SELECT DISTINCT * FROM $table;";
+  my $write_to_file = system("mysql -h $vampsHost $vampsDB --show-warnings -e \"$select_query\" > $temp_aux_filename");
+  PrintUpdate("Executing: write_to_file = mysql -h $vampsHost $vampsDB --show-warnings -e \"$select_query\" > $temp_aux_filename\n");
+  if ($write_to_file) {warn "Error writing into $temp_aux_filename\n";}
+  
+  my $write_to_db   = "LOAD DATA LOCAL INFILE '" . $temp_aux_filename . "' INTO TABLE new_superkingdom_copy IGNORE 1 LINES;";  
+    
+  # my $sql_prep = $dbhVamps->prepare($write_to_file) || die "Unable to prepare query: $write_to_file\nError: " . $dbhVamps->errstr . "\n";
+  # # PrintUpdate("Executing: dbh = $dbhVamps;\nsql = $sql;\nsql_prep = $sql_prep\n");
+  # $sql_prep->execute() || die "Unable to execute MySQL statement: $write_to_file\nError: " . $dbhVamps->errstr . "(" . (localtime) . ")\n";
+
+  my $sql_prep = $dbhVamps->prepare($write_to_db) || die "Unable to prepare query: $write_to_db\nError: " . $dbhVamps->errstr . "\n";
+  # PrintUpdate("Executing: dbh = $dbhVamps;\nsql = $sql;\nsql_prep = $sql_prep\n");
+  PrintUpdate("Executing: write_to_db = $write_to_db\n");
+  $sql_prep->execute() || die "Unable to execute MySQL statement: $write_to_db\nError: " . $dbhVamps->errstr . "(" . (localtime) . ")\n";
+
+  my $remove_temp_file = system("rm $temp_aux_filename");
+  if ($remove_temp_file) {warn "Error removing $temp_aux_filename\n";}
+  
+  # my @query_names = ($write_to_file, $write_to_db);
+  # &prep_exec_query_with_time(\@query_names);
+    
+}
+
+sub add_foreign_key() 
+{
+  my $add_fk_query1 = 
+  "ALTER TABLE $taxon_string_table".$tblSuffix."
+    ADD FOREIGN KEY (rank_number) REFERENCES $rank_number_table (rank_number);";
+
+  my $add_fk_query2 = 
+  "ALTER TABLE $taxonomy_table".$tblSuffix."
+    ADD FOREIGN KEY (superkingdom_id) REFERENCES $superkingdom_table".$tblSuffix." (superkingdom_id),
+    ADD FOREIGN KEY (taxon_string_id) REFERENCES $taxon_string_table".$tblSuffix." (taxon_string_id),
+    ADD FOREIGN KEY (phylum_id) REFERENCES $phylum_table".$tblSuffix." (phylum_id),
+    ADD FOREIGN KEY (class_id) REFERENCES $class_table".$tblSuffix." (class_id),
+    ADD FOREIGN KEY (orderx_id) REFERENCES $orderx_table".$tblSuffix." (orderx_id),
+    ADD FOREIGN KEY (family_id) REFERENCES $family_table".$tblSuffix." (family_id),
+    ADD FOREIGN KEY (genus_id) REFERENCES $genus_table".$tblSuffix." (genus_id),
+    ADD FOREIGN KEY (species_id) REFERENCES $species_table".$tblSuffix." (species_id),
+    ADD FOREIGN KEY (strain_id) REFERENCES $strain_table".$tblSuffix." (strain_id),
+    ADD FOREIGN KEY (rank_id) REFERENCES $rank_table (rank_id);";
+  
+  my $add_fk_query3 = 
+  "ALTER TABLE $project_table".$tblSuffix."
+    ADD FOREIGN KEY (contact_id) REFERENCES $contact_table".$tblSuffix." (contact_id),
+    ADD FOREIGN KEY (env_sample_source_id) REFERENCES $env_sample_source_table (env_sample_source_id)";
+  
+  my $add_fk_query4 = 
+  "ALTER TABLE $dataset_table".$tblSuffix."
+    ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id)";
+  
+  
+  my $add_fk_query5 = 
+  "ALTER TABLE $project_dataset_table".$tblSuffix."
+    ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id),
+    ADD FOREIGN KEY (dataset_id) REFERENCES $dataset_table".$tblSuffix." (dataset_id)";
+  
+  my $add_fk_query6 = 
+  "ALTER TABLE $summed_data_cube_table".$tblSuffix."
+    ADD FOREIGN KEY (taxon_string_id) REFERENCES $taxon_string_table".$tblSuffix." (taxon_string_id),
+    ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id),
+    ADD FOREIGN KEY (dataset_id) REFERENCES $dataset_table".$tblSuffix." (dataset_id),
+    ADD FOREIGN KEY (project_dataset_id) REFERENCES $project_dataset_table".$tblSuffix." (project_dataset_id)";
+  
+  my $add_fk_query7 = 
+  "ALTER TABLE $user_contact_table".$tblSuffix."
+    ADD FOREIGN KEY (user_id) REFERENCES $user_table".$tblSuffix." (user_id),
+    ADD FOREIGN KEY (contact_id) REFERENCES $contact_table".$tblSuffix." (contact_id)";
+
+    # PrintUpdate("OOO1: add_fk_query2 = $add_fk_query2\n");
+  
+  # foreach my $a ($add_fk_query1, $add_fk_query2, $add_fk_query3, $add_fk_query4, $add_fk_query5, $add_fk_query6, $add_fk_query7)
+  # {
+  #   PrintUpdate("OOO1: $a\n");
+  # }
+    @query_names_exec = ($add_fk_query1, $add_fk_query2, $add_fk_query3, $add_fk_query4, $add_fk_query5, $add_fk_query6, $add_fk_query7);
+    &prep_exec_query_with_time(\@query_names_exec);    
+}
+
+sub rename_tables()
+{
+  my $suffix_from = shift;
+  my $suffix_to   = shift;
+  
+  while (my ($key, $value) = each %norm_table_names)
+  {
+    PrintUpdate("key = $key:  value = $value\n");
+     # if ($test_only == 1);
+    my $table_name = "$value";
+    my $table_name_query    = "RENAME TABLE $table_name" . $suffix_from . " to $table_name" . $suffix_to;
+    PrintUpdate("table_name_query = $table_name_query\n") if ($test_only == 1);
+    &prep_exec_query($dbhVamps, $table_name_query);
+    # PrintUpdate("HEREEE\n");  
+  }
+}
+
+sub drop_norm_previous()
+{
+  # An order is important because of foreign keys
+  my $drop_previous_query = "DROP TABLE IF EXISTS
+  new_user_contact_previous, 
+  new_summed_data_cube_previous, 
+  new_project_dataset_previous, 
+  new_dataset_previous, 
+  new_project_previous, 
+  new_taxonomy_previous,
+  new_class_previous, 
+  new_contact_previous, 
+  new_family_previous, 
+  new_genus_previous, 
+  new_orderx_previous, 
+  new_phylum_previous, 
+  new_species_previous, 
+  new_strain_previous, 
+  new_superkingdom_previous, 
+  new_taxon_string_previous, 
+  new_user_previous;
+  ";
+
+  &prep_exec_query($dbhVamps, $drop_previous_query);  
+}
+
+sub truncate_norm_transfer()
+{
+  # An order is important because of foreign keys
+  # TODO: create as, drop table, rename (instead of truncate)
+  my @tables = (
+  "new_user_contact_transfer",
+  "new_summed_data_cube_transfer", 
+  "new_project_dataset_transfer", 
+  "new_dataset_transfer", 
+  "new_project_transfer", 
+  "new_taxonomy_transfer",
+  "new_class_transfer", 
+  "new_contact_transfer", 
+  "new_family_transfer", 
+  "new_genus_transfer", 
+  "new_orderx_transfer", 
+  "new_phylum_transfer", 
+  "new_species_transfer", 
+  "new_strain_transfer", 
+  "new_superkingdom_transfer", 
+  "new_taxon_string_transfer", 
+  "new_user_transfer");
+  foreach my $table_name (@tables)
+  {
+    my $table_name_temp = $table_name."_temp";
+    
+    my $drop_transfer_temp_query = "DROP TABLE IF EXISTS $table_name_temp";
+    &prep_exec_query($dbhVamps, $drop_transfer_temp_query);   
+    my $duplicate_transfer_query = "CREATE TABLE IF NOT EXISTS $table_name_temp LIKE $table_name";
+    &prep_exec_query($dbhVamps, $duplicate_transfer_query);      
+    my $drop_transfer_query      = "DROP TABLE IF EXISTS $table_name";
+    &prep_exec_query($dbhVamps, $drop_transfer_query);   
+    my $rename_transfer_query    = "RENAME TABLE $table_name_temp TO $table_name ";
+    &prep_exec_query($dbhVamps, $rename_transfer_query);   
+  }
+}
