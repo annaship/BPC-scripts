@@ -38,6 +38,7 @@ use strict;
 use warnings;
 use Conjbpcdb;
 use Taxonomy;
+use Term::ANSIColor qw(:constants);
 
 #######################################
 #
@@ -196,6 +197,12 @@ if ( ($list_filename) && (! $cluster_width) )
 {
     print "A mothur list file requires a clustering width selection\n";
     print "$usage\n";
+    exit;
+}
+
+if ( $platform eq "illumina" )
+{
+    print BOLD, BLUE, "Please use otu2tax_illumina instead\n", RESET;
     exit;
 }
 
