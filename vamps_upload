@@ -771,11 +771,15 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
     my $insertDistinctTaxaQuery =
       "INSERT INTO $tmp_distinct_taxa_table
       SELECT DISTINCT 0, taxon_string, rank,
-      (CASE WHEN (taxon_string LIKE '%;NA' or taxon_string LIKE '%_NA') OR rank = 7 THEN 0 ELSE 1 END) AS num_kids
+      (CASE WHEN (taxon_string LIKE '%;NA' OR 
+      (taxon_string LIKE '%phylum_NA' OR taxon_string LIKE '%class_NA' OR taxon_string LIKE '%orderx_NA' OR taxon_string LIKE '%family_NA' OR taxon_string LIKE '%genus_NA' OR taxon_string LIKE '%species_NA' OR taxon_string LIKE '%strain_NA')) 
+      OR rank = 7 THEN 0 ELSE 1 END) 
+      AS num_kids
       FROM $tmp_summed_taxes_table
       ";
 
       # WHERE taxon_string not LIKE '%;NA;NA' and taxon_string not LIKE '%_NA;%_NA' and taxon_string != 'NA;NA'";
+      # (CASE WHEN (taxon_string LIKE '%;NA' or taxon_string LIKE '%_NA') OR rank = 7 THEN 0 ELSE 1 END) AS num_kids
 
     #         my $insertDistinctTaxaQuery =
     #         "INSERT INTO $tmp_distinct_taxa_table SELECT DISTINCT taxon_string, rank,
