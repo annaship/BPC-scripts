@@ -291,11 +291,27 @@ SELECT project, dataset, 1 as deleted, count(read_id) as ReadCount
          GROUP BY project, dataset ORDER BY dataset, deleted;
 ";
 
-$titles_for{q14} = "\n\n$bar\nCount of Reads deleted by dataset and project\n$bar\n";
-$queries{q14} = "select * from percent_deleted_temp;";
+$titles_for{q14} = "";
+$queries{q14} = "drop table if exists percent_deleted1_temp;
+create table percent_deleted1_temp
+SELECT project, dataset, sum(ReadCount) as total FROM percent_deleted_temp
+        GROUP BY project, dataset
+        ORDER BY project, dataset
+";
+
+
+$titles_for{q15} = "\n\n$bar\nCount of Reads deleted and not deleted by dataset and project\n$bar\n";
+$queries{q15} = "select * from percent_deleted_temp;";
          
-$titles_for{q15} = "\n\n$bar\nCount of Reads deleted because of distal by dataset and project\n$bar\n";
-$queries{q15} = "select project, dataset, count(read_id) from $trimming_table
+$titles_for{q16} = "\n\n$bar\nPercent deleted reads by project, dataset\n$bar\n";
+$queries{q16} = "SELECT  project, dataset, ReadCount as reads_deleted, total, (ReadCount * 100 / total) AS percent_deleted
+FROM percent_deleted_temp JOIN percent_deleted2_temp
+USING(project, dataset) WHERE deleted = 1
+order by percent_deleted DESC
+        ";        
+
+$titles_for{q17} = "\n\n$bar\nCount of Reads deleted because of distal by dataset and project\n$bar\n";
+$queries{q17} = "select project, dataset, count(read_id) from $trimming_table
         join $trimseq_deleted_table using(read_id, run_id)      	
         join $delete_reason_table using(delete_reason_id) 	
         join $project_table using(project_id)	
@@ -303,16 +319,11 @@ $queries{q15} = "select project, dataset, count(read_id) from $trimming_table
         where run_id = $run_id and delete_reason = \"distal\"	
         group by project, dataset;";
 
-$titles_for{q16} = "\n\n$bar\nPercent deleted and not deleted reads by project, dataset\n$bar\n";
-$queries{q16} = "SELECT DISTINCT project, dataset, ReadCount AS not_deleted, SUM(ReadCount) AS total, ReadCount/SUM(ReadCount)*100 AS percent_not_deleted, (100 - ReadCount/SUM(ReadCount)*100) AS percent_deleted
-        FROM percent_deleted_temp
-        GROUP BY project, dataset
-        ORDER BY project, dataset;";
 
 # todo: put all tables into variables
 # todo: create -tax round
-$titles_for{q17} = "\n\n$bar\nTaxonomy by project, dataset\n$bar\n";
-$queries{q17} = "select project, dataset, taxonomy, count(read_id) from `tagtax` JOIN taxonomy USING(taxonomy_id) JOIN `trimseq` using(`read_id`) JOIN `project` using(`project_id`) 
+$titles_for{q18} = "\n\n$bar\nTaxonomy by project, dataset\n$bar\n";
+$queries{q18} = "select project, dataset, taxonomy, count(read_id) from `tagtax` JOIN taxonomy USING(taxonomy_id) JOIN `trimseq` using(`read_id`) JOIN `project` using(`project_id`) 
   JOIN `dna_region` using(`dna_region_id`) JOIN dataset using(dataset_id) where run_id=$run_id group by project, dataset, taxonomy; ";
 
 
