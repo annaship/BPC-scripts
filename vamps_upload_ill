@@ -1472,7 +1472,6 @@ sub CreateEmpty
       `date_trimmed` date NOT NULL,
       PRIMARY KEY (`id`),
       unique KEY read_id (`read_id`),
-      key project (project),
       key dataset (dataset),
       key project_dataset (`project`,`dataset`),
       KEY `taxonomy` (`taxonomy`)
@@ -1495,7 +1494,6 @@ sub CreateEmpty
       KEY `rank` (`rank`),
       KEY `project_dataset` (`project`,`dataset`),
       KEY `taxon_string` (`taxon_string`),
-      KEY `project_dataset_conc` (`project_dataset`),
       UNIQUE KEY `project_dataset_conc_tax` (`project_dataset`, `taxon_string`)
       ) ENGINE=MyISAM DEFAULT CHARSET=latin1;";
   }
