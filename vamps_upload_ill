@@ -92,7 +92,7 @@ my $illSuffix = "_ill";
 # Host, database, log etc
 my $logFile = "vamps_upload.log";
 #my $publicVAMPSHostName = "vamps.mbl.edu";
-my $publicVAMPSHostName = "bpcweb8";
+my $publicVAMPSHostName = "vampsdb";
 #my $privateVAMPSHostName = "vampsdev.mbl.edu";
 my $privateVAMPSHostName = "bpcweb7";
 # my $publicVAMPSHostName = "bpcweb7"; (dev)
@@ -1346,6 +1346,7 @@ if ( ($start eq "add_illumina") )
   &write_to_file($new_last_ids_file_name, \%last_ids);  
 }
 
+# use from the previous run directory
 if ( ($start eq "rollback_illumina") )
 {
   # TODO: add data from the second file to say "limit"

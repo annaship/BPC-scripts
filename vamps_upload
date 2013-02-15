@@ -92,7 +92,7 @@ my $test_only    = 0;
 # Host, database, log etc
 my $logFile = "vamps_upload.log";
 #my $publicVAMPSHostName = "vamps.mbl.edu";
-my $publicVAMPSHostName = "bpcweb8";
+my $publicVAMPSHostName = "vampsdb";
 #my $privateVAMPSHostName = "vampsdev.mbl.edu";
 my $privateVAMPSHostName = "bpcweb7";
 # my $publicVAMPSHostName = "bpcweb7"; (dev)
