@@ -1,6 +1,6 @@
 #!/bin/bash
 
-title="File name patterns"
+title="Illumina gast. Run on grendel."
 prompt="Please select a file name pattern:"
 options=("*_MERGED.unique" "*-PERFECT_reads.fa.unique")
 
@@ -27,5 +27,5 @@ for file in $NAME_PAT
 do
   echo "============="
   echo $file
-  gast_ill -saveuc -nodup  -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.udb -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
+  clusterize /bioware/seqinfo/bin/gast_ill -saveuc -nodup  -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.udb -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
 done
