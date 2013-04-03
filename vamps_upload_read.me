@@ -1,0 +1,20 @@
+1) time run_vamps_upload
+2) 
+  a) select * from information_schema.tables where table_name in ("new_class", "new_contact", "new_dataset", "new_family", "new_genus", "new_orderx", "new_phylum", "new_project_dataset", "new_project", "new_species", "new_strain", "new_summed_data_cube", "new_superkingdom", "new_taxon_string", "new_taxonomy", "new_user_contact", "new_user", "vamps_export_keys", "vamps_export", "vamps_projects_datasets", "vamps_projects_info", "vamps_projects", "vamps_refhvr", "vamps_sample_xml", "vamps_sequences", "vamps_taxonomy") and table_schema = "vamps"
+  b) SELECT DISTINCT create_time FROM information_schema.tables WHERE TABLE_NAME IN ("new_class", "new_contact", "new_dataset", "new_family", "new_genus", "new_orderx", "new_phylum", "new_project_dataset", "new_project", "new_species", "new_strain", "new_summed_data_cube", "new_superkingdom", "new_taxon_string", "new_taxonomy", "new_user_contact", "new_user", "vamps_export_keys", "vamps_export", "vamps_projects_datasets", "vamps_projects_info", "vamps_projects", "vamps_refhvr", "vamps_sample_xml", "vamps_sequences", "vamps_taxonomy") AND table_schema = "vamps" AND create_time < curdate() AND create_time > DATE_ADD(CURDATE(), INTERVAL -4 DAY)
+
+3) time python swap_table_names.py 454 (transfer tables rename to intermediate)
+3a) check if tables look ok, if current and previous dates didn't change
+  (repeat 2)
+  
+4) time run_vamps_upload_ill
+5) check if tables look ok
+  (repeat 2)
+
+6) time python swap_table_names.py ill (transfer tables add to intermediate)
+7) check if tables look ok; 
+    a) repeat 2
+    b) python compare_interm_w_current.py
+    
+8) time python swap_table_names.py rename (swap current to previous, then intermediate to current)
+9) check in vamps
