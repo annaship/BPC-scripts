@@ -35,8 +35,8 @@ if (sys.argv[1] == "help" or sys.argv[1] == "-h"):
 
 
 if __name__ == '__main__':
-  shared.my_conn = vamps_upload_util_class.MyConnection('bpcweb7.bpcservers.private', 'vamps2')
-  # shared.my_conn = vamps_upload_util_class.MyConnection('vampsdb', 'vamps')
+  #shared.my_conn = vamps_upload_util_class.MyConnection('bpcweb7.bpcservers.private', 'vamps2')
+  shared.my_conn = vamps_upload_util_class.MyConnection('vampsdb', 'vamps')
   # 1) get names
   # 2) drop _intermediate"
   # 3) change 454 transfer to intermediate 
@@ -84,10 +84,10 @@ if __name__ == '__main__':
     print "7) swap intermediate to current"
     vamps_upload_util_class.SqlUtil().swap_vamps_tables("_intermediate", "", all_tables)
 
- if (sys.argv[1] == "undo_rename"):  
-   print "8) swap current to intermediate"
-   vamps_upload_util_class.SqlUtil().swap_vamps_tables("", "_intermediate", all_tables)
+  if (sys.argv[1] == "undo_rename"):  
+    print "8) swap current to intermediate"
+    vamps_upload_util_class.SqlUtil().swap_vamps_tables("", "_intermediate", all_tables)
      
-   print "9) swap previous to current"
-   vamps_upload_util_class.SqlUtil().swap_vamps_tables("_previous", "", all_tables)
+    print "9) swap previous to current"
+    vamps_upload_util_class.SqlUtil().swap_vamps_tables("_previous", "", all_tables)
 
