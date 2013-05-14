@@ -63,40 +63,15 @@ class MySQLUtil:
         # take all file names in the dir from args
         # cp! and rename files
     
-    def split_old_file_name(self, filename, dict_name):
-         # name_split = filename.split(".")
-         # print "filename = %s, name_split[1:] = %s" % (filename, name_split)
-         # basename, extentions = name_split[0], ".".join(name_split[1:])
-         # print "basename = %s, extentions = %s" % (basename, extentions)
-         # [os.rename(f, f.replace('_', '-')) for f in os.listdir('.') if not f.startswith('.')]
-         # [print f_name.replace(dict_name) for ]
-         pass
-         
-         
-    
     def get_file_names(self, path = "."):
         path       = '/users/ashipunova/test_del'
         names_dict = self.make_names_dict()
-        # print names_dict.keys()
         for filename in os.listdir(path):            
+            # [shutil.copyfile(os.path.join(path, filename), os.path.join(path, filename.replace(dict_name, names_dict[dict_name]))) for dict_name in names_dict.keys() if filename.startswith(dict_name)]            
             for dict_name in names_dict.keys():
-                # print "filename = %s, dict_name = %s" % (filename, dict_name)
-                
                 if filename.startswith(dict_name):
-                    # [print f_name.replace(dict_name, names_dict[dict_name]) for f_name in ]
-                    old_name = filename                    
                     new_name = filename.replace(dict_name, names_dict[dict_name])
-                    
-                    # old_basename, old_extentions = 
-                    # self.split_old_file_name(filename, dict_name)
-                    # old_name = filename
-                    # new_name = names_dict[dict_name]
-                    print "old_name = %s,\t\t\t\t\t new_name = %s" % (old_name, new_name)
-                    shutil.copyfile(os.path.join(path, old_name), os.path.join(path, new_name))
-        
-        # file_names = 
-        # l = [(x, "output" + x[7:-4].zfill(4) + ".png") for x in os.listdir(path) if x.startswith("output_") and x.endswith(".png")]
-        
+                    shutil.copyfile(os.path.join(path, filename), os.path.join(path, new_name))
         
     def make_names_dict(self):
         res_names  = self.get_file_prefix_project_dataset()
