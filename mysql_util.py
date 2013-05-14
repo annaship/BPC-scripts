@@ -62,18 +62,34 @@ class MySQLUtil:
         # take all file names in the dir from args
         # cp! and rename files
     
+    def split_old_file_name(self, filename, dict_name):
+         # name_split = filename.split(".")
+         # print "filename = %s, name_split[1:] = %s" % (filename, name_split)
+         # basename, extentions = name_split[0], ".".join(name_split[1:])
+         # print "basename = %s, extentions = %s" % (basename, extentions)
+         # [os.rename(f, f.replace('_', '-')) for f in os.listdir('.') if not f.startswith('.')]
+         # [print f_name.replace(dict_name) for ]
+         pass
+         
+         
+    
     def get_file_names(self, path = "."):
         path       = '/users/ashipunova/test_del'
         names_dict = self.make_names_dict()
-        print names_dict.keys()
+        # print names_dict.keys()
         for filename in os.listdir(path):            
             for dict_name in names_dict.keys():
                 # print "filename = %s, dict_name = %s" % (filename, dict_name)
                 
                 if filename.startswith(dict_name):
-                    old_name = filename
-                    new_name = names_dict[dict_name]
-                    print "old_name = %s, new_name = %s" % (old_name, new_name)
+                    # [print f_name.replace(dict_name, names_dict[dict_name]) for f_name in ]
+                    print filename.replace(dict_name, names_dict[dict_name])
+                    
+                    # old_basename, old_extentions = 
+                    # self.split_old_file_name(filename, dict_name)
+                    # old_name = filename
+                    # new_name = names_dict[dict_name]
+                    # print "old_name = %s, new_name = %s" % (old_name, new_name)
             # os.rename(os.path.join(path, filename), os.path.join(path, new_filename))
         
         # file_names = 
