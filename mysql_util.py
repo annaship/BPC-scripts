@@ -1,6 +1,7 @@
 import MySQLdb
 import sys
 import os
+import shutil
 import shared #use shared to call connection from outside of the module
 from pprint import pprint
 
@@ -83,14 +84,15 @@ class MySQLUtil:
                 
                 if filename.startswith(dict_name):
                     # [print f_name.replace(dict_name, names_dict[dict_name]) for f_name in ]
-                    print filename.replace(dict_name, names_dict[dict_name])
+                    old_name = filename                    
+                    new_name = filename.replace(dict_name, names_dict[dict_name])
                     
                     # old_basename, old_extentions = 
                     # self.split_old_file_name(filename, dict_name)
                     # old_name = filename
                     # new_name = names_dict[dict_name]
-                    # print "old_name = %s, new_name = %s" % (old_name, new_name)
-            # os.rename(os.path.join(path, filename), os.path.join(path, new_filename))
+                    print "old_name = %s,\t\t\t\t\t new_name = %s" % (old_name, new_name)
+                    shutil.copyfile(os.path.join(path, old_name), os.path.join(path, new_name))
         
         # file_names = 
         # l = [(x, "output" + x[7:-4].zfill(4) + ".png") for x in os.listdir(path) if x.startswith("output_") and x.endswith(".png")]
