@@ -54,29 +54,48 @@ class MyConnection:
 
 class MySQLUtil:
     def __init__(self):
-        pass
+        res_names       = self.get_file_prefix_project_dataset()
+        self.names_dict = self.make_names_dict(res_names)    
         
-    def rename_files_to_dataset(self):
-        pass        
+    def remove_all_new_files(self, path = "."):
+        for filename in os.listdir(path):            
+            print filename
+            # [shutil.copyfile(os.path.join(path, filename), os.path.join(path, filename.replace(dict_name, self.names_dict[dict_name]))) for dict_name in self.names_dict.keys() if filename.startswith(dict_name)]            
+            for new_filename in self.names_dict.values():
+                if filename.startswith(new_filename):
+                    # print filename
+                    try:
+                        os.remove(filename)
+                    except OSError:
+                        pass
+        # print "Please remove all files starting with project name after you done with them"
+        # l = [("rm %s*" % (x)) for x in set(self.names_dict.values())]
+        # print l
+                
+        
+    def rename_files_to_pr_dataset(self):
         # get idx_runkey - project/dataset info from db: get_file_prefix_project_dataset()
-        # create dict: make_names_dict()
+        # create dict: make_self.names_dict()
         # take all file names in the dir from args
         # cp! and rename files
+        # remove new files
+        
+        self.get_file_names()
+        # self.remove_all_new_files(self.names_dict)
+        
     
     def get_file_names(self, path = "."):
-        path       = '/users/ashipunova/test_del'
-        names_dict = self.make_names_dict()
         for filename in os.listdir(path):            
-            # [shutil.copyfile(os.path.join(path, filename), os.path.join(path, filename.replace(dict_name, names_dict[dict_name]))) for dict_name in names_dict.keys() if filename.startswith(dict_name)]            
-            for dict_name in names_dict.keys():
+            # [shutil.copyfile(os.path.join(path, filename), os.path.join(path, filename.replace(dict_name, self.names_dict[dict_name]))) for dict_name in self.names_dict.keys() if filename.startswith(dict_name)]            
+            for dict_name in self.names_dict.keys():
                 if filename.startswith(dict_name):
-                    new_name = filename.replace(dict_name, names_dict[dict_name])
+                    new_name = filename.replace(dict_name, self.names_dict[dict_name])
+                    # print "Copying %s to %s" % (filename, new_name)
                     shutil.copyfile(os.path.join(path, filename), os.path.join(path, new_name))
         
-    def make_names_dict(self):
-        res_names  = self.get_file_prefix_project_dataset()
-        names_dict = dict([(names[3], names[0] + "-" + names[1]) for names in res_names])
-        return names_dict
+    def make_names_dict(self, res_names):
+        self.names_dict = dict([(names[3], names[0] + "-" + names[1]) for names in res_names])
+        return self.names_dict
         
     def get_file_prefix_project_dataset(self):
         # todo: run and lane in arguments
