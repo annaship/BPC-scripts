@@ -1,14 +1,14 @@
 import file_names_w_dataset
+import sys
 import shared #use shared to call connection from outside of the module
 
-# shared.my_conn = vamps_upload_util_class.MyConnection(server_name = 'bpcdb2')
-# shared.my_conn = vamps_upload_util_class.MyConnection(server_name = 'vampsdb')
-# shared.my_conn = vamps_upload_util_class.MyConnection('bpcweb7.bpcservers.private', 'test')
-# shared.my_conn = vamps_upload_util_class.MyConnection('newbpcdb2', 'env454')
-# shared.my_conn = vamps_upload_util_class.MyConnection('vampsdb', 'vamps')
-# shared.my_conn = vamps_upload_util_class.MyConnection('bpcweb7.bpcservers.private', 'vamps2')
+print 'sys.argv = '
+print sys.argv
+rundate = sys.argv[1]
+lane    = sys.argv[2]
+# path    = sys.argv[3]
 
 if __name__ == '__main__':
   shared.my_conn = file_names_w_dataset.MyConnection('newbpcdb2', 'env454')
-  file_names_w_dataset.File_Names_fromDB().rename_files_to_pr_dataset()
+  file_names_w_dataset.File_Names_fromDB(rundate).rename_files_to_pr_dataset()
 
