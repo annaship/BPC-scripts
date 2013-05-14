@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for file in *FILTERED 
+for file in *-MAX-MISMATCH-3 
 do
   echo "============="
   echo $file

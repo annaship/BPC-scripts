@@ -8,6 +8,6 @@ for file in *MERGED
 do
   echo "============="
   echo $file
-  clusterize filter-merged-reads $file --output ${file}_FILTERED
+  clusterize filter-merged-reads $file
 done
 
