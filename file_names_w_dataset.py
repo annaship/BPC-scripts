@@ -59,8 +59,9 @@ class File_Names_fromDB():
     # cp! and rename files
     # remove new files
     
-    def __init__(self, rundate):
+    def __init__(self, rundate, lane):
         self.rundate    = rundate
+        self.lane       = lane
         res_names       = self.get_file_prefix_project_dataset()
         self.names_dict = self.make_names_dict(res_names)    
         
@@ -87,15 +88,14 @@ class File_Names_fromDB():
         return self.names_dict
         
     def get_file_prefix_project_dataset(self):
-        print "rundate = %s" % self.rundate
-        # todo: run and lane in arguments
+        print "rundate = %s; lane = %s" % (self.rundate, self.lane)
         query_sel_name = """SELECT DISTINCT project, dataset, lane, file_prefix 
 			FROM env454.run_info_ill 
 			JOIN env454.run USING(run_id) 
 			JOIN env454.project USING(project_id) 
 			JOIN env454.dataset USING(dataset_id) 
-			WHERE run = \"%s\" AND lane = 1 			
-            """ % (self.rundate)
+			WHERE run = \"%s\" AND lane = %s 			
+            """ % (self.rundate, self.lane)
         print query_sel_name
         shared.my_conn.cursor.execute (query_sel_name)
         res_names = shared.my_conn.cursor.fetchall ()

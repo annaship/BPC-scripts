@@ -10,5 +10,5 @@ lane    = sys.argv[2]
 
 if __name__ == '__main__':
   shared.my_conn = file_names_w_dataset.MyConnection('newbpcdb2', 'env454')
-  file_names_w_dataset.File_Names_fromDB(rundate).rename_files_to_pr_dataset()
+  file_names_w_dataset.File_Names_fromDB(rundate, lane).rename_files_to_pr_dataset()
 
