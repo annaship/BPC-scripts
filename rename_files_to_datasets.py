@@ -1,6 +1,4 @@
-import mysql_util
-# import sys
-# import collections
+import file_names_w_dataset
 import shared #use shared to call connection from outside of the module
 
 # shared.my_conn = vamps_upload_util_class.MyConnection(server_name = 'bpcdb2')
@@ -11,6 +9,6 @@ import shared #use shared to call connection from outside of the module
 # shared.my_conn = vamps_upload_util_class.MyConnection('bpcweb7.bpcservers.private', 'vamps2')
 
 if __name__ == '__main__':
-  shared.my_conn = mysql_util.MyConnection('newbpcdb2', 'env454')
-  mysql_util.MySQLUtil().make_names_dict()
+  shared.my_conn = file_names_w_dataset.MyConnection('newbpcdb2', 'env454')
+  file_names_w_dataset.File_Names_fromDB().rename_files_to_pr_dataset()
 
