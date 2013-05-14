@@ -75,7 +75,8 @@ class File_Names_fromDB():
                         pass
     
     def rename_files_to_pr_dataset(self, path = "."):
-        for filename in os.listdir(path):            
+        for filename in os.listdir(path):         
+            # works, but slower!:
             # [shutil.copyfile(os.path.join(path, filename), os.path.join(path, filename.replace(dict_name, self.names_dict[dict_name]))) for dict_name in self.names_dict.keys() if filename.startswith(dict_name)]            
             for dict_name in self.names_dict.keys():
                 if filename.startswith(dict_name):
@@ -90,10 +91,10 @@ class File_Names_fromDB():
     def get_file_prefix_project_dataset(self):
         print "rundate = %s; lane = %s" % (self.rundate, self.lane)
         query_sel_name = """SELECT DISTINCT project, dataset, lane, file_prefix 
-			FROM env454.run_info_ill 
-			JOIN env454.run USING(run_id) 
-			JOIN env454.project USING(project_id) 
-			JOIN env454.dataset USING(dataset_id) 
+			FROM run_info_ill 
+			JOIN run USING(run_id) 
+			JOIN project USING(project_id) 
+			JOIN dataset USING(dataset_id) 
 			WHERE run = \"%s\" AND lane = %s 			
             """ % (self.rundate, self.lane)
         print query_sel_name
