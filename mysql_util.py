@@ -1,5 +1,6 @@
 import MySQLdb
 import sys
+import os
 import shared #use shared to call connection from outside of the module
 from pprint import pprint
 
@@ -60,13 +61,29 @@ class MySQLUtil:
         # create dict: make_names_dict()
         # take all file names in the dir from args
         # cp! and rename files
+    
+    def get_file_names(self, path = "."):
+        path       = '/users/ashipunova/test_del'
+        names_dict = self.make_names_dict()
+        print names_dict.keys()
+        for filename in os.listdir(path):            
+            for dict_name in names_dict.keys():
+                # print "filename = %s, dict_name = %s" % (filename, dict_name)
+                
+                if filename.startswith(dict_name):
+                    old_name = filename
+                    new_name = names_dict[dict_name]
+                    print "old_name = %s, new_name = %s" % (old_name, new_name)
+            # os.rename(os.path.join(path, filename), os.path.join(path, new_filename))
+        
+        # file_names = 
+        # l = [(x, "output" + x[7:-4].zfill(4) + ".png") for x in os.listdir(path) if x.startswith("output_") and x.endswith(".png")]
+        
         
     def make_names_dict(self):
         res_names  = self.get_file_prefix_project_dataset()
         names_dict = dict([(names[3], names[0] + "-" + names[1]) for names in res_names])
-        print names_dict
         return names_dict
-        
         
     def get_file_prefix_project_dataset(self):
         # todo: run and lane in arguments
@@ -75,7 +92,7 @@ class MySQLUtil:
 			JOIN env454.run USING(run_id) 
 			JOIN env454.project USING(project_id) 
 			JOIN env454.dataset USING(dataset_id) 
-			WHERE run = \"20130322\" AND lane = 1 
+			WHERE run = \"20130419\" AND lane = 1 
             """
         print query_sel_name
         shared.my_conn.cursor.execute (query_sel_name)
