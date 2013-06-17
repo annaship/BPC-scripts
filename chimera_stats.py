@@ -4,10 +4,10 @@ import os
 import sys
 from time import time
 import subprocess
-sys.path.append("/xraid/bioware/linux/seqinfo/bin")
-sys.path.append("/Users/ashipunova/bin/illumina-utils")
-sys.path.append("/Users/ashipunova/bin/illumina-utils/illumina-utils/scripts")
-sys.path.append("/bioware/merens-illumina-utils")
+# sys.path.append("/xraid/bioware/linux/seqinfo/bin")
+# sys.path.append("/Users/ashipunova/bin/illumina-utils")
+# sys.path.append("/Users/ashipunova/bin/illumina-utils/illumina-utils/scripts")
+# sys.path.append("/bioware/merens-illumina-utils")
 
 # import fastalib as fa
 
@@ -88,7 +88,7 @@ for file_basename in filenames:
     ref_lines_file_name    = file_basename + chimera_ref_suffix
     denovo_lines_file_name = file_basename + chimera_denovo_suffix
 
-    all_lines    = wccount(all_lines_file_name)
+    all_lines    = int(wccount(all_lines_file_name) or 0)
     ref_lines    = int(get_fa_lines_count(ref_lines_file_name) or 0)
     denovo_lines = int(get_fa_lines_count(denovo_lines_file_name) or 0)
 
@@ -101,9 +101,15 @@ for file_basename in filenames:
 
         percent_ref    = percent_count(all_lines, ref_lines)
         percent_denovo = percent_count(all_lines, denovo_lines)
+        
+        print "type(ratio) = %s" % type(ratio)
+        # print "percent_ref = %s, percent_denovo = %s" % (percent_ref, percent_denovo)
+        print "type(percent_ref) = %s, type(percent_denovo) = %s" % (type(percent_ref), type(percent_denovo))
+        print "type(all_lines) = %s, type(ref_lines) = %s, type(denovo_lines) = %s" % (type(all_lines), type(ref_lines), type(denovo_lines))
+        
 
-    percent_ref = int(percent_ref or 0)
-    if (percent_ref > 10):
+    # percent_ref = int(percent_ref or 0)
+    if (percent_ref > 1):
         print "="*50
         
         print file_basename
