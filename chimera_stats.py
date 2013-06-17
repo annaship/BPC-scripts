@@ -36,42 +36,74 @@ def wccount(filename):
     return subprocess.check_output(['wc', '-l', filename]).split()[0]
 
 def count_ratio(ref_num, denovo_num):
-    return float(ref_num) / float(denovo_num) 
+    try:
+        return float(ref_num or 0) / float(denovo_num or 0) 
+    except ZeroDivisionError:
+        # print "There is no denovo chimeras to count ratio."
+        pass
+    else:
+        raise
 
 def get_fa_lines_count(file_name):
     # return fa.SequenceSource(file_name, lazy_init = False).total_seq
-    file_open = open(file_name)
-    return len([l for l in file_open.readlines() if l.startswith('>')])
+    try:
+        file_open = open(file_name)
+        return len([l for l in file_open.readlines() if l.startswith('>')])
+    except IOError, e:
+        print e
+        return 0
+        # print "%s\nThere is no such file: %s" % (e, file_name)
+    else:
+        raise
 
 def percent_count(all_lines, chimeric_count):
-    return float(chimeric_count) * 100 / float(all_lines)
+    try:
+        return float(chimeric_count or 0) * 100 / float(all_lines or 0)
+    except ZeroDivisionError:
+        # print "There is no denovo chimeras to count ratio."
+        pass
+    else:
+        raise
+    
 
 """ ============ main ============ """
 # start = time()
 
-current_dir = os.getcwd()
+all_lines      = 0
+ref_lines      = 0
+denovo_lines   = 0
+ratio          = 0
+percent_ref    = 0
+percent_denovo = 0
+
+current_dir    = os.getcwd()
 print current_dir
 
 filenames = get_basenames(get_file_names(current_dir))
 
 for file_basename in filenames:
+    # print file_basename
 
     all_lines_file_name    = file_basename + all_lines_suffix
     ref_lines_file_name    = file_basename + chimera_ref_suffix
     denovo_lines_file_name = file_basename + chimera_denovo_suffix
 
     all_lines    = wccount(all_lines_file_name)
-    ref_lines    = get_fa_lines_count(ref_lines_file_name)
-    denovo_lines = get_fa_lines_count(denovo_lines_file_name)
+    ref_lines    = int(get_fa_lines_count(ref_lines_file_name) or 0)
+    denovo_lines = int(get_fa_lines_count(denovo_lines_file_name) or 0)
 
+    # denovo_lines = int(denovo_lines or 0)
+
+
+    if (denovo_lines > 0):
     
-    ratio = count_ratio(ref_lines, denovo_lines)
+        ratio          = count_ratio(ref_lines, denovo_lines)
 
-    percent_ref    = percent_count(all_lines, ref_lines)
-    percent_denovo = percent_count(all_lines, denovo_lines)
+        percent_ref    = percent_count(all_lines, ref_lines)
+        percent_denovo = percent_count(all_lines, denovo_lines)
 
-
-    if (int(percent_ref) > 15):
+    percent_ref = int(percent_ref or 0)
+    if (percent_ref > 10):
         print "="*50
         
         print file_basename
