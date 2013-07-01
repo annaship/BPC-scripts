@@ -11,9 +11,9 @@ import subprocess
 
 # import fastalib as fa
 
-all_lines_suffix      = ".txt" # or ".db, doesn't matter"
-chimera_ref_suffix    = ".db.chimeric.fa"
-chimera_denovo_suffix = ".txt.chimeric.fa"
+all_lines_suffix      = ".txt" # or ".db, doesn't matter" = #self.denovo_suffix
+chimera_ref_suffix    = ".db.chimeric.fa" #  self.ref_suffix + self.chimeric_suffix
+chimera_denovo_suffix = ".txt.chimeric.fa" # self.denovo_suffix + self.chimeric_suffix
 base_suffix           = "unique.chimeras"
 
 def get_file_names(current_dir):
