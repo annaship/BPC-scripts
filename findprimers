@@ -28,7 +28,7 @@
 # 
 # Assumptions: 
 #
-# Revisions:
+# Revisions: work with "." Jul 27 2013
 #
 # Programming Notes:
 #
@@ -141,7 +141,9 @@ if ( (! $primerSeq) || (! $domain) )
 } 
 
 # replace ambiguous . with _ for SQL syntax
-$primerSeq =~ s/\./_/g;
+# $primerSeq =~ s/\./_/g;
+# We'll use regexp instead - AS, Jul 23 2013
+# Should be like: G[CT][CT]TAAA..[AG][CT][CT][CT]GTAGC
 
 #######################################
 #
@@ -156,11 +158,12 @@ my $dbh = $condb->dbh();
 my $selectRefSeqs;
 if ($domain eq "all")
 {
-    $selectRefSeqs = "SELECT $refID_field, r.sequence as unalignseq, a.sequence as alignseq from $refTable as r join $alignTable as a using ($refID_field) where deleted=0 and r.sequence like '\%$primerSeq%' LIMIT 1000";
+    $selectRefSeqs = "SELECT $refID_field, r.sequence as unalignseq, a.sequence as alignseq from $refTable as r join $alignTable as a using ($refID_field) where deleted=0 and r.sequence rlike '.*$primerSeq.*' LIMIT 1000";
 } else {
-    $selectRefSeqs = "SELECT $refID_field, r.sequence as unalignseq, a.sequence as alignseq from $refTable as r join $alignTable as a using ($refID_field) join taxonomy using(taxonomy_id) where taxonomy like \"$domain%\" and deleted=0 and r.sequence like '\%$primerSeq%' LIMIT 1000";
+    $selectRefSeqs = "SELECT $refID_field, r.sequence as unalignseq, a.sequence as alignseq from $refTable as r join $alignTable as a using ($refID_field) join taxonomy using(taxonomy_id) where taxonomy like \"$domain%\" and deleted=0 and r.sequence rlike '.*$primerSeq.*' LIMIT 1000";
 }
-# print "$selectRefSeqs\n"; exit;
+print "$selectRefSeqs\n";
+ # exit;
 my $selectRefSeqs_h = $dbh->prepare($selectRefSeqs);
 
 #######################################
@@ -168,18 +171,24 @@ my $selectRefSeqs_h = $dbh->prepare($selectRefSeqs);
 # Find a valid sequence to search through, for each silva alignment version
 #
 #######################################
-my $foundPrimer = 0;
+my $foundPrimer  = 0;
 $selectRefSeqs_h->execute();
-
+my $refStartPos  = 0;
+my $match_length = 0;
 while(my ($refId, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 {
 	# Save out original aligned sequence for substring at the end
 	my $initAlignSeq = $alignSeq;
 
-	# Index position of the beginning and the end of the primer in the unaliged (ref) sequence
-	my $refStartPos = index($refSeq, $primerSeq);
-	my $refEndPos = $refStartPos + length($primerSeq) - 1;
-
+	# Position of the beginning and the end of the primer in the unaliged (ref) sequence
+	if ($refSeq =~ /$primerSeq/) {
+        $refStartPos  = length($`); #$PREMATCH from regexp
+        $match_length = length($&);
+    }
+    
+    # my $refStartPos = index($refSeq, $primerSeq);
+    # my $refEndPos = $refStartPos + length($primerSeq) - 1;
+    my $refEndPos = $refStartPos + $match_length - 1;
 	# Initialize index positions of the aligned sequence
 	my $alignStartPos;
 	my $alignEndPos;
