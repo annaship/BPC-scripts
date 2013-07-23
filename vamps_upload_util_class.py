@@ -105,7 +105,7 @@ class SqlUtil:
         print (text0)
         t1 = int(res1) - int(res_intermediate)
         text01 = "(res1 - res_intermediate): current is bigger then intermediate for "+str(t1)
-        if res1 > res_intermediate:
+        if int(res1) > int(res_intermediate):
           text = "Please check vamps upload for this table, current is bigger then intermediate: "+intermediate_name+": "+res1+" > "+res_intermediate+"!"
           print (text)
         else:

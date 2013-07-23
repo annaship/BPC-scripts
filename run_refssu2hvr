@@ -108,14 +108,27 @@
 #"
 
 #refssu2hvr -r refssu -min 250 v1v3jpl
-mysql -h newbpcdb2 env454 -e "set @a=0;
-    update refhvr_v1v3jpl as rv join
-    (select concat('v1v3jpl_',
-    char( floor(( (@a:=@a+1) - mod(@a, 1000)) / 1000 / 26) + 65),
-    char(mod(((@a - mod(@a, 1000)) / 1000), 26) + 65),
-    lpad(mod(@a,1000),3,0)) as refhvr_id,
-    sequence
-    from (select sequence, count(*) as seqcnt from refhvr_v1v3jpl group by sequence) as t1 ) as t2
-    using(sequence)
-    set rv.refhvr_id = t2.refhvr_id
-"
+# mysql -h newbpcdb2 env454 -e "set @a=0;
+#     update refhvr_v1v3jpl as rv join
+#     (select concat('v1v3jpl_',
+#     char( floor(( (@a:=@a+1) - mod(@a, 1000)) / 1000 / 26) + 65),
+#     char(mod(((@a - mod(@a, 1000)) / 1000), 26) + 65),
+#     lpad(mod(@a,1000),3,0)) as refhvr_id,
+#     sequence
+#     from (select sequence, count(*) as seqcnt from refhvr_v1v3jpl group by sequence) as t1 ) as t2
+#     using(sequence)
+#     set rv.refhvr_id = t2.refhvr_id
+# "
+
+# time refssu2hvr -r refssu v6long
+# mysql -h newbpcdb2 env454 -e "set @a=0;
+#     update refhvr_v6long as rv join
+#     (select concat('v6long_',
+#     char( floor(( (@a:=@a+1) - mod(@a, 1000)) / 1000 / 26) + 65),
+#     char(mod(((@a - mod(@a, 1000)) / 1000), 26) + 65),
+#     lpad(mod(@a,1000),3,0)) as refhvr_id,
+#     sequence
+#     from (select sequence, count(*) as seqcnt from refhvr_v6long group by sequence) as t1 ) as t2
+#     using(sequence)
+#     set rv.refhvr_id = t2.refhvr_id
+# "

@@ -1,3 +1,5 @@
+#!/bioware/python-2.7.2/bin/python
+
 import vamps_upload_util_class
 import sys
 import collections
