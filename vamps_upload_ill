@@ -28,7 +28,7 @@
 #
 # Assumptions:
 #
-# Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
+# Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tables, sequences dump.
 #
 # Programming Notes:
 #    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
