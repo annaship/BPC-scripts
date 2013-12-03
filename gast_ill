@@ -28,10 +28,16 @@
 # 
 # Assumptions: 
 #
-# Revisions:
+# Revisions: ASh, add illumina changes
 #
 # Programming Notes:
-#
+# Create all the necessary file names
+# Run the uniques using mothur or use illumina uniqued fa
+# USearch against the reference database
+#    and parse the output for top hits
+# Calculate consensus taxonomy
+# Load the file into the database
+
 ########################################
 use strict;
 use warnings;
@@ -44,7 +50,7 @@ use Taxonomy;
 #######################################
 my $script_help = "
  gast - reads a fasta file of trimmed 16S sequences, compares each sequence to
-        a set of similarly trimmed 16S reference sequences and assigns taxonomy
+ a set of similarly trimmed ( or full-length ) 16S reference sequences and assigns taxonomy
 \n";
 
 my $usage = "
@@ -74,6 +80,8 @@ my $usage = "
            -maxr   [Optional] usearch --max_rejects parameter [default: 0]
            -maj    percent majority required for taxonomic consensus [default: 66]
            -nodup  instead of uniquing sequences with mothur just make a copy of existing file with .unique.fa
+           -full   input data will be compared against full length 16S reference sequences [default: not full length]
+           
 
       Optional database output
            -host   mysql server host name
@@ -117,6 +125,7 @@ my $max_gap = 10;
 my $ignore_terminal_gaps = 0;  # only ignore for max gap size, still included in the distance calculations
 my $ignore_all_gaps = 0;
 my $save_uclust_file = 0;
+my $use_full_length = 0;
 
 # Taxonomy variables
 my $majority = 66;
@@ -167,6 +176,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-maj") {
 		shift @ARGV;
 		$max_gap = shift @ARGV;
+	} elsif ($ARGV[0] eq "-full") {
+		shift @ARGV;
+		$use_full_length = 1;
 	} elsif ($ARGV[0] eq "-termg") {
 		$ignore_terminal_gaps = 1;
 		shift @ARGV;
@@ -428,11 +440,16 @@ sub parse_uclust
                     $align =~ s/^[0-9]*[DI]//;
                     $align =~ s/[0-9]*[DI]$//;
                 }
+                elsif($use_full_length)
+                {
+                    $align =~ s/^[0-9]*[I]//;
+                    $align =~ s/[0-9]*[I]$//;
+                }
         
                 $found_hit = 1;
 
                 # has internal gaps
-                if (! $ignore_all_gaps) 
+                if ( ($use_full_length) || (! $ignore_all_gaps) ) 
                 {
                     while ($align =~ /[DI]/)
                     {
