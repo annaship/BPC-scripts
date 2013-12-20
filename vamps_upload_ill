@@ -29,6 +29,7 @@
 # Assumptions:
 #
 # Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
+#            2013-12-20 by Anna Shipunova. Fix seq_counts to sum in vamps_sequences_transfer_temp
 #
 # Programming Notes:
 #    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
