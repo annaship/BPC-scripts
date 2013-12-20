@@ -28,7 +28,7 @@
 #
 # Assumptions:
 #
-# Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tables, sequences dump.
+# Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
 #
 # Programming Notes:
 #    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
@@ -827,14 +827,14 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     my $CREATE_temp_seq = 
     "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
-        seq_count int(11) unsigned NOT NULL,
-        frequency double NOT NULL,
+        seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
+        frequency double NOT NULL COMMENT 'sum seq_count (for this seq/project/dataset across all lines and runs) divided on dataset_count',
         rep_id char(15) NOT NULL DEFAULT '',
         project_dataset varchar(100) NOT NULL DEFAULT '',
         PRIMARY KEY (id)
       )     
-      SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count,
-            seq_count / dataset_count as frequency, gast_distance as distance, $glob_seq_id_id as rep_id
+      SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) as seq_count,
+            0 as frequency, gast_distance as distance, $glob_seq_id_id as rep_id
             from $sequence_ill_table
             join $glob_seq_id_table using($sequence_ill_id)
             join $run_info_ill_table using($run_info_ill_id)
@@ -870,6 +870,16 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     &print_query_out("q 6-3) CREATE_temp_seq", $sourceHost." ".$CREATE_temp_seq);
     ExecuteInsert_newbpcdb2($CREATE_temp_seq);
     
+    # q 6-3a)
+    # 3) update vamps_sequences_transfer table on env454 - add frequencies
+    my $UPDATE_temp_seq = 
+    "UPDATE vamps_sequences_transfer_temp
+    JOIN vamps_projects_datasets USING(project, dataset)
+    SET frequency = vamps_sequences_transfer_temp.seq_count / dataset_count
+    ";
+          
+    &print_query_out("q 6-3a) CREATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
+    ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
     
     # # 4) decrease join_buffer
     # # q 6-4)
