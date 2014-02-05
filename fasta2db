@@ -1,0 +1,310 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# fasta2db: import sequences from fasta into a database
+#
+# Author: Susan Huse
+# Date: September 2006
+#
+# Keywords: database import convert
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Conjbpcdb;
+use Bio::Seq;
+use Bio::SeqIO;
+use IO::String;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $scripthelp = "
+ fasta2db - imports fasta sequences into the database.  
+                Use -r to remove all existing data, otherwise, 
+                append/replace only new records.\n\n";
+
+my $usage = 
+"      Usage:  fasta2db [-r] [-pile_deflines] -i inSeqFilename -d databaseName -t SeqTableName 
+                      -seq sequenceFieldName -id idFieldName -len lengthField -desc descField -fieldName value
+
+      Option: 
+              -g host [default: jbpcdb]
+              -d database name [default: env454]
+              -i input fasta filename
+              -t name of destination table in the database, will be created if it does not exist
+              -id field name for the sequence id, [default: read_id]
+              -seq field name for the sequences [default: sequence]
+              -len field name for sequence length
+              -desc field name for storing sequence description (all text after the first word of defline)
+              -descval if present use the argument to populate the description field instead of the
+                       rest of the defline
+              -r remove all existing records before proceeding, otherwise, replace/append 
+                 only new records.
+              -pile_deflines if deflines are piled (from fauniq), create a record for each 
+                 (use space to delimit sample id's)
+              -noprimary do not have a primary (unique) id on the id field
+
+        NOTE: -desc cannot be used with -pile_deflines as both use the sequence description
+
+     Example:  fasta2db -d env454 -t sequences -seq sequence -id read_id -len length -site FS312 
+                        -dataset amp1run3proc2 -i FS312.454Reads.fna\n";
+
+#######################################
+#
+# Initialize variables
+#
+#######################################
+my $inFilename;
+my $dbName = "env454";
+my $db_host = "jbpcdb";
+my $tableName;
+my $idField = "read_id";
+my $seqField = "sequence";
+my $lengthField;
+my $descField;
+my $descValue;
+my %fields;
+my $argNum = 0;
+my $remove = 0;
+my $piled = 0;
+my $has_primary = 1;
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if (scalar @ARGV == 0) 
+{
+	print $scripthelp;
+	print $usage;
+	exit;
+} 
+
+while ((scalar @ARGV > 0 ) && ($ARGV[0] =~ /^-/))
+{
+	if (($ARGV[0] =~ /help/) || ($ARGV[0] =~ /-h/)) {
+		print $usage;
+		print $scripthelp;
+		exit;
+	} elsif ($ARGV[0] eq "-g") {
+		shift @ARGV;
+		$db_host = $ARGV[0];
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-d") {
+		shift @ARGV;
+		$dbName = $ARGV[0];
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-t") {
+		shift @ARGV;
+		$tableName = shift @ARGV;
+	} elsif ($ARGV[0] eq "-seq") {
+		shift @ARGV;
+		$seqField = shift @ARGV;
+	} elsif ($ARGV[0] eq "-desc") {
+		shift @ARGV;
+		$descField = shift @ARGV;
+	} elsif ($ARGV[0] eq "-descval") {
+		shift @ARGV;
+		$descValue = shift @ARGV;
+	} elsif ($ARGV[0] eq "-len") {
+		shift @ARGV;
+		$lengthField = shift @ARGV;
+	} elsif ($ARGV[0] eq "-id") {
+		shift @ARGV;
+		$idField = shift @ARGV;
+	} elsif ($ARGV[0] eq "-i") {
+		shift @ARGV;
+		$inFilename = shift @ARGV;
+	} elsif ($ARGV[0] eq "-pile_deflines") {
+		$piled = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-r") {
+		$remove = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-noprimary") {
+		$has_primary = 0;
+		shift @ARGV;
+	} elsif ($ARGV[0] =~ /^-/) { #Add to list of additional fields
+		my $f = shift @ARGV;
+		$f =~ s/^-//;
+
+		my $v = shift @ARGV;
+		$fields{$f} = $v;
+	}
+} 
+if (exists $ARGV[0]) 
+{
+	print "Confused by your commandline argument: $ARGV[0]\n";
+	print $scripthelp;
+	print $usage;
+	exit;
+}
+
+#Test validity of commandline arguments
+if (! $inFilename) 
+{
+	print "You must specify a sequence or qual file\n";
+	print $scripthelp;
+	print "$usage\n";
+	exit;
+}
+if (! -f $inFilename) {
+	print "Unable to locate input sequence file: $inFilename.\n";
+	exit;
+}
+if ((! $dbName) || (! $tableName) || (! $seqField) || (! $idField))
+{
+	print "Must include database, table, sequence field and id field\n";
+	print $usage;
+	exit;
+}
+
+if ($descField && $piled)
+{
+	print "You cannot use the -desc and the -pile_defline options together\n";
+	print $scripthelp;
+	print "$usage\n";
+	exit;
+}
+
+#############################################################
+#
+# Insert the data into env454
+#
+#############################################################
+
+#my $insertSQL = "INSERT INTO $tableName (read_id, site, sequence, dataset, sample_run, length) VALUES (?, ?, ?, ?, ?, ?);";
+
+my $fcount = 2;
+my $flist = "$idField, $seqField";
+my $fbinds = "?, ?";
+
+if ($lengthField) 
+{
+	$flist .= ", $lengthField";
+	$fbinds .= ", ?";
+	$fcount++;
+}
+if ($descField) 
+{
+	$flist .= ", $descField";
+	$fbinds .= ", ?";
+	$fcount++;
+}
+foreach my $f (sort keys %fields)
+{
+	$flist .= ", " . $f;
+	$fbinds .= ", ?";
+	$fcount++;
+}
+
+my $insertSQL = "INSERT INTO $tableName ($flist) VALUES ($fbinds);";
+
+my $condb = Conjbpcdb::new($db_host, $dbName);
+my $dbh = $condb->dbh();
+my $insertSeq_h = $dbh->prepare($insertSQL);
+
+
+#
+# CREATE TABLE SQL statement
+#
+my $createSQL = 
+"CREATE TABLE IF NOT EXISTS `$tableName` (
+  `$idField` varchar(255) NOT NULL default '',
+  `$seqField` text NOT NULL,
+  ";
+
+if ($lengthField)
+{
+	$createSQL .= "`$lengthField` smallint(6) NOT NULL default '0',
+";
+}
+
+foreach my $f (sort keys %fields)
+{
+	$createSQL .= "`$f` varchar(255) NOT NULL default '',
+";
+}
+
+# set up indices
+#$createSQL .= "PRIMARY KEY  (`$idField`),
+if ($has_primary) { $createSQL .= "PRIMARY KEY  (`$idField`),\n"; }
+
+$createSQL .= "  KEY `$idField` (`$idField`),
+  KEY `$seqField` (`$seqField`(100))";
+
+if ($lengthField)
+{
+	$createSQL .= ",
+KEY `$lengthField` (`$lengthField`)";
+}
+
+foreach my $f (sort keys %fields)
+{
+	$createSQL .= ",
+KEY `$f` (`$f`)";
+}
+
+$createSQL .= "
+) ENGINE=MyISAM DEFAULT CHARSET=latin1";
+
+my $createTable_h = $dbh->prepare($createSQL);
+$createTable_h->execute();
+
+#######################################
+#
+# Read in the sequence / quality information
+#
+#######################################
+
+my $in = Bio::SeqIO->new( '-file'=> "<$inFilename", '-format'=> "fasta") || die ("Could not read fasta file: $inFilename.  Exiting...\n");
+
+if ($remove) 
+{
+	my $delete_h = $dbh->prepare("DELETE FROM $tableName");
+	$delete_h->execute();
+}
+
+# Step through each fasta record and add to the database
+while (my $seqobj = $in->next_seq)
+{
+	my @seqIDs;
+	push (@seqIDs, $seqobj->id);
+
+	#If piled create a list of each sequence id, and add them as distinct fasta records
+	if ($piled)
+	{
+		foreach my $i (split(" ", $seqobj->desc) ) {push (@seqIDs, $i);}
+	}
+
+	# foreach id, set up the field names and values, then insert.
+	foreach my $id (@seqIDs)
+	{
+		my @bindValues = ($id, $seqobj->seq);
+		if ($lengthField) { push (@bindValues, length($seqobj->seq)); }
+		if ($descField) 
+        { 
+            if ($descValue) 
+            {
+                push (@bindValues, $descValue);
+            } else {
+                push (@bindValues, $seqobj->desc); 
+            }
+        }
+		foreach my $f (sort keys %fields) { push(@bindValues, $fields{$f});}
+		#print "insertSQL: $insertSQL" . join(", ", @bindValues) . "\n";
+		$insertSeq_h->execute(@bindValues) or die "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSeq_h->errstr . "\n";
+	}
+}
