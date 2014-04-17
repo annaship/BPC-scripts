@@ -1016,8 +1016,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
         my $start_get_reads = time;
         my $selectReads_h   = &get_reads();
         my $end_get_reads   = time;
-        print "The total time of get_reads is ", $end_get_reads - $start_get_reads;
-        print LOG "The total time of get_reads is ", $end_get_reads - $start_get_reads;
+        print "The total time of get_reads is ", $end_get_reads - $start_get_reads, "\n";
+        print LOG "The total time of get_reads is ", $end_get_reads - $start_get_reads, "\n";
 
         print "START write_file!!!\n";
         print LOG "START write_file!!!\n";
