@@ -1012,7 +1012,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
         my $selectReads_h = get_reads();
         print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
         
-        write_file();
+        write_file($selectReads_h);
         $leftReads -= $chunk_size_reads;
         $from_here += $chunk_size_reads;
         $file_number++;
@@ -1048,6 +1048,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     
     sub write_file()
     {
+        my $selectReads_h = shift;
         print "URA write_file 1) out_file = $out_file\n";
         
         # q 7b)
@@ -1123,7 +1124,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
   #   PrintUpdate("There should be $file_number files of type ${readsFile}_XX in export directory\n");
   #   # Finish out the last one
   #   close(READS);
-  # }
+  }
 
   if($import)
   {
