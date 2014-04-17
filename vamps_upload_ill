@@ -992,64 +992,138 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     # SELECT the data for vamps_export_transfer.txt_XX
     #
 
-    # q 7)
-    my $selectReads =
-    "
-    SELECT DISTINCT 0, $glob_seq_id_id as read_id, project, dataset,
-      refhvr_ids, gast_distance as distance, taxonomy, uncompress(sequence_comp) as sequence, rank, '0000-00-00'
-      FROM $glob_seq_id_table
-      join $run_info_ill_table using($run_info_ill_id)
-      LEFT JOIN $seq_tax_ill_table using($sequence_ill_id)
-      JOIN $sequence_ill_table using($sequence_ill_id)
-      JOIN taxonomy USING(taxonomy_id)
-      JOIN rank USING(rank_id)
-      JOIN vamps_projects_datasets USING(project_id, dataset_id)
-    ";
-    # "
-    # SELECT DISTINCT 0, read_id, project, dataset,
-    #   refhvr_ids, distance, taxonomy, uncompress(sequence_comp) as sequence, rank, date_trimmed
-    #   FROM trimseq 
-    #   JOIN trimsequence using(trimsequence_id)
-    #   JOIN $source_gast_table USING(read_id)
-    #   LEFT JOIN $source_tax_table USING(read_id)
-    #   JOIN $source_tax_assignment_table USING(read_id)
-    #   JOIN $source_taxonomy_table USING(taxonomy_id)
-    #   JOIN $source_rank_table USING(rank_id)
-    #   JOIN $final_project_dataset_counts_table USING(project_id, dataset_id)
-    # ";
-      print "q 7) selectReads = $sourceHost.$selectReads\n";
-      print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
-    my $selectReads_h = ExecuteSelect($selectReads);
+    # q 7a)
+    my $selectCountReads =
+    "select count($sequence_ill_id) from $sequence_ill_table;";
+      print "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
+      print LOG "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
+    my $selectCountReads_h = ExecuteSelect($selectCountReads);
 
-    # q 7b)
-    # step through and export individual pieces
-    my $i = 1;
+    my $from_here   = 0
+    my $leftReads   = int($selectCountReads_h)
     my $file_number = 1;
-    my $out_file = $readsFile . "_" . $file_number;
-    open(READS, ">$out_file");
-    print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
-
-    while(my @row = $selectReads_h->fetchrow_array)
+    my $out_file    = $readsFile . "_" . $file_number;
+    
+    while($leftReads > 0)
     {
-      # if at a multiple of 500K, create a new output file
-      if ( int($i / $chunk_size_reads) == ($i / $chunk_size_reads) )
-      {
-        # Close out the last one and import it to the database
-        close(READS);
-
-        # open up the new one
+        print "URA01) from_here = $from_here\n";
+        print "URA02) leftReads = $leftReads\n";
+        
+        my $selectReads_h = get_reads($from_here);
+        print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
+        
+        write_file();
+        $leftReads -= $chunk_size_reads
+        $from_here += $chunk_size_reads
         $file_number++;
-        $out_file = $readsFile . "_" . $file_number;
+        
+    }
+    
+    # sub get_reads($from_here, $chunk_size_reads)
+    sub get_reads()
+    {
+        print "URA get_reads01) from_here = $from_here\n";
+        print "URA get_reads02) leftReads = $leftReads\n";
+        # my $from_here        = shift;
+        # my $chunk_size_reads = shift;
+        # q 7)
+        my $selectReads =
+        "
+        SELECT DISTINCT 0, $glob_seq_id_id as read_id, project, dataset,
+          refhvr_ids, gast_distance as distance, taxonomy, uncompress(sequence_comp) as sequence, rank, '0000-00-00'
+          FROM $glob_seq_id_table
+          join $run_info_ill_table using($run_info_ill_id)
+          LEFT JOIN $seq_tax_ill_table using($sequence_ill_id)
+          JOIN $sequence_ill_table using($sequence_ill_id)
+          JOIN taxonomy USING(taxonomy_id)
+          JOIN rank USING(rank_id)
+          JOIN vamps_projects_datasets USING(project_id, dataset_id)
+          limit $from_here, $chunk_size_reads
+        ";
+        print "q 7) selectReads = $sourceHost.$selectReads\n";
+        print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
+        my $selectReads_h = ExecuteSelect($selectReads);
+        return $selectReads_h
+    }
+    
+    sub write_file()
+    {
+        print "URA write_file 1) out_file = $out_file\n";
+        
+        # q 7b)
+        # step through and export individual pieces
         open(READS, ">$out_file");
         print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
-      }
-      print READS join("\t", @row) . "\n";
-      $i++;
+
+        while(my @row = $selectReads_h->fetchrow_array)
+        {
+            print READS join("\t", @row) . "\n";
+        }
+        close(READS);
     }
-    PrintUpdate("There should be $file_number files of type ${readsFile}_XX in export directory\n");
-    # Finish out the last one
-    close(READS);
-  }
+    
+    # my %last_ids_hash = &get_ids_from_file($last_ids_file_name);
+    # my $file_name = shift;
+    
+    # # q 7)
+    #  my $selectReads =
+    #  "
+    #  SELECT DISTINCT 0, $glob_seq_id_id as read_id, project, dataset,
+    #    refhvr_ids, gast_distance as distance, taxonomy, uncompress(sequence_comp) as sequence, rank, '0000-00-00'
+    #    FROM $glob_seq_id_table
+    #    join $run_info_ill_table using($run_info_ill_id)
+    #    LEFT JOIN $seq_tax_ill_table using($sequence_ill_id)
+    #    JOIN $sequence_ill_table using($sequence_ill_id)
+    #    JOIN taxonomy USING(taxonomy_id)
+    #    JOIN rank USING(rank_id)
+    #    JOIN vamps_projects_datasets USING(project_id, dataset_id)
+    #    limit $from_here, $chunk_size_reads
+    #  ";
+    #  # "
+    #  # SELECT DISTINCT 0, read_id, project, dataset,
+    #  #   refhvr_ids, distance, taxonomy, uncompress(sequence_comp) as sequence, rank, date_trimmed
+    #  #   FROM trimseq 
+    #  #   JOIN trimsequence using(trimsequence_id)
+    #  #   JOIN $source_gast_table USING(read_id)
+    #  #   LEFT JOIN $source_tax_table USING(read_id)
+    #  #   JOIN $source_tax_assignment_table USING(read_id)
+    #  #   JOIN $source_taxonomy_table USING(taxonomy_id)
+    #  #   JOIN $source_rank_table USING(rank_id)
+    #  #   JOIN $final_project_dataset_counts_table USING(project_id, dataset_id)
+    #  # ";
+    #    print "q 7) selectReads = $sourceHost.$selectReads\n";
+    #    print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
+    #  my $selectReads_h = ExecuteSelect($selectReads);
+
+  #   # q 7b)
+  #   # step through and export individual pieces
+  #   my $i = 1;
+  #   my $file_number = 1;
+  #   my $out_file = $readsFile . "_" . $file_number;
+  #   open(READS, ">$out_file");
+  #   print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
+  # 
+  #   while(my @row = $selectReads_h->fetchrow_array)
+  #   {
+  #     # if at a multiple of 500K, create a new output file
+  #     if ( int($i / $chunk_size_reads) == ($i / $chunk_size_reads) )
+  #     {
+  #       # Close out the last one and import it to the database
+  #       close(READS);
+  # 
+  #       # open up the new one
+  #       $file_number++;
+  #       $out_file = $readsFile . "_" . $file_number;
+  #       open(READS, ">$out_file");
+  #       print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
+  #     }
+  #     print READS join("\t", @row) . "\n";
+  #     $i++;
+  #   }
+  #   PrintUpdate("There should be $file_number files of type ${readsFile}_XX in export directory\n");
+  #   # Finish out the last one
+  #   close(READS);
+  # }
 
   if($import)
   {
