@@ -1000,37 +1000,37 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     my $selectCountReads_h = ExecuteSelect($selectCountReads);
 
     my $from_here   = 0;
-    my $leftReads   = int($selectCountReads_h);
+    my $reads_left   = int($selectCountReads_h);
     my $file_number = 1;
     my $out_file    = $readsFile . "_" . $file_number;
     
-    while($leftReads > 0)
+    while($reads_left > 0)
     {
-        print "URA01) from_here = $from_here\n";
-        print "URA02) leftReads = $leftReads\n";
+        # print "URA01) from_here = $from_here\n";
+        # print "URA02) reads_left = $reads_left\n";
         
         print "START get_reads!!!\n";
+        print LOG "START get_reads!!!\n";
         
         my $selectReads_h = &get_reads();
 
         print "START write_file!!!\n";
+        print LOG "START write_file!!!\n";
         
         &write_file($selectReads_h);
-        $leftReads -= $chunk_size_reads;
+        $reads_left -= $chunk_size_reads;
         $from_here += $chunk_size_reads;
         $file_number++;
         $out_file   = $readsFile . "_" . $file_number;
         print "========================\n";
+        print LOG "========================\n";
         
     }
     
-    # sub get_reads($from_here, $chunk_size_reads)
     sub get_reads()
     {
-        print "URA get_reads01) from_here = $from_here\n";
-        print "URA get_reads02) leftReads = $leftReads\n";
-        # my $from_here        = shift;
-        # my $chunk_size_reads = shift;
+        # print "URA get_reads01) from_here  = $from_here\n";
+        # print "URA get_reads02) reads_left = $reads_left\n";
         # q 7)
         my $selectReads =
         "
@@ -1054,14 +1054,15 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     sub write_file()
     {
         my $selectReads_h = shift;
-        print "URA write_file 1) out_file = $out_file\n";
-        
+        print "write_file out_file = $out_file\n";
+        print LOG "write_file out_file = $out_file\n";
+
         # q 7b)
         # step through and export individual pieces
         open(READS, ">$out_file");
         print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
 
-        print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
+        # print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
         while(my @row = $selectReads_h->fetchrow_array)
         {
             print READS join("\t", @row) . "\n";
