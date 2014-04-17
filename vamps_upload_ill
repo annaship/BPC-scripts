@@ -87,8 +87,8 @@ my $subdir       = "exports/";
 my $chunk_size_reads = 500000;  # dump data to transfer files 500K records at a time FOR READS
 my $chunk_size_seqs  = 250000;  # dump data to transfer files 250K records at a time FOR SEQS
 my $do_not_analyze   = 0;
-my $test_only    = 0;
-my $illSuffix = "_ill";
+my $test_only        = 0;
+my $illSuffix        = "_ill";
 
 # Host, database, log etc
 my $logFile = "vamps_upload.log";
@@ -1009,12 +1009,12 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
         print "URA01) from_here = $from_here\n";
         print "URA02) leftReads = $leftReads\n";
         
-        my $selectReads_h = get_reads($from_here);
+        my $selectReads_h = get_reads();
         print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
         
         write_file();
-        $leftReads -= $chunk_size_reads
-        $from_here += $chunk_size_reads
+        $leftReads -= $chunk_size_reads;
+        $from_here += $chunk_size_reads;
         $file_number++;
         
     }
@@ -1043,7 +1043,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
         print "q 7) selectReads = $sourceHost.$selectReads\n";
         print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
         my $selectReads_h = ExecuteSelect($selectReads);
-        return $selectReads_h
+        return $selectReads_h;
     }
     
     sub write_file()
