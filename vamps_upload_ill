@@ -1004,7 +1004,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     my $file_number = 1;
     my $out_file    = $readsFile . "_" . $file_number;
     # TEST!!! remove it:
-    $reads_left = 500001
+    $reads_left = 500001;
     while($reads_left > 0)
     {
         # print "URA01) from_here = $from_here\n";
