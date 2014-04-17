@@ -1012,7 +1012,6 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
         print "START get_reads!!!\n";
         
         my $selectReads_h = &get_reads();
-        print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
 
         print "START write_file!!!\n";
         
@@ -1062,6 +1061,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
         open(READS, ">$out_file");
         print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
 
+        print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
         while(my @row = $selectReads_h->fetchrow_array)
         {
             print READS join("\t", @row) . "\n";
