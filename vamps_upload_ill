@@ -999,8 +999,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       print LOG "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
     my $selectCountReads_h = ExecuteSelect($selectCountReads);
 
-    my $from_here   = 0
-    my $leftReads   = int($selectCountReads_h)
+    my $from_here   = 0;
+    my $leftReads   = int($selectCountReads_h);
     my $file_number = 1;
     my $out_file    = $readsFile . "_" . $file_number;
     
