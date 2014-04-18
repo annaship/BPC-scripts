@@ -998,8 +998,9 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       print "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
       print LOG "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
     my $selectCountReads_h = ExecuteSelect($selectCountReads);
-    print "selectCountReads_h = $selectCountReads_h\n";
-    print LOG "selectCountReads_h = $selectCountReads_h\n";
+    my $print_out = int($selectCountReads_h);
+    print "selectCountReads_h = $print_out\n";
+    print LOG "selectCountReads_h = $print_out\n";
 
     my $from_here   = 0;
     my $reads_left   = int($selectCountReads_h);
