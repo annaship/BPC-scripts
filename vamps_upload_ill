@@ -998,12 +998,12 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       print "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
       print LOG "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
     my $selectCountReads_h = ExecuteSelect($selectCountReads);
-    my $print_out = int($selectCountReads_h);
-    print "selectCountReads_h = $print_out\n";
-    print LOG "selectCountReads_h = $print_out\n";
+    my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
+    print "selectCountReads_int = $selectCountReads_int\n";
+    print LOG "selectCountReads_int = $selectCountReads_int\n";
 
     my $from_here   = 0;
-    my $reads_left   = int($selectCountReads_h);
+    my $reads_left   = int($selectCountReads_int);
     my $file_number = 1;
     my $out_file    = $readsFile . "_" . $file_number;
     while($reads_left > 0)
@@ -1712,6 +1712,23 @@ sub ExecuteSelect
 
   return $selectSQL_h;
 }
+
+#######################################
+#
+# Prepare and Execute SELECT Statements even on test
+#
+#######################################
+sub ExecuteSelectTest
+{
+  my $selectSQL = shift;
+
+  # print "$selectSQL\n" if ($test_only == 1);
+  my $selectSQL_h = $dbhSource->prepare($selectSQL) or warn print LOG "Unable to prepare statement: $selectSQL. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+  $selectSQL_h->execute or warn print LOG "Unable to execute SQL statement: $selectSQL.  Error: " . $selectSQL_h->errstr . " (" . (localtime) . ")\n";
+
+  return $selectSQL_h;
+}
+
 
 #######################################
 #
