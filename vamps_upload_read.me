@@ -24,12 +24,12 @@ cd /xraid2-2/g454/vamps/tovamps/; mkdir `date '+%Y%m%d'`; cd `date '+%Y%m%d'`; t
 (cd /xraid2-2/g454/vamps/tovamps/`date '+%Y%m%d'`; mkdir ill; cd ill)
 
 07) time run_vamps_upload_ill; mail_done
-14 h
+17 h
 08) check if tables look ok
   (+ repeat 2)
 
 09) time swap_table_names.py ill; mail_done (add transfer tables to intermediate)
-7.5 h
+10.5 h
 10) check if tables look ok; 
     a) repeat 2
     b) python /xraid/bioware/linux/seqinfo/bin/vamps_upload_util/compare_interm_w_current.py
