@@ -1,8 +1,116 @@
 #!/bin/bash
 ini_count=`ls *.ini | wc -l`
 echo $ini_count
+ini_list=(`ls *.ini`)
+echo $ini_list
+
+username=`whoami`
+echo "$username@mbl.edu"
+
+script_name=$(basename "$0")
+echo $script_name
+echo "==="
+
+cat << InputComesFromHERE > $script_name.sge_script.sh
+#!/bin/bash
+ 
+#$ -cwd
+#$ -S /bin/bash
+#$ -N $script_name
+# Giving the name of the output log file
+#$ -o $script_name.sge_script.sh.log
+# Combining output/error messages into one file
+#$ -j y
+# Send mail to these users
+#$ -M $username@mbl.edu
+# Send mail at job end; -m eas sends on end, abort, suspend.
+#$ -m eas
+#$ -t 1-$ini_count
+# Now the script will iterate $ini_count times.
+
+ini_list1=(${ini_list[@]})
+#for file_name in "${ini_list[@]}"
+        i=\$(expr \$SGE_TASK_ID - 1)
+        echo \$i
+        #echo "merge-illumina-pairs --enforce-Q30-check --marker-gene-stringent \${ini_list1[0]}"
+        #echo "merge-illumina-pairs --enforce-Q30-check --marker-gene-stringent \${ini_list1[1]}"
+
+        echo "merge-illumina-pairs --enforce-Q30-check --marker-gene-stringent \${ini_list1[\$i]}"
+#do
+
+
+InputComesFromHERE
+
+chmod u+x $script_name.sge_script.sh
+#}
+
+#make_sge_script
+
+====
+
+
+#!/bin/bash
+ini_count=`ls *.ini | wc -l`
+echo $ini_count
+ini_list=`ls *.ini`
+echo $ini_list
+
+username=`whoami`
+echo "$username@mbl.edu"
+
+script_name=$0
+echo $script_name
+echo "==="
+
+make_sge_script()
+{
+    cat << InputComesFromHERE > $script_name.sge_script.sh
+#!/bin/bash
+
+#$ -cwd
+#$ -S /bin/bash
+#$ -N $script_name
+# Giving the name of the output log file
+#$ -o $script_name.sge_script.sh.log
+# Combining output/error messages into one file
+#$ -j y
+# Send mail to these users
+#$ -M $username@mbl.edu
+# Send mail at job end; -m eas sends on end, abort, suspend.
+#$ -m eas
+#$ -t 1-$ini_count
+# Now the script will iterate $ini_count times.
+
+
+LISTFILE=./ini_list
+INIFILE=`sed -n "${SGE_TASK_ID}p" $LISTFILE`
+echo "merge-illumina-pairs --enforce-Q30-check --marker-gene-stringent $INIFILE"
+
+InputComesFromHERE
+
+chmod u+x $script_name.sge_script.sh
+}
+====
+
+for fullfile in *.ini
+do
+  echo "============="
+  echo $fullfile
+  echo "merge-illumina-pairs --enforce-Q30-check --marker-gene-stringent $fullfile"
+done
+
+                                                                                                                                                                                                                        
+
+
+
+#!/bin/bash
+ini_count=`ls *.ini | wc -l`
+echo $ini_count
 ini_list=`ls *.ini`
 echo $ini_listi
+
+job_file_name_prefix="merge"
+
 
 #$ -cwd
 #$ -S /bin/bash
