@@ -304,8 +304,8 @@ $titles_for{q15} = "\n\n$bar\nCount of Reads deleted and not deleted by dataset 
 $queries{q15} = "select * from percent_deleted_temp;";
          
 $titles_for{q16} = "\n\n$bar\nPercent deleted reads by project, dataset\n$bar\n";
-$queries{q16} = "SELECT  project, dataset, ReadCount as reads_deleted, total, (ReadCount * 100 / total) AS percent_deleted
-FROM percent_deleted_temp JOIN percent_deleted2_temp
+$queries{q16} = "SELECT  project, dataset, ReadCount as reads_deleted, total, round(ReadCount * 100 / total) AS percent_deleted
+FROM percent_deleted_temp JOIN percent_deleted1_temp
 USING(project, dataset) WHERE deleted = 1
 order by percent_deleted DESC
         ";        
@@ -322,9 +322,14 @@ $queries{q17} = "select project, dataset, count(read_id) from $trimming_table
 
 # todo: put all tables into variables
 # todo: create -tax round
-$titles_for{q18} = "\n\n$bar\nTaxonomy by project, dataset\n$bar\n";
-$queries{q18} = "select project, dataset, taxonomy, count(read_id) from `tagtax` JOIN taxonomy USING(taxonomy_id) JOIN `trimseq` using(`read_id`) JOIN `project` using(`project_id`) 
-  JOIN `dna_region` using(`dna_region_id`) JOIN dataset using(dataset_id) where run_id=$run_id group by project, dataset, taxonomy; ";
+# $titles_for{q18} = "\n\n$bar\nTaxonomy by project, dataset\n$bar\n";
+# $queries{q18} = "select project, dataset, taxonomy, count(read_id) from tagtax
+#     JOIN taxonomy USING(taxonomy_id)
+#     JOIN trimseq using(read_id)
+#     JOIN project using(project_id) 
+#     JOIN dna_region using(dna_region_id)
+#     JOIN dataset using(dataset_id) where run_id = $run_id 
+#     group by project, dataset, taxonomy; ";
 
 
 #######################################
@@ -341,7 +346,7 @@ if ($stats eq "trim")
     $headerCmd = "echo \"\n\nTRIM RESULTS FOR RUN $run\n\n\" >> $filename";
     # reset which queries to run if -trim
     $start  = 10;
-    $end    = 16;
+    $end    = 17;
 }
 
 my $headerError = system("$headerCmd");

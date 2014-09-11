@@ -33,9 +33,14 @@ done
 echo "UDB_NAME = $UDB_NAME.udb"
 echo "ITS_OPTION = $ITS_OPTION"
 
+echo "module unload usearch"
+module unload usearch
+echo "module load usearch/6.0.217-32"
+module load usearch/6.0.217-32 
+
 for file in $NAME_PAT
 do
   echo "============="
   echo $file
-  clusterize /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.udb -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
+  clusterize -inherit /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.udb -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
 done
