@@ -1,0 +1,257 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# stats_scaffold: stats on scaffolds
+#
+# Usage:  stats_scaffold <assembly.reads> <assembly.links> <assembly.mates>
+#
+# Author: Susan Huse, shuse@mbl.edu  Date: 11/15/05
+#
+# Keywords: stats assembly supercontig
+# 
+# Assumptions:
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+
+use strict;
+use warnings;
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $usage = "     Usage:  stats_scaffold <projectname>\n\n";
+my $scripthelp = "
+ stats_scaffold - takes a project name, finds the assembly reads, mates and links files and 
+                  returns stats on the supercontig assembly and read pair matings.
+                  Should be run from within the scaffold directory.\n
+";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+my $argNumber = 1;
+my $projectName;
+my $readsfile;
+my $linksfile;
+my $matesfile;
+
+my %reads;
+my %mates;
+my %clones;
+my %contigs;
+my %supercontigs;
+my %contig2supercontig;
+my %supercontig_size;
+my %supercontig_size_distr;
+my %assembly;
+my $total_reads = 0;
+my $total_clones = 0;
+my $total_reads_same_contig = 0;
+my $total_reads_different_contig = 0;
+my $total_reads_same_supercontig = 0;
+my $total_reads_different_supercontig = 0;
+my $total_reads_paired = 0;
+my $total_reads_unpaired = 0;
+my $max_contigs_per_supercontig = 0;
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+if (scalar @ARGV < $argNumber) 
+{
+	print $scripthelp;
+	print "$usage";
+	exit;
+} elsif (($ARGV[0] =~ /help/) || ($ARGV[0] =~ /-h/)) {
+	print $scripthelp;
+	print "$usage";
+	exit;
+} elsif (scalar @ARGV != $argNumber) {
+	print "Incorrect arguments.\n";
+	print $usage;
+	exit;
+} else {
+	$projectName = $ARGV[0];
+}
+
+#######################################
+#
+# Test validity of commandline arguments
+#
+#######################################
+my $dir = ".";
+$readsfile = "assembly.reads";
+if (! -f $readsfile) 
+{
+	if (-f "scaffold/$readsfile") 
+	{
+		$dir = "scaffold";
+		$readsfile = $dir . "/" . $readsfile;
+	} else {
+		print "Unable to locate assembly reads file: $readsfile.\n";
+		exit;
+	}
+}
+$linksfile = $dir . "/assembly.links";
+if (! -f $linksfile) {
+	print "Unable to locate assembly links file: $linksfile.\n";
+	exit;
+}
+
+$matesfile = "../$projectName.mates";
+if (! -f $matesfile) 
+{
+	$matesfile = "$projectName.mates";
+}
+if (! -f $matesfile) {
+	print "Unable to locate assembly mates file: $matesfile.\n";
+	exit;
+}
+
+#######################################
+# 
+# Read the links file and populate a hash of supercontig ids keyed on contig_id
+# Read the mates file and populate a hash of mate pairs
+# Step through the reads file and look up the partner contig, 
+# if no partner contig, look it up from the mates file
+# Get the supercontig id using teh contig id and the contig2supercontig hash
+# Do all the tallies from above.
+#
+#######################################
+
+
+#######################################
+#
+# Open links file and get the supercontig lookup on contig id 
+#
+#######################################
+open (LINKS, "<$linksfile");
+while (my $line = <LINKS>)
+{
+	chomp $line;
+	my @linksdata = split(/\s+/, $line);
+	#[0] = supercontig, [1]=supercontig size, [2] = number of contigs [4] = contig
+	$contig2supercontig{$linksdata[4]} = $linksdata[0];
+	$supercontig_size{$linksdata[0]} = $linksdata[1];
+	$supercontig_size_distr{$linksdata[2]}++;
+	if ($linksdata[2] > $max_contigs_per_supercontig)
+	{
+		$max_contigs_per_supercontig = $linksdata[2];
+	}
+}
+close (LINKS);
+
+#######################################
+#
+# Open mates file and get the read pairings
+#
+#######################################
+open (LINKS, "<$linksfile");
+open (MATES, "<$matesfile");
+<MATES>; #clear off first line
+while (my $line = <MATES>)
+{
+	chomp $line;
+	my @matesdata = split(/\s+/, $line);
+	$mates{$matesdata[0]} = $matesdata[1];
+	$mates{$matesdata[1]} = $matesdata[0];
+}
+close (MATES);
+
+#######################################
+#
+# Step through the assembly.reads file and do the totals
+#
+#######################################
+
+open (READS, "<$readsfile");
+#Assembly.reads columns:
+#Read name, length, start, stop, contig#, contig length, C start, C end, forward/reverse, read partner name, read partner contig, observed insert size, mean insert size, stdev insert size
+
+#%assembly{read} = [mate, contig, supercontig]
+while (my $line = <READS>)
+{
+	chomp $line;
+	my @cols = split(/\s+/, $line);
+	my $read = $cols[0];
+
+	$reads{$read}++;
+	my $clone = $read;
+	$clone =~ s/\..*$//;
+	$clones{$clone}++;
+
+	my $contig = $cols[4];
+	$contigs{$contig}++;
+	
+	my $supercontig = $contig2supercontig{$contig};
+	$supercontigs{$supercontig}++;
+
+	$assembly{$read} = [$mates{$read}, $contig, $supercontig]
+}
+close(READS);
+
+foreach my $r (keys %reads)
+{
+	my $m = $assembly{$r}[0];
+	my $c = $assembly{$r}[1];
+	my $s = $assembly{$r}[2];
+	
+	if (! $m) #Mate isn't in the assembly
+	{
+		$total_reads_unpaired++;
+	} elsif ((! exists $assembly{$m}) || (! defined $assembly{$m})) {
+		$total_reads_unpaired++;
+	} else {
+		$total_reads_paired++;
+		#test for partner contig
+		if ($c == $assembly{$m}[1]) 
+		{
+			$total_reads_same_contig++;
+			$total_reads_same_supercontig++;
+		} else {
+			$total_reads_different_contig++;
+			if ($s == $assembly{$m}[2]) 
+			{
+				$total_reads_same_supercontig++;
+			} else {
+				$total_reads_different_supercontig++;
+			}
+		}
+	}
+}
+
+print "\n";
+print "Total Reads = " . scalar (keys %reads) . "\n";
+print "Total Clones = " . scalar (keys %clones) . "\n";
+print "Total Contigs = " . scalar (keys %contigs) . "\n";
+print "Total Supercontigs = " . scalar (keys %supercontigs) . "\n";
+print "Maximum number of contigs per supercontig = $max_contigs_per_supercontig\n";
+print "Total Reads Same Contig =  $total_reads_same_contig\n";
+print "Total Reads Different Contig = $total_reads_different_contig\n";
+print "Total Reads Same Supercontig =  $total_reads_same_supercontig\n";
+print "Total Reads Different Supercontig =  $total_reads_different_supercontig\n";
+print "Total Reads paired =  $total_reads_paired\n";
+print "Total Reads unpaired =  $total_reads_unpaired\n";
+print "\nScaffold Distribution\n";
+foreach my $s (sort keys %supercontig_size_distr)
+{
+	print "\t$supercontig_size_distr{$s} supercontigs containing $s contig(s).\n";
+}
+
+print "\nFive Largest Scaffold Sizes\n";
+my @topSizes = sort { $b <=> $a } values %supercontig_size;
+for (my $i=0; $i<5; $i++)
+{
+	print "\t$topSizes[$i]\n";
+}
+print "\n";

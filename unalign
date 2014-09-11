@@ -1,0 +1,185 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# unalign: removes gap characters from a fasta file
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Wed Jun  6 09:09:13 EDT 2007
+#
+# Copyright (C) 2008 Marine Biological Laboratory, Woods Hole, MA
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# For a copy of the GNU General Public License, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# or visit http://www.gnu.org/copyleft/gpl.html
+#
+# Keywords: align gaps
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Bio::Seq;
+use Bio::SeqIO;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $scriptHelp = "
+ unalign - takes a sequences fasta file and removes all gaps \n";
+
+my $usage = "
+   Usage:  unalign input.fasta output.fasta
+ Options:  
+           -c specify gap character, only use this character
+           -a specify additional gap character, use [.-] as well
+
+      Ex:  unalign -c \"_\" in.fa out.fa  -- removes only \"_\" characters
+           unalign -c \".\" in.fa out.fa  -- removes only \".\", not \"-\"
+           unalign -a \"_\" in.fa out.fa  -- removes \"_\", \".\", and \"-\"
+\n";
+
+#
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+my $argNum = 2;
+#my $minargNum = 2;
+#my $maxargNum = 4;
+my $verbose = 0;
+
+#Runtime variables
+my $inFilename;
+my $outFilename;
+my $gapChar;
+my $useDefaultChars = 1;
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) 
+{
+	print $scriptHelp;
+	print $usage;
+	exit -1;
+} 
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+	if ($ARGV[0] =~ /-h/) {
+		print $scriptHelp;
+		print $usage;
+		exit 0;
+	} elsif ($ARGV[0] eq "-c") {
+		shift @ARGV;
+		$gapChar = shift @ARGV;
+	} elsif ($ARGV[0] eq "-c") {
+		shift @ARGV;
+		$gapChar = shift @ARGV;
+		$useDefaultChars = 0;
+	} elsif ($ARGV[0] eq "-a") {
+		shift @ARGV;
+		$gapChar = shift @ARGV;
+	} elsif ($ARGV[0] eq "-v") {
+		$verbose = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+		shift @ARGV;
+	}
+}
+
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if (scalar @ARGV != $argNum) 
+#if ((scalar @ARGV < $minargNum) || (scalar @ARGV > $maxargNum)) 
+#if ( (! $dbName) || (! $inFilename) )
+{
+	print "Incorrect number of arguments.\n";
+	print "$usage\n";
+	exit;
+} 
+
+#Test validity of commandline arguments
+$inFilename = $ARGV[0];
+if (! -f $inFilename) {
+	print "Unable to locate input fasta file: $inFilename.\n";
+	exit;
+}
+$outFilename = $ARGV[1];
+
+#if ($verbose) {print "Running unalign on $inFilename writing to $outFilename, using options: $arg1\n"};
+#######################################
+#
+# Open the files
+#
+#######################################
+
+my $in = Bio::SeqIO->new( '-file'=> "<$inFilename", '-format'=> "fasta") || die ("Could not read fasta file: $inFilename.  Exiting...\n");
+#open (IN, "<$inFilename") || die ("Unable to read input file: $inFilename.  Exiting.\n");
+
+my $out;
+if ($outFilename eq "stdout")
+{
+    $out = Bio::SeqIO->new( '-fh' => \*STDOUT, '-format'=> "fasta") || die("Unable to write to STDOUT.  Exiting...\n");
+} else {
+    $out = Bio::SeqIO->new( '-file'=> ">$outFilename", '-format'=> "fasta") || die ("Unable to write to $outFilename.  Exiting...\n");
+}
+#open (OUT, ">$outFilename") || die ("Unable to write to output file: $outFilename.  Exiting.\n");
+
+#######################################
+#
+# Remove the gaps and save out the sequence
+#
+#######################################
+
+#Read in fasta format
+while (my $seqObj = $in->next_seq)
+{
+	my $id = $seqObj->id;
+	my $seqStr = $seqObj->seq;
+
+	if ($useDefaultChars) 
+	{
+		$seqStr =~ s/-//g;
+		$seqStr =~ s/\.//g;
+	}
+
+	if ($gapChar)
+	{
+		$seqStr =~ s/$gapChar//g;
+	}
+
+	#Write out sequence object to $outFilename
+	$seqObj->seq($seqStr);
+	$out->write_seq($seqObj);
+}
+

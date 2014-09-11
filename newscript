@@ -1,0 +1,115 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# newscript: create a new perl script based on seqinfo/bin/script_template
+#
+# Usage:  newscript scriptname
+#
+# Author: Susan Huse, shuse@mbl.edu  
+# Date: 
+#
+# Keywords: script
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use File::Basename;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $usage = "
+Usage:  newscript scriptname\n\n";
+my $scripthelp = "
+ newscript - creates a copy of the perl script template and names it scriptname\n
+";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+my $argNum = 1;
+
+#Runtime variables
+my $inFilename;
+my $outFilename;
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) {
+	print $scripthelp;
+	print $usage;
+	exit -1;
+} 
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if (scalar @ARGV != $argNum) {
+	print "Incorrect number of arguments.\n";
+	print "$usage\n";
+	exit;
+} 
+
+#Test validity of commandline arguments
+$inFilename = "/xraid/bioware/linux/seqinfo/bin/script_template";
+if (! -f $inFilename) {
+	print "Unable to locate script template: $inFilename.\n";
+	exit;
+}
+
+
+$outFilename = $ARGV[0];
+if (-f $outFilename) 
+{
+	print "Replace existing $outFilename?\n";
+	my $answer = <STDIN>;
+	if ($answer !~ /^y/i) {exit;}
+}
+
+#######################################
+#
+# Copy the file and replace scriptname with the inFilename
+#
+#######################################
+
+(my $newname) = fileparse($outFilename);
+
+my $todaysDate = `date`;
+chomp $todaysDate;
+
+my $year = $todaysDate;
+$year =~ s/^.*([0-9]{4})/$1/;
+
+my $username = `whoami`;
+chomp $username;
+
+# Finger seems to be deprecated, don't have full name at this point
+#my $finger = `finger $username`;
+#my ($fullname) = split(/\n/, $finger);
+#$fullname =~ s/^Login.*Name:\s+(\w+\s+\w+).*$/$1/;
+my $fullname = $username;
+
+my $email = $username . "\@mbl.edu";
+ 
+`sed -e 's/scriptname/$newname/g' -e 's/todaysdate/$todaysDate/' -e 's/authorname/$fullname, $email/' -e 's/copyleftyear/$year/' $inFilename > $outFilename`;
+`chmod +x $outFilename`;
+

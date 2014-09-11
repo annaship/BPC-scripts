@@ -1,0 +1,116 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# stats_estreads: stats on reads used along assemble_cdna pipeline
+#
+# Usage:  stats_estreads <organism1> <organism2> <organism3> 
+#
+# Author: Susan Huse, shuse@mbl.edu  Date: September, 2005
+#
+# Keywords: stats assembly tags
+# 
+# Assumptions:
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Bio::Seq;
+use Bio::SeqIO;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $usage = "     Usage:  stats_estreads <organism>\n\n";
+my $script_help = "
+ stats_estreads:  counts the number of reads remaining during assemble_cdna process.
+                  Column headings indicate the step that outputs that read count.\n
+";
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+if (scalar @ARGV == 0) {
+	print $script_help;
+	print $usage;
+	exit 1;
+}
+
+if ($ARGV[0] =~ /-h/) 
+{
+	print $script_help;
+	print $usage;
+	exit 0;
+}
+#######################################
+#
+# Definition statements
+#
+######################################
+my $project = $ARGV[0];
+
+my @filenames = ("edit_dir/$project.fasta", "$project.lucy.fasta", "$project.lucy.trim.screen", "$project.lucy.trim.stripx", "$project.lucy.trim2", "$project.trimest.fasta", "$project.notails.fasta", "$project.pairedtails.fasta", "$project.tgicl");
+#removed lucy.trim: it has X's and otherwise would be the exact same as lucy.fasta
+
+
+#######################################
+#
+# First, grab the number of reads out of chromat and phd dirs
+#
+######################################
+print "chromat_dir/\t";
+if (! -d "chromat_dir") 
+{
+	print "directory not found\n"; 
+} else {
+	system ("ls chromat_dir | wc -l");
+}
+
+print "phd_dir/\t";
+if (! -d "phd_dir") 
+{
+	print "directory not found\n";
+} else {
+	system ("ls phd_dir | wc -l");
+} 
+
+#######################################
+#
+# Next, parse each of the assembly fasta files
+#
+######################################
+foreach my $f (@filenames)
+{
+	if (! -f $f) {warn "$f\tfile not found\n"; next;} 
+	my $in = Bio::SeqIO->new ( '-file' => "<$f", '-format' => "fasta") || warn ("$f\tunreadable file\n");
+
+	my $tally = 0;
+	my $sum = 0;
+	my @sums;
+	while (my $seq = $in->next_seq)
+	{
+		if (($seq) && ($seq->seq)) {
+			my $l = length($seq->seq);
+			if ($l != 0) 
+			{
+				$tally++;
+				$sum += $l;
+			}
+		}
+	}
+	push (@sums, $sum); #don't forget the last one
+	my $avglength = $sum / $tally;
+
+	#round off
+	$avglength += 0.5;
+	$avglength = int $avglength;
+	print join("\t", $f, $tally, "$avglength\n");
+}

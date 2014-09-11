@@ -1,0 +1,341 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# clusterstats: calculate cluster-specific statistics
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Thu May 14 13:43:16 EDT 2009
+#
+# Copyright (C) 2009 Marine Biological Laborotory, Woods Hole, MA
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# For a copy of the GNU General Public License, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# or visit http://www.gnu.org/copyleft/gpl.html
+#
+# Keywords: otu cluster distance pairwise dotur mothur
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $script_help = "
+ clusterstats - calculates the pairwise distance statistics between the sequences
+                within an OTU cluster at a specified width.
+                Requires a cluster *.list file and a pairwise distance file
+                Currently distance file should 3 column, not a matrix (distmatrix2col).
+ 
+                If using a pre-mothur (todd) names file, please specify -tn
+\n";
+
+my $usage = "
+   Usage:  clusterstats -l listfile -d distancefile -n namesfile -w clusterwidth > out.txt
+      ex:  clusterstats -l entero.fa.m2.fn.list -n entero.names -d entero.fa.m2.dist3 -w 0.03 > entero_otu_dists.txt
+
+ Options:  
+           -l  list file from mothur (dotur) specifying sequences in each OTU (do not use with -m)
+           -m  mcl output file file specifying sequences in each OTU (do not use with -l)
+           -d  distance file, with pairwise distances for each OTU
+           -n  names file, with lookups to duplicates for ids in the distance file
+           -w  clustering width (e.g., unique, 0.03, 0.06, 0.10)
+           -tn a todd-formatted names file (as opposed to a mothur formatted names file)
+           -p  write out to log file pairs that are wider than a specified clustering width (e.g., 0.05)
+\n";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+#my $arg_count = 3;
+my $min_arg_count = 2;
+my $max_arg_count = 4;
+my $verbose = 0;
+
+#Runtime variables
+my $cluster_filename;
+my $cluster_type;
+my $distance_filename;
+my $names_filename;
+my $otu_width;
+my $names = 0;
+my $names_index = 1;
+my $log_pairs = 0;
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) {
+	print $script_help;
+	print $usage;
+	exit -1;
+} 
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/)) {
+	if ($ARGV[0] =~ /-h/) {
+		print $script_help;
+		print $usage;
+		exit 0;
+	} 
+    elsif ($ARGV[0] eq "-l") {
+		shift @ARGV;
+		$cluster_filename = shift @ARGV;
+        if ($cluster_type) {print "Must specify only one mothur or mcl output file\n"; print $usage; exit -1;}
+        $cluster_type = "mothur";
+	} 
+    elsif ($ARGV[0] eq "-m") {
+		shift @ARGV;
+		$cluster_filename = shift @ARGV;
+        if ($cluster_type) {print "Must specify only one mothur or mcl output file\n"; print $usage; exit -1;}
+		$cluster_type = "mcl";
+	} 
+    elsif ($ARGV[0] eq "-d") {
+		shift @ARGV;
+		$distance_filename = shift @ARGV;
+	} 
+    elsif ($ARGV[0] eq "-n") {
+		shift @ARGV;
+		$names_filename = shift @ARGV;
+        $names = 1;
+	} 
+    elsif ($ARGV[0] eq "-w") {
+		shift @ARGV;
+		$otu_width = shift @ARGV;
+	} 
+    elsif ($ARGV[0] eq "-tn") {
+		shift @ARGV;
+		$names_index = 2;
+	} 
+    elsif ($ARGV[0] eq "-p") {
+		shift @ARGV;
+		$log_pairs = shift @ARGV;
+	} 
+    elsif ($ARGV[0] eq "-v") {
+		$verbose = 1;
+		shift @ARGV;
+	} 
+    elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+		print "Unknown commandline flag \"$ARGV[0]\".\n";
+		print $usage;
+		exit -1;
+	}
+}
+
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+#print "$cluster_filename, $distance_filename\n";
+
+#if ( (! $cluster_filename) || (! $distance_filename) || (! $otu_width) || (!$names_filename) ) {
+if ( (! $cluster_filename) || (! $distance_filename)  ) {
+	print "Incorrect number of arguments.\n";
+	print "$usage\n";
+	exit;
+} 
+
+#Test validity of commandline arguments
+if (! -f $cluster_filename) {
+	print "Unable to locate input list file: $cluster_filename.\n";
+	exit -1;
+}
+
+if (! -f $distance_filename) {
+	print "Unable to locate input distance file: $distance_filename.\n";
+	exit -1;
+}
+
+if ( ($names) && (! -f $names_filename) ) {
+	print "Unable to locate input names file: $distance_filename.\n";
+	exit -1;
+}
+
+#######################################
+#
+# Open the files
+#
+#######################################
+if ($verbose) {print "Opening list and distance files\n";}
+
+open(OTUS, "<$cluster_filename") || die("Unable to read from file: $cluster_filename.  Exiting.\n");
+open(DIST, "<$distance_filename") || die("Unable to read from file: $distance_filename.  Exiting.\n");
+
+if ($names) 
+{
+    open(NAMES, "<$names_filename") || die("Unable to read from file: $names_filename.  Exiting.\n"); 
+}
+
+if ($log_pairs) 
+{
+    (my $pairs_filename = $otu_width) =~ s/^0\.//;
+    $pairs_filename = "$cluster_filename.$pairs_filename.pairs";
+    open(PAIRS, ">$pairs_filename") || die("Unable to write to pairs file: $pairs_filename.  Exiting.\n");
+}
+
+#######################################
+#
+# Load up the pairwise distances
+#
+#######################################
+if ($verbose) {print "Loading distance matrix\n";}
+my %distance_between;
+while (my $line = <DIST>)
+{
+    chomp $line;
+    my @data = split(/\s+/, $line);
+    $distance_between{$data[0]}{$data[1]} = $data[2];
+}
+
+close(DIST);
+if ($verbose) {my $dc = scalar keys %distance_between; print "Distances loaded: $dc\n";}
+
+#######################################
+#
+# Load up the names 
+#
+#######################################
+my %index_name_for;
+if ($names) 
+{
+    while (my $line = <NAMES>)
+    {
+        chomp $line;
+        my @data = split(/\s+/, $line);
+        my $index_read = $data[0];
+    
+        foreach my $read (split(/,/, $data[$names_index]) )
+        {
+            $index_name_for{$read} = $index_read;
+        }
+    }
+    close(NAMES);
+}
+if ($verbose) {print "Names loaded: " . scalar %index_name_for . "\n";}
+
+#######################################
+#
+# Step through the list file to the correct otu width
+#
+#######################################
+print join("\t", "OTU", "Reads in OTU #" , "Avg Distance", "Min Dist", "Max Dist", "Cnt < $otu_width", "Cnt > $otu_width") . "\n";
+
+my $otu_number = 0;
+
+while (my $line = <OTUS>)
+{
+	# Each line represents one OTU
+    chomp $line;
+    my @reads_in_otu = split(/\t/, $line);
+
+    #######################################
+    #
+    # Lookup the distances and calculate the metrics for each otu pair
+    #
+    #######################################
+
+    #if ($log_pairs) {print PAIRS join("\t", "OTU A Read", "OTU B Read", "Distance") . "\n";}
+
+    # initialize stats for this otu pair
+    my $sum = 0;
+    my $max = 0;
+    my $min = 1;
+    my $count_pairs = 0;
+    my $count_close = 0;
+    my $count_far = 0;
+    my $count_reads = scalar @reads_in_otu;
+    $otu_number++;
+
+    # Step through all reads in the first otu
+
+    for (my $i =0; $i<= $count_reads - 2; $i++)
+    {
+        # lookup index read name, from names file or just keep it
+        my $read1 = $reads_in_otu[$i];
+        my $index1;
+        if ($names) {$index1 = $index_name_for{$read1}; } else {$index1 = $read1;}
+
+        # Step through all reads in the other otu
+        for (my $j =$i+1; $j<= $count_reads - 1; $j++)
+        {
+            # lookup index read name
+            my $read2 = $reads_in_otu[$j];
+            my $index2;
+            if ($names) { $index2 = $index_name_for{$read2}; } else {$index2 = $read2;}
+
+            # Lookup the pairwise distance
+            my $pairdist;
+            if ($index1 eq $index2) 
+            {
+                $pairdist = 0;
+            } elsif ( (exists $distance_between{$index1}) && (exists $distance_between{$index1}{$index2}) ) {
+                $pairdist = $distance_between{$index1}{$index2};
+            } elsif ( (exists $distance_between{$index2}) && (exists $distance_between{$index2}{$index1}) ) {
+                $pairdist = $distance_between{$index2}{$index1};
+            } else {
+                #outside the threshold
+                # need a better solution
+                $pairdist = 0.8;
+                #print "Unable to locate pairwise distance between $read1 and $read2.\nExiting.\n\n";
+                #exit -1;
+            }
+
+            # Increment the stats
+            $count_pairs++;
+            $sum += $pairdist;
+            if ($pairdist < $min) {$min = $pairdist;}
+            if ($pairdist > $max) {$max = $pairdist;}
+            if ($pairdist <= $otu_width) 
+            {
+                $count_close++;
+                #if ($log_pairs) { print PAIRS join("\t", $read1, $read2, $pairdist) . "\n";}
+            }
+            if ($pairdist > $otu_width) 
+            {
+                $count_far++;
+                if ( ($log_pairs) && ($otu_width >= $log_pairs) ) { print PAIRS join("\t", $read1, $read2, $pairdist) . "\n";}
+            }
+        }
+    }
+    
+    # Calculate the stats for this otu 
+    if ($count_pairs < 1) {next;}  #Can't imagine why this would be
+    my $average = int( ($sum / $count_pairs * 100000) + 0.5) / 100000 ;
+    print join("\t", "OTU $otu_number", $count_reads, $average, $min, $max, $count_close, $count_far) . "\n";
+}
+
+#######################################
+#
+# Close out
+#
+#######################################
+close(OTUS);
+if ($log_pairs) { close(PAIRS); }
+#if (! $found_otu_width) {warn "Did not locate otu width $otu_width in list file $cluster_filename.\nNo distances were calculated.\n"; exit;}

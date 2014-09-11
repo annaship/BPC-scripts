@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+#########################################                                                                                
+#                                                                                                                        
+# qseqstats: get pass/fail information from qseq files
+#                                                                                                                        
+# Usage:  qseqstats qseqfile(s)                                                                   
+#                                                                                                                        
+# Author: David Mark Welch dmarkwelch@mbl.edu                                                                                      
+# Date: 20110714                                                                                                          
+#                                                                                                                        
+# Copyright (C) 2008 Marine Biological Laboratory, Woods Hole, MA                                                        
+#                                                                                                                        
+# This program is free software; you can redistribute it and/or                                                          
+# modify it under the terms of the GNU General Public License                                                            
+# as published by the Free Software Foundation; either version 2                                                         
+# of the License, or (at your option) any later version.                                                                 
+#                                                                                                                        
+# This program is distributed in the hope that it will be useful,                                                        
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                         
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                          
+# GNU General Public License for more details.                                                                           
+#                                                                                                                        
+# For a copy of the GNU General Public License, write to the Free Software                                               
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.                                        
+# or visit http://www.gnu.org/copyleft/gpl.html                                                                          
+#                                                                                                                        
+# Keywords: qseq Illumina                                                                                                  
+#                                                                                                                        
+# Assumptions:                                                                                                           
+#                                                                                                                        
+# Revisions:                                                                                                             
+#                                                                                                                        
+# Programming Notes:                                                                                                     
+#                                                                                                                        
+######################################## 
+
+
+import sys  
+import os.path
+
+if len(sys.argv) == 1:
+    print    """
+    qseqstats returns the number of clusters passing and failing the chastity filter for each tile in the qseq file(s)
+              in a tab delimited file called qseqstats.txt with the format
+              qseqfile      passed    failed
+              
+              If you have paired reads with an index run, gathering statistics from the index run (2) 
+              will be slightly faster.
+
+    Usage:
+
+    qseqstats /qseq/*qseq.txt
+    
+    qseqstats /qseq/s_1_2_11*qseq.txt /qseq/s_1_2_12*qseq.txt
+
+    """
+    sys.exit()
+
+
+outfile = open('qseqstats.txt', 'w')  
+
+for filename in sys.argv[1:]:    
+
+    if os.path.isfile(filename): 
+        try:
+            infile = open(filename, 'r')
+                                 
+            failed=0    
+            passed=0
+    
+            for line in infile:   
+                if line.endswith('1\n'):  
+                    passed += 1           
+                elif line.endswith('0\n'):
+                    failed += 1           
+                else:                     
+                    print '\nSorry, couldn\'t recognize the chastity score in this line:\n'
+                    print line, '\n' 
+
+            outfile.write(filename + '\t' + str(passed) + '\t' +  str(failed) + '\n')  
+            infile.close()  
+
+        except IOError as e:
+            print("({})".format(e))
+    else:
+        print '\nSorry, couldn\'t find', filename, "\n"
+
+
+outfile.close() 
+
+   
+    
+    

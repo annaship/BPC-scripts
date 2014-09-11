@@ -1,0 +1,46 @@
+head	1.2;
+access;
+symbols;
+locks
+	ashipunova:1.2; strict;
+comment	@# @;
+
+
+1.2
+date	2014.06.18.17.02.14;	author ashipunova;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2014.06.18.16.56.54;	author ashipunova;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@use merge file from bin, not from ./
+@
+text
+@#!/bin/bash
+
+echo "This will run the merge script for v4v5 or ITS1 in parallel jobs on a cluster"
+merge_clusterize.sh
+qsub merge_clusterize.sh.sge_script.sh
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d4 1
+a4 1
+./merge_clusterize.sh
+@
