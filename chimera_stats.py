@@ -103,19 +103,19 @@ def print_put(file_basename, all_lines, ref_lines, denovo_lines, ratio, percent_
 
     print file_basename
     # print "all_lines_file_name = %s, ref_lines_file_name = %s, denovo_lines_file_name = %s" % (all_lines_file_name, ref_lines_file_name, denovo_lines_file_name)
-    print "all_lines = %s, ref_lines = %s, denovo_lines = %s" % (all_lines, ref_lines, denovo_lines)
+    print "all_lines = %s, Chimeric ref = %s, Chimeric denovo = %s" % (all_lines, ref_lines, denovo_lines)
     print "ratio = %s" % ratio 
-    print "percent_ref = %s, percent_denovo = %s" % (percent_ref, percent_denovo)
+    print "percent ref = %s, percent denovo = %s" % (percent_ref, percent_denovo)
 
     # --- print frequencies ----
     print "Frequencies for ref: "
-    print "%-10s:  %s" % ("Frequency", "Chimeras found")
+    print "%-10s:  %s" % ("Seq frequency", "Chimeras found")
 
     for tup in freq_ref:
         print "%-10s: %s" % (tup[0], tup[1])
 
     print "Frequencies for denovo: "
-    print "%-10s:  %s" % ("Frequency", "Chimeras found")
+    print "%-10s:  %s" % ("Seq frequency", "Chimeras found")
     # print freq_denovo
     for tup in freq_denovo:
         print "%-10s: %s" % (tup[0], tup[1])
