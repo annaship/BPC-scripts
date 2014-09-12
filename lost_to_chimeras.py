@@ -48,13 +48,14 @@ def get_size(only_in_chimeric):
     for diff_next in only_in_chimeric:  
       try:
           while 1:
-              # print diff_next.next()
               size_chim += int(diff_next.next().split(':')[-1])
       except:
           pass
-    return size_chim
+    return size_chim    
     
-    
+def get_percent(before_chim, chim_size):
+  return float(chim_size) * 100 / float(before_chim)
+  
 
 """ ============ main ============ """
 
@@ -73,12 +74,16 @@ for file_basename in filenames:
     nochimeric_file_name = file_basename + nochimeric_suffix
 
     only_in_chimeric = get_diff(unique_file_name, nochimeric_file_name)
-    size = get_size(only_in_chimeric)
-
+    chim_size = get_size(only_in_chimeric)
+    before_chim =  wccount(file_basename)
+    perc = get_percent(before_chim, chim_size)
+    
     print "-" * 10
     print file_basename
-    print "Total amount of not unique seq: %s" % wccount(file_basename)
-    print "Lost to chimeras: %s" % size
+    print "Total amount of not unique seq: %s" % before_chim
+    print "Lost to chimeras: %s" % chim_size
+    print "Lost to chimeras percentage: %s" % round(perc, 2)
+    
     
 # todo:
 # benchmark count all in not uniq and sum all of sizes notchimeric and get the difference
