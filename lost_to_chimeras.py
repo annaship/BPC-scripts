@@ -31,11 +31,12 @@ def get_basenames(filenames):
 def wccount(filename):
     return subprocess.check_output(['wc', '-l', filename]).split()[0]
 
-def get_diff(unique_file_name, nochimeric_file_name):
-    file1 = open(unique_file_name, 'r')
-    file2 = open(nochimeric_file_name, 'r')
-    file1_content = [l for l in file1.readlines() if l.startswith('>')]
-    file2_content = [l for l in file2.readlines() if l.startswith('>')]
+def get_files_content(file_basename):
+    file_open = open(file_basename, 'r')
+    return  [l for l in file_open.readlines() if l.startswith('>')]
+  
+
+def get_diff(file1_content, file2_content):
     only_in_chimeric = []
     
     diff = difflib.ndiff(file1_content, file2_content)
@@ -73,7 +74,7 @@ for file_basename in filenames:
     unique_file_name = file_basename + unique_suffix
     nochimeric_file_name = file_basename + nochimeric_suffix
 
-    only_in_chimeric = get_diff(unique_file_name, nochimeric_file_name)
+    only_in_chimeric = get_diff(get_files_content(unique_file_name), get_files_content(nochimeric_file_name))
     chim_size = get_size(only_in_chimeric)
     before_chim =  wccount(file_basename)
     perc = get_percent(before_chim, chim_size)
@@ -82,7 +83,7 @@ for file_basename in filenames:
     print file_basename
     print "Total amount of not unique seq: %s" % before_chim
     print "Lost to chimeras: %s" % chim_size
-    print "Lost to chimeras percentage: %s" % round(perc, 2)
+    print "Lost to chimeras (percentage): %s" % round(perc, 2)
     
     
 # todo:
