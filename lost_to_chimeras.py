@@ -45,6 +45,7 @@ def get_size(only_not_chimeric):
     for diff_next in only_not_chimeric:  
       try:
           while 1:
+              """ ...|frequency:46152 """
               size_chim += int(diff_next.next().split(':')[-1])
       except:
           pass
