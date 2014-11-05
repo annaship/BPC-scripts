@@ -784,7 +784,8 @@ if ($stop eq "taxonomy") {exit 0;}
 #######################################
 
 my $selectCountReads =
-"select count($glob_seq_id_id) from $glob_seq_id_table;";
+# "select count($glob_seq_id_id) from $glob_seq_id_table;";
+  "select count(sequence_pdr_info_ill_id) from sequence_pdr_info_ill";
   print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
   print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
   my $selectCountReads_h = ExecuteSelect($selectCountReads);
@@ -864,6 +865,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
     # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
     ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
+    # ExecuteSelectTest($create_temp_seq_table_query);
     
     # get data and put in the table
     
@@ -904,14 +906,14 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
               JOIN rank USING(rank_id)
               JOIN vamps_projects_datasets USING(project_id, dataset_id)
           JOIN (
-              SELECT sequence_uniq_info_ill_id FROM sequence_uniq_info_ill ORDER BY sequence_uniq_info_ill_id
+              SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill ORDER BY sequence_pdr_info_ill_id
               LIMIT $from_here, $chunk_size_seqs
-              ) AS t USING(sequence_uniq_info_ill_id)          
+              ) AS t USING(sequence_pdr_info_ill_id)          
             GROUP BY sequence_comp, project, dataset;
       ";
       &print_query_out("q 6-3) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-      # ExecuteSelectTest
       my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+      # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
     }
     
     # my $CREATE_temp_seq = 
