@@ -779,15 +779,33 @@ if ($stop eq "taxonomy") {exit 0;}
 
 #######################################
 #
+# SELECT count to use in for vamps_sequences and export
+#
+#######################################
+
+my $selectCountReads =
+"select count($glob_seq_id_id) from $glob_seq_id_table;";
+  print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+  print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+  my $selectCountReads_h = ExecuteSelect($selectCountReads);
+# my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
+
+my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
+print "1) selectCountReads_int = $selectCountReads_int\n";
+print LOG "1) selectCountReads_int = $selectCountReads_int\n";
+
+#######################################
+#
 # SELECT data for vamps_sequences
 #
 #######################################
 if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") )
 {
+  
   # ON ENV454
   # 1) increase join_buffer - doesn't work
   # 2) drop vamps_sequences_transfer_temp
-  # 3) create vamps_sequences_transfer_temp
+  # 3) create vamps_sequences_transfer_temp by chunks
   # 4) decrease join_buffer - doesn't work
   # 5) dump vamps_sequences_transfer_temp on disc
   # change ON VAMPS  
@@ -820,7 +838,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     # 2) drop vamps_sequences_transfer table on env454
     my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
     &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
-    `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
     ExecuteInsert_newbpcdb2($drop_temp_seq);
     
     # q 6-3)
@@ -843,18 +861,17 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
             rep_id int(10) unsigned NOT NULL COMMENT 'sequence_pdr_info_ill_id AS rep_id'
           )  ;
     ";
+    &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
+    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
     
     # get data and put in the table
     
     # my $chunk_size_seqs  = 250000;  # dump data to transfer files 250K records at a time FOR SEQS
     # my $sourceHost = "newbpcdb2";
-    my $selectCountReads =
-    "select count(sequence_pdr_info_ill_id) from sequence_pdr_info_ill;";
-      &print_query_out("q 6-3a) selectCountReads", $sourceHost." ".$selectCountReads);      
-    # my $selectCountReads_h = ExecuteSelect($selectCountReads);
-    # my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
-  # todo: get from db, once for this and vamps_exports
-    my $selectCountReads_int = 139660717;
+
+    print "2) selectCountReads_int = $selectCountReads_int\n";
+    print LOG "2) selectCountReads_int = $selectCountReads_int\n";
 
     my $from_here   = 0;
     my $reads_left  = int($selectCountReads_int);
@@ -870,10 +887,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
       print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
 
-
-     $reads_left -= $chunk_size_seqs;
-     $from_here += $chunk_size_seqs;
-
+      $reads_left -= $chunk_size_seqs;
+      $from_here += $chunk_size_seqs;
     }
 
     sub insert_chunk()
@@ -1067,15 +1082,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     # SELECT the data for vamps_export_transfer.txt_XX
     #
 
-    # q 7a)
-    my $selectCountReads =
-    "select count($glob_seq_id_id) from $glob_seq_id_table;";
-      print "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
-      print LOG "q 7a) selectCountReads = $sourceHost.$selectCountReads\n";
-    my $selectCountReads_h = ExecuteSelect($selectCountReads);
-    my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
-    print "selectCountReads_int = $selectCountReads_int\n";
-    print LOG "selectCountReads_int = $selectCountReads_int\n";
+    print "3) selectCountReads_int = $selectCountReads_int\n";
+    print LOG "3) selectCountReads_int = $selectCountReads_int\n";
 
     my $from_here   = 0;
     my $reads_left  = int($selectCountReads_int);
@@ -1817,7 +1825,7 @@ sub ExecuteSelectTest
 sub ExecuteInsert
 {
   my $insertSQL = shift;
-  print "EEE11: I'm in ExecuteInsert\n";
+  # print "EEE11: I'm in ExecuteInsert\n";
   # print "$insertSQL\n";
    # if ($test_only == 1);
   my $insertSQL_h = $dbhVamps->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
