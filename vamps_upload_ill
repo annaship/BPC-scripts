@@ -825,52 +825,127 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     
     # q 6-3)
     # 3) create vamps_sequences_transfer table on env454 (5 h)
-    my $CREATE_temp_seq = 
-    "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
-        id int(11) unsigned NOT NULL AUTO_INCREMENT,
-        seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
-        frequency double NOT NULL COMMENT 'sum seq_count (for this seq/project/dataset across all lines and runs) divided on dataset_count',
-        rep_id char(15) NOT NULL DEFAULT '',
-        project_dataset varchar(100) NOT NULL DEFAULT '',
-        PRIMARY KEY (id)
-      )     
-      SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) as seq_count,
-            0 as frequency, gast_distance as distance, $glob_seq_id_id as rep_id
-            from $sequence_ill_table
-            join $glob_seq_id_table using($sequence_ill_id)
-            join $run_info_ill_table using($run_info_ill_id)
-            JOIN $seq_tax_ill_table using($sequence_ill_id)
-            JOIN taxonomy USING(taxonomy_id)
-            JOIN rank USING(rank_id)
-            JOIN vamps_projects_datasets USING(project_id, dataset_id)
-          GROUP BY sequence_comp, project, dataset
+    # Tue Nov  4 15:53:28 EST 2014 -"- by chunks
+    
+    # create the table
+    my $create_temp_seq_table_query = "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
+            id int(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            frequency double NOT NULL DEFAULT 0 COMMENT 'sum seq_count (for this seq/project/dataset across all lines and runs) divided by dataset_count',
+            project_dataset varchar(100) NOT NULL DEFAULT '',
+            sequence_comp longblob NOT NULL,
+            project varchar(32) NOT NULL,
+            dataset varchar(64) NOT NULL DEFAULT '',
+            taxonomy varchar(300) NOT NULL DEFAULT '',
+            refhvr_ids text NOT NULL,
+            rank varchar(32) NOT NULL DEFAULT '',
+            seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
+            distance decimal(7,5) DEFAULT NULL COMMENT 'gast_distance AS distance',
+            rep_id int(10) unsigned NOT NULL COMMENT 'sequence_pdr_info_ill_id AS rep_id'
+          )  ;
     ";
-    # 
+    
+    # get data and put in the table
+    
+    # my $chunk_size_seqs  = 250000;  # dump data to transfer files 250K records at a time FOR SEQS
+    # my $sourceHost = "newbpcdb2";
+    my $selectCountReads =
+    "select count(sequence_pdr_info_ill_id) from sequence_pdr_info_ill;";
+      &print_query_out("q 6-3a) selectCountReads", $sourceHost." ".$selectCountReads);      
+    # my $selectCountReads_h = ExecuteSelect($selectCountReads);
+    # my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
+  # todo: get from db, once for this and vamps_exports
+    my $selectCountReads_int = 139660717;
+
+    my $from_here   = 0;
+    my $reads_left  = int($selectCountReads_int);
+
+    while($reads_left > 0)
+    {
+      print "START get_reads seq!!!\n";
+      print LOG "START get_reads seq!!!\n";
+      
+      my $start_get_reads_seq = time;
+      &insert_chunk();
+      my $end_get_reads_seq   = time;
+      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+
+
+     $reads_left -= $chunk_size_seqs;
+     $from_here += $chunk_size_seqs;
+
+    }
+
+    sub insert_chunk()
+    {
+      my $insert_select_chunck_seq = "INSERT IGNORE INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id)
+        SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
+              gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id
+              FROM sequence_ill
+              JOIN sequence_pdr_info_ill USING(sequence_ill_id)
+              JOIN run_info_ill USING(run_info_ill_id)
+              JOIN sequence_uniq_info_ill USING(sequence_ill_id)
+              JOIN taxonomy USING(taxonomy_id)
+              JOIN rank USING(rank_id)
+              JOIN vamps_projects_datasets USING(project_id, dataset_id)
+          JOIN (
+              SELECT sequence_uniq_info_ill_id FROM sequence_uniq_info_ill ORDER BY sequence_uniq_info_ill_id
+              LIMIT $from_here, $chunk_size_seqs
+              ) AS t USING(sequence_uniq_info_ill_id)          
+            GROUP BY sequence_comp, project, dataset;
+      ";
+      &print_query_out("q 6-3) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
+      # ExecuteSelectTest
+      my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+    }
+    
+    # my $CREATE_temp_seq = 
     # "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
     #     id int(11) unsigned NOT NULL AUTO_INCREMENT,
-    #     seq_count int(11) unsigned NOT NULL,
-    #     frequency double NOT NULL,
+    #     seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
+    #     frequency double NOT NULL COMMENT 'sum seq_count (for this seq/project/dataset across all lines and runs) divided on dataset_count',
     #     rep_id char(15) NOT NULL DEFAULT '',
     #     project_dataset varchar(100) NOT NULL DEFAULT '',
     #     PRIMARY KEY (id)
-    #   ) 
-    #   SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids,  rank, count(read_id) as seq_count,
-    #         count(read_id) / dataset_count as frequency, distance, read_id as rep_id
-    #         FROM trimseq
-    #         JOIN trimsequence using(trimsequence_id)
-    #         LEFT JOIN tagtax USING(read_id)
-    #         JOIN gast_concat USING(read_id)
-    #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
+    #   )     
+    #   SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) as seq_count,
+    #         0 as frequency, gast_distance as distance, $glob_seq_id_id as rep_id
+    #         from $sequence_ill_table
+    #         join $glob_seq_id_table using($sequence_ill_id)
+    #         join $run_info_ill_table using($run_info_ill_id)
+    #         JOIN $seq_tax_ill_table using($sequence_ill_id)
     #         JOIN taxonomy USING(taxonomy_id)
     #         JOIN rank USING(rank_id)
-    #       GROUP BY sequence_comp, project, dataset";
-    #       # ; SET SESSION join_buffer_size = $join_buffer_size_old;
-      
-    
-          
-    &print_query_out("q 6-3) CREATE_temp_seq", $sourceHost." ".$CREATE_temp_seq);
-    ExecuteInsert_newbpcdb2($CREATE_temp_seq);
-    
+    #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
+    #       GROUP BY sequence_comp, project, dataset
+    # ";
+    # # 
+    # # "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
+    # #     id int(11) unsigned NOT NULL AUTO_INCREMENT,
+    # #     seq_count int(11) unsigned NOT NULL,
+    # #     frequency double NOT NULL,
+    # #     rep_id char(15) NOT NULL DEFAULT '',
+    # #     project_dataset varchar(100) NOT NULL DEFAULT '',
+    # #     PRIMARY KEY (id)
+    # #   ) 
+    # #   SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids,  rank, count(read_id) as seq_count,
+    # #         count(read_id) / dataset_count as frequency, distance, read_id as rep_id
+    # #         FROM trimseq
+    # #         JOIN trimsequence using(trimsequence_id)
+    # #         LEFT JOIN tagtax USING(read_id)
+    # #         JOIN gast_concat USING(read_id)
+    # #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
+    # #         JOIN taxonomy USING(taxonomy_id)
+    # #         JOIN rank USING(rank_id)
+    # #       GROUP BY sequence_comp, project, dataset";
+    # #       # ; SET SESSION join_buffer_size = $join_buffer_size_old;
+    #   
+    # 
+    #       
+    # &print_query_out("q 6-3) CREATE_temp_seq", $sourceHost." ".$CREATE_temp_seq);
+    # ExecuteInsert_newbpcdb2($CREATE_temp_seq);
+    # Tue Nov  4 15:54:19 EST 2014
+
     # q 6-3a)
     # 3) update vamps_sequences_transfer table on env454 - add frequencies
     my $UPDATE_temp_seq = 
@@ -1003,7 +1078,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     print LOG "selectCountReads_int = $selectCountReads_int\n";
 
     my $from_here   = 0;
-    my $reads_left   = int($selectCountReads_int);
+    my $reads_left  = int($selectCountReads_int);
     my $file_number = 1;
     my $out_file    = $readsFile . "_" . $file_number;
     while($reads_left > 0)
@@ -1725,7 +1800,7 @@ sub ExecuteSelectTest
 {
   my $selectSQL = shift;
 
-  # print "$selectSQL\n" if ($test_only == 1);
+  print "$selectSQL\n" if ($test_only == 1);
   my $selectSQL_h = $dbhSource->prepare($selectSQL) or warn print LOG "Unable to prepare statement: $selectSQL. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
   $selectSQL_h->execute or warn print LOG "Unable to execute SQL statement: $selectSQL.  Error: " . $selectSQL_h->errstr . " (" . (localtime) . ")\n";
 
