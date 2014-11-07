@@ -509,7 +509,7 @@ if ($start eq "projectdataset")
         LEFT JOIN $source_dataset_table USING(dataset_id)
         GROUP BY project, dataset
       ";
-        # "INSERT IGNORE INTO $final_project_dataset_counts_table
+        # "INSERT INTO $final_project_dataset_counts_table
         # SELECT 0, project, dataset, count(*), 0, 'unknown', dataset
         # FROM $source_longs_tax_table
         # GROUP BY project, dataset";
@@ -708,7 +708,7 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       # field names USING the "?" syntax.
       # q 4)
       my $insertQuery =
-        "INSERT IGNORE INTO $tmp_summed_taxes_table
+        "INSERT INTO $tmp_summed_taxes_table
         SELECT DISTINCT 0, concat_ws(';', $ranks_list) as taxonomy,
         sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
         ? AS rank, project, dataset, concat(project,'--',dataset), classifier
@@ -732,7 +732,7 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
     CreateEmpty($tmp_distinct_taxa_table);
     # q 5)
     my $insertDistinctTaxaQuery =
-      "INSERT IGNORE INTO $tmp_distinct_taxa_table
+      "INSERT INTO $tmp_distinct_taxa_table
       SELECT DISTINCT 0, taxon_string, rank,
       (CASE WHEN (taxon_string LIKE '%;NA' or taxon_string LIKE '%_NA') OR rank = 7 THEN 0 ELSE 1 END) AS num_kids
       FROM $tmp_summed_taxes_table
@@ -741,7 +741,7 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       # WHERE taxon_string not LIKE '%;NA;NA' and taxon_string not LIKE '%_NA;%_NA' and taxon_string != 'NA;NA'";
 
     #         my $insertDistinctTaxaQuery =
-    #         "INSERT IGNORE INTO $tmp_distinct_taxa_table SELECT DISTINCT taxon_string, rank,
+    #         "INSERT INTO $tmp_distinct_taxa_table SELECT DISTINCT taxon_string, rank,
     #         (CASE WHEN taxon_string LIKE '%;NA' or rank = 7 THEN 0 ELSE 1 END) as num_kids
     #         FROM $tmp_summed_taxes_table
     #         WHERE taxon_string not LIKE '%;NA;NA' and taxon_string != 'NA;NA'";
@@ -1040,7 +1040,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     ExecuteInsert($create_vamps_sequences_transfer);
     # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
     # q 6-10)
-    my $insert_vamps_sequences_transfer = 'INSERT IGNORE INTO vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
+    my $insert_vamps_sequences_transfer = 'insert into vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
       select DISTINCT uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
       from vamps_sequences_transfer_temp';
     &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
@@ -1574,8 +1574,8 @@ if ( ($start eq "rollback_illumina") )
 # Close the database connections
 #
 #######################################
-$dbhSource->disconnect;
-$dbhVamps->disconnect;
+# $dbhSource->disconnect;
+# $dbhVamps->disconnect;
 
 #######################################
 #
@@ -2090,7 +2090,7 @@ sub copy_norm_table_to_transfer()
     print "table_name = $table_name\n" if ($test_only == 1);
     my $transfer_name = $table_name."_transfer";
     print "transfer_name = $transfer_name\n" if ($test_only == 1);
-    my $copy_query2 = "INSERT IGNORE INTO $transfer_name SELECT DISTINCT * FROM $table_name;";
+    my $copy_query2 = "INSERT INTO $transfer_name SELECT DISTINCT * FROM $table_name;";
     print "copy_query2 = $copy_query2\n==========\n" if ($test_only == 1);
     &prep_exec_query($dbhVamps, $copy_query2) unless ($test_only == 1);
   }
@@ -2098,7 +2098,7 @@ sub copy_norm_table_to_transfer()
 
 
   # /* 9:37:09 AM  vampsdb */ CREATE TABLE `new_superkingdom_copy` (   `superkingdom_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,   `superkingdom` char(10) NOT NULL DEFAULT '',   PRIMARY KEY (`superkingdom_id`),   UNIQUE KEY `superkingdom` (`superkingdom`) ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=latin1;
-  # /* 9:37:10 AM  vampsdb */ INSERT IGNORE INTO `new_superkingdom_copy` SELECT * FROM `new_superkingdom`;
+  # /* 9:37:10 AM  vampsdb */ INSERT INTO `new_superkingdom_copy` SELECT * FROM `new_superkingdom`;
 
 #######################################
 #
