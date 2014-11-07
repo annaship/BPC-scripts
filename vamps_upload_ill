@@ -1040,9 +1040,9 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     ExecuteInsert($create_vamps_sequences_transfer);
     # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
     # q 6-10)
-    my $insert_vamps_sequences_transfer = 'insert into vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
-      select DISTINCT uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
-      from vamps_sequences_transfer_temp';
+    my $insert_vamps_sequences_transfer = 'INSERT INTO vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
+      select DISTINCT uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count), frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
+      from vamps_sequences_transfer_temp GROUP BY sequence_comp, project, dataset';
     &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
     ExecuteInsert($insert_vamps_sequences_transfer);
 
