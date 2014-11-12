@@ -779,21 +779,60 @@ if ($stop eq "taxonomy") {exit 0;}
 
 #######################################
 #
-# SELECT count to use in for vamps_sequences and export
+# SELECT count to use in for export
+#
+#######################################
+sub select_cnt_for_limit()
+{
+  my $table_name = shift;
+  my $table_id = $table_name . "_id";
+  my $selectCountReads =
+  # "select count($glob_seq_id_id) from $glob_seq_id_table;";
+    "select count($table_id) from $table_name";
+    print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+    print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+    # my $selectCountReads_h = ExecuteSelect($selectCountReads);
+  my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
+
+  my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
+  print "1) selectCountReads_int = $selectCountReads_int\n";
+  print LOG "1) selectCountReads_int = $selectCountReads_int\n";
+  return $selectCountReads_int;
+}
+
+# my $selectCountReads =
+# # "select count($glob_seq_id_id) from $glob_seq_id_table;";
+#   "select count(sequence_pdr_info_ill_id) from sequence_pdr_info_ill";
+#   print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+#   print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+#   my $selectCountReads_h = ExecuteSelect($selectCountReads);
+# # my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
+# 
+# my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
+
+my $selectCountReads_int = &select_cnt_for_limit("project");
+
+print "1) selectCountReads_int = $selectCountReads_int\n";
+print LOG "1) selectCountReads_int = $selectCountReads_int\n";
+
+
+#######################################
+#
+# SELECT count to use in for vamps_sequence
 #
 #######################################
 
-my $selectCountReads =
+my $selectCountProject =
 # "select count($glob_seq_id_id) from $glob_seq_id_table;";
-  "select count(sequence_pdr_info_ill_id) from sequence_pdr_info_ill";
-  print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-  print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-  my $selectCountReads_h = ExecuteSelect($selectCountReads);
-# my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
+  "select count(project_id) from project";
+  print "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
+  print LOG "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
+  my $selectCountProject_h = ExecuteSelect($selectCountProject);
+# my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
 
-my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
-print "1) selectCountReads_int = $selectCountReads_int\n";
-print LOG "1) selectCountReads_int = $selectCountReads_int\n";
+my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
+print "1) selectCountProject_int = $selectCountProject_int\n";
+print LOG "1) selectCountProject_int = $selectCountProject_int\n";
 
 #######################################
 #
@@ -869,14 +908,14 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     
     # get data and put in the table
     
-    # my $chunk_size_seqs  = 250000;  # dump data to transfer files 250K records at a time FOR SEQS
+    my $chunk_size_seqs  = 1;  # dump data to transfer files 1 project records at a time FOR SEQS
     # my $sourceHost = "newbpcdb2";
 
-    print "2) selectCountReads_int = $selectCountReads_int\n";
-    print LOG "2) selectCountReads_int = $selectCountReads_int\n";
+    print "2) selectCountProject_int = $selectCountProject_int\n";
+    print LOG "2) selectCountProject_int = $selectCountProject_int\n";
 
     my $from_here   = 0;
-    my $reads_left  = int($selectCountReads_int);
+    my $reads_left  = int($selectCountProject_int);
 
     while($reads_left > 0)
     {
@@ -905,13 +944,17 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
               JOIN taxonomy USING(taxonomy_id)
               JOIN rank USING(rank_id)
               JOIN vamps_projects_datasets USING(project_id, dataset_id)
-          JOIN (
-              SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill ORDER BY sequence_pdr_info_ill_id
-              LIMIT $from_here, $chunk_size_seqs
-              ) AS t USING(sequence_pdr_info_ill_id)          
+              JOIN (
+                  SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
+                    JOIN run_info_ill USING(run_info_ill_id)
+                    JOIN (
+                      SELECT distinct project_id FROM vamps_projects_datasets ORDER BY project_id
+                      LIMIT $from_here, $chunk_size_seqs
+                      ) AS t USING(project_id)          
+                  ) AS t USING(sequence_pdr_info_ill_id)              
             GROUP BY sequence_comp, project, dataset;
       ";
-      &print_query_out("q 6-3) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
+      &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
       my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
       # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
     }
