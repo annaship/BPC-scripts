@@ -85,7 +85,7 @@ my $tblSuffixOld = "_previous";
 my $fileSuffix   = ".txt";
 my $subdir       = "exports/";
 my $chunk_size_reads = 500000;  # dump data to transfer files 500K records at a time FOR READS
-my $chunk_size_seqs  = 250000;  # dump data to transfer files 250K records at a time FOR SEQS
+# my $chunk_size_seqs  = 250000;  # dump data to transfer files 250K records at a time FOR SEQS
 my $do_not_analyze   = 0;
 my $test_only        = 0;
 my $illSuffix        = "_ill";
@@ -547,7 +547,6 @@ if ($start eq "projectdataset")
     SwapNew($tmp_project_dataset_table, $final_project_dataset_table, $previous_project_dataset_table);
     
     # add code here to update the *NEW* (as of 2012-04-26) vamps_datasets_date table after swapping  -AAV
-    #  insert ignore into vamps_datasets_date select 0,project,dataset,curdate() from vamps_projects_datasets
     my $insert_date_query = "INSERT IGNORE into vamps_datasets_date SELECT 0,project,dataset,curdate() FROM vamps_projects_datasets";
     ExecuteInsert($insert_date_query);
   }
@@ -583,27 +582,6 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
     GROUP BY project, dataset, taxonomy
     ";
     
-    # "
-    # SELECT DISTINCT 0, project, dataset, taxonomy, rank, count(read_id) AS cnt,
-    #   count(read_id) / dataset_count as frequency, dataset_count, 'GAST'
-    #   FROM trimseq 
-    #   LEFT JOIN $source_tax_table USING(read_id)
-    #   JOIN $source_tax_assignment_table USING(read_id)
-    #   JOIN $final_project_dataset_counts_table USING (project_id, dataset_id)
-    #   JOIN $source_taxonomy_table USING(taxonomy_id)
-    #   JOIN $source_rank_table USING(rank_id)
-    # GROUP BY project, dataset, taxonomy
-    # UNION
-    # SELECT DISTINCT 0, project, dataset, taxonomy, rank, count(read_id) as cnt,
-    #     count(read_id) / vamps_projects_datasets.dataset_count as frequency, vamps_projects_datasets.dataset_count, 'RDP'
-    # FROM $source_longs_tax_table
-    #   LEFT JOIN $final_project_dataset_counts_table as vamps_projects_datasets USING (project_id, dataset_id)
-    #   LEFT JOIN $source_taxonomy_table USING(taxonomy_id)
-    #   LEFT JOIN $source_rank_table USING(rank_id)
-    # GROUP BY project, dataset, taxonomy;
-    # ";
-
-
     print "q 3) selectCube = $sourceHost.$selectCube\n";
     print LOG "q 3) selectCube = $sourceHost.$selectCube\n";
     my $selectCube_h = ExecuteSelect($selectCube);
@@ -789,32 +767,16 @@ sub select_cnt_for_limit()
   my $selectCountReads =
   # "select count($glob_seq_id_id) from $glob_seq_id_table;";
     "select count($table_id) from $table_name";
-    print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-    print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-    # my $selectCountReads_h = ExecuteSelect($selectCountReads);
-  my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
+  print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+  print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+  my $selectCountReads_h = ExecuteSelect($selectCountReads);
+  # my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
 
   my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
   print "1) selectCountReads_int = $selectCountReads_int\n";
   print LOG "1) selectCountReads_int = $selectCountReads_int\n";
   return $selectCountReads_int;
 }
-
-# my $selectCountReads =
-# # "select count($glob_seq_id_id) from $glob_seq_id_table;";
-#   "select count(sequence_pdr_info_ill_id) from sequence_pdr_info_ill";
-#   print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-#   print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-#   my $selectCountReads_h = ExecuteSelect($selectCountReads);
-# # my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
-# 
-# my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
-
-# my $selectCountReads_int = &select_cnt_for_limit("project");
-# 
-# print "1) selectCountReads_int = $selectCountReads_int\n";
-# print LOG "1) selectCountReads_int = $selectCountReads_int\n";
-
 
 #######################################
 #
@@ -828,7 +790,7 @@ my $selectCountProject =
   print "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
   print LOG "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
   # my $selectCountProject_h = ExecuteSelect($selectCountProject);
-my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
+  my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
 
 my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
 print "1) selectCountProject_int = $selectCountProject_int\n";
@@ -936,24 +898,24 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     sub insert_chunk()
     {
       my $insert_select_chunck_seq = "INSERT IGNORE INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id)
-        SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
-              gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id
-              FROM sequence_ill
-              JOIN sequence_pdr_info_ill USING(sequence_ill_id)
-              JOIN run_info_ill USING(run_info_ill_id)
-              JOIN sequence_uniq_info_ill USING(sequence_ill_id)
-              JOIN taxonomy USING(taxonomy_id)
-              JOIN rank USING(rank_id)
-              JOIN vamps_projects_datasets USING(project_id, dataset_id)
-              JOIN (
-                  SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
+              SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
+                    gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id
+                    FROM sequence_ill
+                    JOIN sequence_pdr_info_ill USING(sequence_ill_id)
                     JOIN run_info_ill USING(run_info_ill_id)
+                    JOIN sequence_uniq_info_ill USING(sequence_ill_id)
+                    JOIN taxonomy USING(taxonomy_id)
+                    JOIN rank USING(rank_id)
+                    JOIN vamps_projects_datasets USING(project_id, dataset_id)
                     JOIN (
-                      SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
-                      LIMIT $from_here, $chunk_size_seqs
-                      ) AS t USING(project_id)          
-                  ) AS t USING(sequence_pdr_info_ill_id)              
-            GROUP BY sequence_comp, project, dataset;
+                        SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
+                          JOIN run_info_ill USING(run_info_ill_id)
+                          JOIN (
+                            SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
+                            LIMIT $from_here, $chunk_size_seqs
+                            ) AS t USING(project_id)          
+                        ) AS t USING(sequence_pdr_info_ill_id)              
+                  GROUP BY sequence_ill_id, project_id, dataset_id
       ";
       &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
       # my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
@@ -980,28 +942,6 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
     #       GROUP BY sequence_comp, project, dataset
     # ";
-    # # 
-    # # "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
-    # #     id int(11) unsigned NOT NULL AUTO_INCREMENT,
-    # #     seq_count int(11) unsigned NOT NULL,
-    # #     frequency double NOT NULL,
-    # #     rep_id char(15) NOT NULL DEFAULT '',
-    # #     project_dataset varchar(100) NOT NULL DEFAULT '',
-    # #     PRIMARY KEY (id)
-    # #   ) 
-    # #   SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids,  rank, count(read_id) as seq_count,
-    # #         count(read_id) / dataset_count as frequency, distance, read_id as rep_id
-    # #         FROM trimseq
-    # #         JOIN trimsequence using(trimsequence_id)
-    # #         LEFT JOIN tagtax USING(read_id)
-    # #         JOIN gast_concat USING(read_id)
-    # #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
-    # #         JOIN taxonomy USING(taxonomy_id)
-    # #         JOIN rank USING(rank_id)
-    # #       GROUP BY sequence_comp, project, dataset";
-    # #       # ; SET SESSION join_buffer_size = $join_buffer_size_old;
-    #   
-    # 
     #       
     # &print_query_out("q 6-3) CREATE_temp_seq", $sourceHost." ".$CREATE_temp_seq);
     # ExecuteInsert_newbpcdb2($CREATE_temp_seq);
@@ -1207,69 +1147,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
             print READS join("\t", @row) . "\n";
         }
         close(READS);
-    }
-    
-    # my %last_ids_hash = &get_ids_from_file($last_ids_file_name);
-    # my $file_name = shift;
-    
-    # # q 7)
-    #  my $selectReads =
-    #  "
-    #  SELECT DISTINCT 0, $glob_seq_id_id as read_id, project, dataset,
-    #    refhvr_ids, gast_distance as distance, taxonomy, uncompress(sequence_comp) as sequence, rank, '0000-00-00'
-    #    FROM $glob_seq_id_table
-    #    join $run_info_ill_table using($run_info_ill_id)
-    #    LEFT JOIN $seq_tax_ill_table using($sequence_ill_id)
-    #    JOIN $sequence_ill_table using($sequence_ill_id)
-    #    JOIN taxonomy USING(taxonomy_id)
-    #    JOIN rank USING(rank_id)
-    #    JOIN vamps_projects_datasets USING(project_id, dataset_id)
-    #    limit $from_here, $chunk_size_reads
-    #  ";
-    #  # "
-    #  # SELECT DISTINCT 0, read_id, project, dataset,
-    #  #   refhvr_ids, distance, taxonomy, uncompress(sequence_comp) as sequence, rank, date_trimmed
-    #  #   FROM trimseq 
-    #  #   JOIN trimsequence using(trimsequence_id)
-    #  #   JOIN $source_gast_table USING(read_id)
-    #  #   LEFT JOIN $source_tax_table USING(read_id)
-    #  #   JOIN $source_tax_assignment_table USING(read_id)
-    #  #   JOIN $source_taxonomy_table USING(taxonomy_id)
-    #  #   JOIN $source_rank_table USING(rank_id)
-    #  #   JOIN $final_project_dataset_counts_table USING(project_id, dataset_id)
-    #  # ";
-    #    print "q 7) selectReads = $sourceHost.$selectReads\n";
-    #    print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
-    #  my $selectReads_h = ExecuteSelect($selectReads);
-
-  #   # q 7b)
-  #   # step through and export individual pieces
-  #   my $i = 1;
-  #   my $file_number = 1;
-  #   my $out_file = $readsFile . "_" . $file_number;
-  #   open(READS, ">$out_file");
-  #   print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
-  # 
-  #   while(my @row = $selectReads_h->fetchrow_array)
-  #   {
-  #     # if at a multiple of 500K, create a new output file
-  #     if ( int($i / $chunk_size_reads) == ($i / $chunk_size_reads) )
-  #     {
-  #       # Close out the last one and import it to the database
-  #       close(READS);
-  # 
-  #       # open up the new one
-  #       $file_number++;
-  #       $out_file = $readsFile . "_" . $file_number;
-  #       open(READS, ">$out_file");
-  #       print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
-  #     }
-  #     print READS join("\t", @row) . "\n";
-  #     $i++;
-  #   }
-  #   PrintUpdate("There should be $file_number files of type ${readsFile}_XX in export directory\n");
-  #   # Finish out the last one
-  #   close(READS);
+    }    
   }
 
   if($import)
