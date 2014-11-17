@@ -30,6 +30,7 @@
 #
 # Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
 #            2013-12-20 by Anna Shipunova. Fix seq_counts to sum in vamps_sequences_transfer_temp
+#            2014-11-17 ASh. Get the sequence table by chunks.
 #
 # Programming Notes:
 #    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
@@ -789,8 +790,8 @@ my $selectCountProject =
   "select count(distinct project_id) from vamps_projects_datasets";
   print "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
   print LOG "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
-  # my $selectCountProject_h = ExecuteSelect($selectCountProject);
-  my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
+  my $selectCountProject_h = ExecuteSelect($selectCountProject);
+  # my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
 
 my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
 print "1) selectCountProject_int = $selectCountProject_int\n";
@@ -841,8 +842,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
     &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
     # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-    # ExecuteInsert_newbpcdb2($drop_temp_seq);
-    ExecuteSelectTest($drop_temp_seq);
+    ExecuteInsert_newbpcdb2($drop_temp_seq);
+    # ExecuteSelectTest($drop_temp_seq);
     
     # q 6-3)
     # 3) create vamps_sequences_transfer table on env454 (5 h)
@@ -866,8 +867,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     ";
     &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
     # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-    # ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
-    ExecuteSelectTest($create_temp_seq_table_query);
+    ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
+    # ExecuteSelectTest($create_temp_seq_table_query);
     
     # get data and put in the table
     
@@ -880,24 +881,9 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     my $from_here   = 0;
     my $reads_left  = int($selectCountProject_int);
 
-    while($reads_left > 0)
-    {
-      print "START get_reads seq!!!\n";
-      print LOG "START get_reads seq!!!\n";
-      
-      my $start_get_reads_seq = time;
-      &insert_chunk();
-      my $end_get_reads_seq   = time;
-      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
-      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
-
-      $reads_left -= $chunk_size_seqs;
-      $from_here += $chunk_size_seqs;
-    }
-
     sub insert_chunk()
     {
-      my $insert_select_chunck_seq = "INSERT IGNORE INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id)
+      my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id)
               SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
                     gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id
                     FROM sequence_ill
@@ -918,34 +904,24 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
                   GROUP BY sequence_ill_id, project_id, dataset_id
       ";
       &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-      # my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
-      my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
+      my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+      # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
     }
-    
-    # my $CREATE_temp_seq = 
-    # "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
-    #     id int(11) unsigned NOT NULL AUTO_INCREMENT,
-    #     seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
-    #     frequency double NOT NULL COMMENT 'sum seq_count (for this seq/project/dataset across all lines and runs) divided on dataset_count',
-    #     rep_id char(15) NOT NULL DEFAULT '',
-    #     project_dataset varchar(100) NOT NULL DEFAULT '',
-    #     PRIMARY KEY (id)
-    #   )     
-    #   SELECT DISTINCT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) as seq_count,
-    #         0 as frequency, gast_distance as distance, $glob_seq_id_id as rep_id
-    #         from $sequence_ill_table
-    #         join $glob_seq_id_table using($sequence_ill_id)
-    #         join $run_info_ill_table using($run_info_ill_id)
-    #         JOIN $seq_tax_ill_table using($sequence_ill_id)
-    #         JOIN taxonomy USING(taxonomy_id)
-    #         JOIN rank USING(rank_id)
-    #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
-    #       GROUP BY sequence_comp, project, dataset
-    # ";
-    #       
-    # &print_query_out("q 6-3) CREATE_temp_seq", $sourceHost." ".$CREATE_temp_seq);
-    # ExecuteInsert_newbpcdb2($CREATE_temp_seq);
-    # Tue Nov  4 15:54:19 EST 2014
+
+    while($reads_left > 0)
+    {
+      print "START get_reads seq!!!\n";
+      print LOG "START get_reads seq!!!\n";
+      
+      my $start_get_reads_seq = time;
+      &insert_chunk();
+      my $end_get_reads_seq   = time;
+      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+
+      $reads_left -= $chunk_size_seqs;
+      $from_here += $chunk_size_seqs;
+    }
 
     # q 6-3a)
     # 3) update vamps_sequences_transfer table on env454 - add frequencies
@@ -1012,21 +988,22 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       `rep_id` char(15) NOT NULL,
       `project_dataset` varchar(100) NOT NULL DEFAULT '',
       PRIMARY KEY (`id`),
+      UNIQUE KEY rep_id (rep_id)
       KEY `project_dataset` (`project`,`dataset`),
       KEY `dataset` (`dataset`),
       KEY `sequence` (`sequence`(350)),
-      UNIQUE KEY project_dataset_conc_seq (`project_dataset`,`sequence`(550)),
       KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)
     ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";
     # KEY `project_dataset_conc_seq` (`project_dataset`,`sequence`(350)),
+    # UNIQUE KEY project_dataset_conc_seq (`project_dataset`,`sequence`(550)),
 
     &print_query_out("q 6-9) create_vamps_sequences_transfer", $vampsHost." ".$create_vamps_sequences_transfer);
     ExecuteInsert($create_vamps_sequences_transfer);
     # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
     # q 6-10)
     my $insert_vamps_sequences_transfer = 'INSERT INTO vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
-      select DISTINCT uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count), frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
-      from vamps_sequences_transfer_temp GROUP BY sequence_comp, project, dataset';
+      select uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset, concat(project, "--", dataset) as project_dataset
+      from vamps_sequences_transfer_temp';
     &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
     ExecuteInsert($insert_vamps_sequences_transfer);
 
