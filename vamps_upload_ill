@@ -554,274 +554,6 @@ if ($start eq "projectdataset")
 }
 if ($stop eq "projectdataset") {exit 0;}
 
-#######################################
-#
-# SELECT count to use in for export
-#
-#######################################
-sub select_cnt_for_limit()
-{
-  my $table_name = shift;
-  my $table_id = $table_name . "_id";
-  my $selectCountReads =
-  # "select count($glob_seq_id_id) from $glob_seq_id_table;";
-    "select count($table_id) from $table_name";
-  print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-  print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-  my $selectCountReads_h = ExecuteSelect($selectCountReads);
-  # my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
-
-  my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
-  print "1) selectCountReads_int = $selectCountReads_int\n";
-  print LOG "1) selectCountReads_int = $selectCountReads_int\n";
-  return $selectCountReads_int;
-}
-
-#######################################
-#
-# SELECT count to use in for vamps_sequence
-#
-#######################################
-
-my $selectCountProject =
-# "select count($glob_seq_id_id) from $glob_seq_id_table;";
-  "select count(distinct project_id) from vamps_projects_datasets";
-  print "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
-  print LOG "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
-  my $selectCountProject_h = ExecuteSelect($selectCountProject);
-  # my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
-
-my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
-print "1) selectCountProject_int = $selectCountProject_int\n";
-print LOG "1) selectCountProject_int = $selectCountProject_int\n";
-
-#######################################
-#
-# SELECT data for vamps_sequences (and taxonomy)
-#
-#######################################
-if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") )
-{
-  
-  # ON ENV454
-  # 1) increase join_buffer - doesn't work
-  # 2) drop vamps_sequences_transfer_temp
-  # 3) create vamps_sequences_transfer_temp by chunks
-  # 4) decrease join_buffer - doesn't work
-  # 5) dump vamps_sequences_transfer_temp on disc
-  # change ON VAMPS  
-  # 6) drop vamps_sequences_transfer_temp table on VAMPS
-  # 7) upload vamps_sequences_transfer_temp to VAMPS  
-  # 8) drop transfer table
-  # 9) create vamps_sequences_transfer
-  # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
-  my $seq_file_name = $subdir . "vamps_sequences_transfer.sql";
-  
-  if ($export)
-  {
-    PrintUpdate("Dumping data for $final_seqs_table");
-
-    # mysql> show global variables like "join_BUFFER_SIZE";
-    # +------------------+---------+
-    # | Variable_name    | Value   |
-    # +------------------+---------+
-    # | join_buffer_size | 8388608 |
-    my $join_buffer_size_old = 8388608;
-    my $join_buffer_size_new = 8388608*1024*1024;
-    print "TTT: \$test_only = $test_only\n";
-    
-    # # 1) increase join_buffer
-    # # q 6-1)
-    # my $join_buffer_increase_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_new;";
-    # &print_query_out("q 6-1) join_buffer_increase_temp", $sourceHost." ".$join_buffer_increase_temp);
-    # ExecuteInsert_newbpcdb2($join_buffer_increase_temp) unless ($test_only == 1);
-    # q 6-2)
-    # 2) drop vamps_sequences_transfer table on env454
-    my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
-    &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
-    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-    ExecuteInsert_newbpcdb2($drop_temp_seq);
-    # ExecuteSelectTest($drop_temp_seq);
-    
-    # q 6-3)
-    # 3) create vamps_sequences_transfer table on env454 (5 h)
-    # Tue Nov  4 15:53:28 EST 2014 -"- by chunks
-    
-    # create the table
-    my $create_temp_seq_table_query = "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
-            id int(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            frequency double NOT NULL DEFAULT 0 COMMENT 'sum seq_count (for this seq/project/dataset across all lines and runs) divided by dataset_count',
-            project_dataset varchar(100) NOT NULL DEFAULT '',
-            sequence_comp longblob NOT NULL,
-            project varchar(32) NOT NULL,
-            dataset varchar(64) NOT NULL DEFAULT '',
-            taxonomy varchar(300) NOT NULL DEFAULT '',
-            refhvr_ids text NOT NULL,
-            rank varchar(32) NOT NULL DEFAULT '',
-            seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
-            distance decimal(7,5) DEFAULT NULL COMMENT 'gast_distance AS distance',
-            rep_id int(10) unsigned NOT NULL COMMENT 'sequence_pdr_info_ill_id AS rep_id',
-            UNIQUE KEY `rep_id` (`rep_id`)            
-          )  ;
-    ";
-    &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
-    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-    ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
-    # ExecuteSelectTest($create_temp_seq_table_query);
-    
-    # get data and put in the table
-    
-    my $chunk_size_seqs  = 1;  # dump data to transfer files 1 project records at a time FOR SEQS
-    # my $sourceHost = "newbpcdb2";
-
-    print "2) selectCountProject_int = $selectCountProject_int\n";
-    print LOG "2) selectCountProject_int = $selectCountProject_int\n";
-
-    my $from_here   = 0;
-    my $reads_left  = int($selectCountProject_int);
-
-    while($reads_left > 0)
-    {
-      print "START get_reads seq!!!\n";
-      print LOG "START get_reads seq!!!\n";
-      
-      my $start_get_reads_seq = time;
-      &insert_chunk();
-      my $end_get_reads_seq   = time;
-      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
-      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
-
-      $reads_left -= $chunk_size_seqs;
-      $from_here += $chunk_size_seqs;
-    }
-
-    sub insert_chunk()
-    {
-      my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id)
-              SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
-                    gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
-                    FROM sequence_ill
-                    JOIN sequence_pdr_info_ill USING(sequence_ill_id)
-                    JOIN run_info_ill USING(run_info_ill_id)
-                    JOIN sequence_uniq_info_ill USING(sequence_ill_id)
-                    JOIN taxonomy USING(taxonomy_id)
-                    JOIN rank USING(rank_id)
-                    JOIN vamps_projects_datasets USING(project_id, dataset_id)
-                    JOIN (
-                        SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
-                          JOIN run_info_ill USING(run_info_ill_id)
-                          JOIN (
-                            SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
-                            LIMIT $from_here, $chunk_size_seqs
-                            ) AS t USING(project_id)          
-                        ) AS t USING(sequence_pdr_info_ill_id)              
-                  GROUP BY sequence_ill_id, project_id, dataset_id
-      ";
-      &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-      my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
-      # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
-    }
-
-    # q 6-3a)
-    # 3) update vamps_sequences_transfer table on env454 - add frequencies
-    my $UPDATE_temp_seq = 
-    "UPDATE vamps_sequences_transfer_temp
-    JOIN vamps_projects_datasets USING(project, dataset)
-    SET frequency = vamps_sequences_transfer_temp.seq_count / dataset_count
-    ";
-          
-    &print_query_out("q 6-3a) CREATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
-    ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
-    
-    # # 4) decrease join_buffer
-    # # q 6-4)
-    # my $join_buffer_decrease_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_old;";
-    # &print_query_out("q 6-4) join_buffer_decrease_temp", $sourceHost." ".$join_buffer_decrease_temp);
-    # ExecuteInsert_newbpcdb2($join_buffer_decrease_temp) unless ($test_only == 1);
-    # 5) dump vamps_sequences_transfer to a disc  
-    # q 6-5)
-    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
-    &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
-    unless ($test_only == 1)
-    {
-      my $dump_sys = system($dump_seq);
-      if ($dump_sys) {print "Error dumping vamps_sequences_transfer_temp from env454\n";}
-    }    
-  }
-    
-  if ($import)
-  {
-    # -------- change on vamps --------
-    # 6) drop vamps_sequences_transfer_temp table on VAMPS
-    # q 6-6)
-    my $drop_vamps_sequences_transfer_temp = "DROP TABLE IF EXISTS vamps_sequences_transfer_temp";
-    &print_query_out("q 6-6) drop_vamps_sequences_transfer_temp", $vampsHost." ".$drop_vamps_sequences_transfer_temp);
-    ExecuteInsert($drop_vamps_sequences_transfer_temp);
-    # 7) upload vamps_sequences_transfer_temp to VAMPS  
-    # q 6-7)
-    my $upload_seq = "time mysql -h $vampsHost $vampsDB < $seq_file_name";
-    &print_query_out("q 6-7) upload_seq", $vampsHost." ".$upload_seq);
-    unless ($test_only == 1)
-    {
-      my $upload_sys = system($upload_seq);
-      if ($upload_sys) {print "Error uploading vamps_sequences_transfer_temp on VAMPS\n";}
-    }    
-    # 8) drop vamps_sequences_transfer table on VAMPS
-    # q 6-8)
-    my $drop_vamps_sequences_transfer = "DROP TABLE IF EXISTS vamps_sequences_transfer";
-    &print_query_out("q 6-8) drop_vamps_sequences_transfer", $vampsHost." ".$drop_vamps_sequences_transfer);
-    ExecuteInsert($drop_vamps_sequences_transfer);
-    # 9) create vamps_sequences_transfer
-    # q 6-9)
-    my $create_vamps_sequences_transfer = "CREATE TABLE `vamps_sequences_transfer` (
-      `id` int(11) NOT NULL AUTO_INCREMENT,
-      `sequence` text NOT NULL,
-      `project` varchar(64) NOT NULL,
-      `dataset` varchar(64) NOT NULL,
-      `taxonomy` varchar(255) NOT NULL,
-      `refhvr_ids` text NOT NULL,
-      `rank` varchar(20) NOT NULL,
-      `seq_count` int(11) NOT NULL,
-      `frequency` double NOT NULL,
-      `distance` decimal(7,5) DEFAULT NULL,
-      `rep_id` char(15) NOT NULL,
-      `project_dataset` varchar(100) NOT NULL DEFAULT '',
-      PRIMARY KEY (`id`),
-      UNIQUE KEY rep_id (rep_id),
-      KEY `project_dataset` (`project`,`dataset`),
-      KEY `dataset` (`dataset`),
-      KEY `sequence` (`sequence`(350)),
-      KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)
-    ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";
-    # KEY `project_dataset_conc_seq` (`project_dataset`,`sequence`(350)),
-    # UNIQUE KEY project_dataset_conc_seq (`project_dataset`,`sequence`(550)),
-
-    &print_query_out("q 6-9) create_vamps_sequences_transfer", $vampsHost." ".$create_vamps_sequences_transfer);
-    ExecuteInsert($create_vamps_sequences_transfer);
-    # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
-    # q 6-10)
-    my $insert_vamps_sequences_transfer = 'INSERT INTO vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
-      select uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
-      from vamps_sequences_transfer_temp';
-    &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
-    ExecuteInsert($insert_vamps_sequences_transfer);
-
-    unless($do_not_analyze)
-    {
-      PrintUpdate("Analyzing vamps_sequences_transfer");
-      AnalyzeTable("vamps_sequences_transfer");
-    }
-  }
-
-  if ($transfer)
-  {
-    PrintUpdate("Swapping $final_seqs_table tables");
-    SwapNew($tmp_seqs_table, $final_seqs_table, $previous_seqs_table);
-  }
-} # END start = sequences
-if ($stop eq "sequences") {exit 0;}
-
-
 ######################################
 #
 # SELECT data for vamps_data_cube
@@ -1024,7 +756,272 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
 
 if ($stop eq "taxonomy") {exit 0;}
 
+#######################################
+#
+# SELECT count to use in for export
+#
+#######################################
+sub select_cnt_for_limit()
+{
+  my $table_name = shift;
+  my $table_id = $table_name . "_id";
+  my $selectCountReads =
+  # "select count($glob_seq_id_id) from $glob_seq_id_table;";
+    "select count($table_id) from $table_name";
+  print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+  print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+  my $selectCountReads_h = ExecuteSelect($selectCountReads);
+  # my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
 
+  my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
+  print "1) selectCountReads_int = $selectCountReads_int\n";
+  print LOG "1) selectCountReads_int = $selectCountReads_int\n";
+  return $selectCountReads_int;
+}
+
+#######################################
+#
+# SELECT count to use in for vamps_sequence
+#
+#######################################
+
+my $selectCountProject =
+# "select count($glob_seq_id_id) from $glob_seq_id_table;";
+  "select count(distinct project_id) from vamps_projects_datasets";
+  print "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
+  print LOG "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
+  my $selectCountProject_h = ExecuteSelect($selectCountProject);
+  # my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
+
+my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
+print "1) selectCountProject_int = $selectCountProject_int\n";
+print LOG "1) selectCountProject_int = $selectCountProject_int\n";
+
+#######################################
+#
+# SELECT data for vamps_sequences
+#
+#######################################
+if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") )
+{
+  
+  # ON ENV454
+  # 1) increase join_buffer - doesn't work
+  # 2) drop vamps_sequences_transfer_temp
+  # 3) create vamps_sequences_transfer_temp by chunks
+  # 4) decrease join_buffer - doesn't work
+  # 5) dump vamps_sequences_transfer_temp on disc
+  # change ON VAMPS  
+  # 6) drop vamps_sequences_transfer_temp table on VAMPS
+  # 7) upload vamps_sequences_transfer_temp to VAMPS  
+  # 8) drop transfer table
+  # 9) create vamps_sequences_transfer
+  # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
+  my $seq_file_name = $subdir . "vamps_sequences_transfer.sql";
+  
+  if ($export)
+  {
+    PrintUpdate("Dumping data for $final_seqs_table");
+
+    # mysql> show global variables like "join_BUFFER_SIZE";
+    # +------------------+---------+
+    # | Variable_name    | Value   |
+    # +------------------+---------+
+    # | join_buffer_size | 8388608 |
+    my $join_buffer_size_old = 8388608;
+    my $join_buffer_size_new = 8388608*1024*1024;
+    print "TTT: \$test_only = $test_only\n";
+    
+    # # 1) increase join_buffer
+    # # q 6-1)
+    # my $join_buffer_increase_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_new;";
+    # &print_query_out("q 6-1) join_buffer_increase_temp", $sourceHost." ".$join_buffer_increase_temp);
+    # ExecuteInsert_newbpcdb2($join_buffer_increase_temp) unless ($test_only == 1);
+    # q 6-2)
+    # 2) drop vamps_sequences_transfer table on env454
+    my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
+    &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
+    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    ExecuteInsert_newbpcdb2($drop_temp_seq);
+    # ExecuteSelectTest($drop_temp_seq);
+    
+    # q 6-3)
+    # 3) create vamps_sequences_transfer table on env454 (5 h)
+    # Tue Nov  4 15:53:28 EST 2014 -"- by chunks
+    
+    # create the table
+    my $create_temp_seq_table_query = "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
+            id int(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            frequency double NOT NULL DEFAULT 0 COMMENT 'sum seq_count (for this seq/project/dataset across all lines and runs) divided by dataset_count',
+            project_dataset varchar(100) NOT NULL DEFAULT '',
+            sequence_comp longblob NOT NULL,
+            project varchar(32) NOT NULL,
+            dataset varchar(64) NOT NULL DEFAULT '',
+            taxonomy varchar(300) NOT NULL DEFAULT '',
+            refhvr_ids text NOT NULL,
+            rank varchar(32) NOT NULL DEFAULT '',
+            seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
+            distance decimal(7,5) DEFAULT NULL COMMENT 'gast_distance AS distance',
+            rep_id int(10) unsigned NOT NULL COMMENT 'sequence_pdr_info_ill_id AS rep_id',
+            UNIQUE KEY `rep_id` (`rep_id`)            
+          )  ;
+    ";
+    &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
+    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
+    # ExecuteSelectTest($create_temp_seq_table_query);
+    
+    # get data and put in the table
+    
+    my $chunk_size_seqs  = 1;  # dump data to transfer files 1 project records at a time FOR SEQS
+    # my $sourceHost = "newbpcdb2";
+
+    print "2) selectCountProject_int = $selectCountProject_int\n";
+    print LOG "2) selectCountProject_int = $selectCountProject_int\n";
+
+    my $from_here   = 0;
+    my $reads_left  = int($selectCountProject_int);
+
+    while($reads_left > 0)
+    {
+      print "START get_reads seq!!!\n";
+      print LOG "START get_reads seq!!!\n";
+      
+      my $start_get_reads_seq = time;
+      &insert_chunk();
+      my $end_get_reads_seq   = time;
+      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+
+      $reads_left -= $chunk_size_seqs;
+      $from_here += $chunk_size_seqs;
+    }
+
+    sub insert_chunk()
+    {
+      my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id)
+              SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
+                    gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id
+                    FROM sequence_ill
+                    JOIN sequence_pdr_info_ill USING(sequence_ill_id)
+                    JOIN run_info_ill USING(run_info_ill_id)
+                    JOIN sequence_uniq_info_ill USING(sequence_ill_id)
+                    JOIN taxonomy USING(taxonomy_id)
+                    JOIN rank USING(rank_id)
+                    JOIN vamps_projects_datasets USING(project_id, dataset_id)
+                    JOIN (
+                        SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
+                          JOIN run_info_ill USING(run_info_ill_id)
+                          JOIN (
+                            SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
+                            LIMIT $from_here, $chunk_size_seqs
+                            ) AS t USING(project_id)          
+                        ) AS t USING(sequence_pdr_info_ill_id)              
+                  GROUP BY sequence_ill_id, project_id, dataset_id
+      ";
+      &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
+      my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+      # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
+    }
+
+    # q 6-3a)
+    # 3) update vamps_sequences_transfer table on env454 - add frequencies
+    my $UPDATE_temp_seq = 
+    "UPDATE vamps_sequences_transfer_temp
+    JOIN vamps_projects_datasets USING(project, dataset)
+    SET frequency = vamps_sequences_transfer_temp.seq_count / dataset_count
+    ";
+          
+    &print_query_out("q 6-3a) CREATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
+    ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
+    
+    # # 4) decrease join_buffer
+    # # q 6-4)
+    # my $join_buffer_decrease_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_old;";
+    # &print_query_out("q 6-4) join_buffer_decrease_temp", $sourceHost." ".$join_buffer_decrease_temp);
+    # ExecuteInsert_newbpcdb2($join_buffer_decrease_temp) unless ($test_only == 1);
+    # 5) dump vamps_sequences_transfer to a disc  
+    # q 6-5)
+    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
+    &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
+    unless ($test_only == 1)
+    {
+      my $dump_sys = system($dump_seq);
+      if ($dump_sys) {print "Error dumping vamps_sequences_transfer_temp from env454\n";}
+    }    
+  }
+    
+  if ($import)
+  {
+    # -------- change on vamps --------
+    # 6) drop vamps_sequences_transfer_temp table on VAMPS
+    # q 6-6)
+    my $drop_vamps_sequences_transfer_temp = "DROP TABLE IF EXISTS vamps_sequences_transfer_temp";
+    &print_query_out("q 6-6) drop_vamps_sequences_transfer_temp", $vampsHost." ".$drop_vamps_sequences_transfer_temp);
+    ExecuteInsert($drop_vamps_sequences_transfer_temp);
+    # 7) upload vamps_sequences_transfer_temp to VAMPS  
+    # q 6-7)
+    my $upload_seq = "time mysql -h $vampsHost $vampsDB < $seq_file_name";
+    &print_query_out("q 6-7) upload_seq", $vampsHost." ".$upload_seq);
+    unless ($test_only == 1)
+    {
+      my $upload_sys = system($upload_seq);
+      if ($upload_sys) {print "Error uploading vamps_sequences_transfer_temp on VAMPS\n";}
+    }    
+    # 8) drop vamps_sequences_transfer table on VAMPS
+    # q 6-8)
+    my $drop_vamps_sequences_transfer = "DROP TABLE IF EXISTS vamps_sequences_transfer";
+    &print_query_out("q 6-8) drop_vamps_sequences_transfer", $vampsHost." ".$drop_vamps_sequences_transfer);
+    ExecuteInsert($drop_vamps_sequences_transfer);
+    # 9) create vamps_sequences_transfer
+    # q 6-9)
+    my $create_vamps_sequences_transfer = "CREATE TABLE `vamps_sequences_transfer` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `sequence` text NOT NULL,
+      `project` varchar(64) NOT NULL,
+      `dataset` varchar(64) NOT NULL,
+      `taxonomy` varchar(255) NOT NULL,
+      `refhvr_ids` text NOT NULL,
+      `rank` varchar(20) NOT NULL,
+      `seq_count` int(11) NOT NULL,
+      `frequency` double NOT NULL,
+      `distance` decimal(7,5) DEFAULT NULL,
+      `rep_id` char(15) NOT NULL,
+      `project_dataset` varchar(100) NOT NULL DEFAULT '',
+      PRIMARY KEY (`id`),
+      UNIQUE KEY rep_id (rep_id),
+      KEY `project_dataset` (`project`,`dataset`),
+      KEY `dataset` (`dataset`),
+      KEY `sequence` (`sequence`(350)),
+      KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)
+    ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";
+    # KEY `project_dataset_conc_seq` (`project_dataset`,`sequence`(350)),
+    # UNIQUE KEY project_dataset_conc_seq (`project_dataset`,`sequence`(550)),
+
+    &print_query_out("q 6-9) create_vamps_sequences_transfer", $vampsHost." ".$create_vamps_sequences_transfer);
+    ExecuteInsert($create_vamps_sequences_transfer);
+    # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
+    # q 6-10)
+    my $insert_vamps_sequences_transfer = 'INSERT INTO vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
+      select uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
+      from vamps_sequences_transfer_temp';
+    &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
+    ExecuteInsert($insert_vamps_sequences_transfer);
+
+    unless($do_not_analyze)
+    {
+      PrintUpdate("Analyzing vamps_sequences_transfer");
+      AnalyzeTable("vamps_sequences_transfer");
+    }
+  }
+
+  if ($transfer)
+  {
+    PrintUpdate("Swapping $final_seqs_table tables");
+    SwapNew($tmp_seqs_table, $final_seqs_table, $previous_seqs_table);
+  }
+} # END start = sequences
+if ($stop eq "sequences") {exit 0;}
 
 #######################################
 #
