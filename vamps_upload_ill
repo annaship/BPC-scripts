@@ -862,7 +862,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
             rank varchar(32) NOT NULL DEFAULT '',
             seq_count int(11) unsigned NOT NULL COMMENT 'sum seq_count for this seq/project/dataset across all lines and runs',
             distance decimal(7,5) DEFAULT NULL COMMENT 'gast_distance AS distance',
-            rep_id int(10) unsigned NOT NULL COMMENT 'sequence_pdr_info_ill_id AS rep_id'
+            rep_id int(10) unsigned NOT NULL COMMENT 'sequence_pdr_info_ill_id AS rep_id',
+            UNIQUE KEY `rep_id` (`rep_id`)            
           )  ;
     ";
     &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
@@ -880,6 +881,21 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
 
     my $from_here   = 0;
     my $reads_left  = int($selectCountProject_int);
+
+    while($reads_left > 0)
+    {
+      print "START get_reads seq!!!\n";
+      print LOG "START get_reads seq!!!\n";
+      
+      my $start_get_reads_seq = time;
+      &insert_chunk();
+      my $end_get_reads_seq   = time;
+      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+
+      $reads_left -= $chunk_size_seqs;
+      $from_here += $chunk_size_seqs;
+    }
 
     sub insert_chunk()
     {
@@ -906,21 +922,6 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
       my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
       # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
-    }
-
-    while($reads_left > 0)
-    {
-      print "START get_reads seq!!!\n";
-      print LOG "START get_reads seq!!!\n";
-      
-      my $start_get_reads_seq = time;
-      &insert_chunk();
-      my $end_get_reads_seq   = time;
-      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
-      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
-
-      $reads_left -= $chunk_size_seqs;
-      $from_here += $chunk_size_seqs;
     }
 
     # q 6-3a)
@@ -988,7 +989,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       `rep_id` char(15) NOT NULL,
       `project_dataset` varchar(100) NOT NULL DEFAULT '',
       PRIMARY KEY (`id`),
-      UNIQUE KEY rep_id (rep_id)
+      UNIQUE KEY rep_id (rep_id),
       KEY `project_dataset` (`project`,`dataset`),
       KEY `dataset` (`dataset`),
       KEY `sequence` (`sequence`(350)),
@@ -1002,7 +1003,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
     # q 6-10)
     my $insert_vamps_sequences_transfer = 'INSERT INTO vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
-      select uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset, concat(project, "--", dataset) as project_dataset
+      select uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
       from vamps_sequences_transfer_temp';
     &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
     ExecuteInsert($insert_vamps_sequences_transfer);
@@ -1013,7 +1014,6 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       AnalyzeTable("vamps_sequences_transfer");
     }
   }
-  # TODO: move table names to a variable
 
   if ($transfer)
   {
