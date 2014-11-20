@@ -31,6 +31,7 @@
 # Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
 #            2013-12-20 by Anna Shipunova. Fix seq_counts to sum in vamps_sequences_transfer_temp
 #            2014-11-17 ASh. Get the sequence table by chunks.
+#            2014-11-20 Ash. Order vs. orderx 
 #
 # Programming Notes:
 #    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
@@ -163,7 +164,7 @@ my %norm_table_names =
  "dataset" 					=> $dataset_table,
  "family" 					=> $family_table,
  "genus" 						=> $genus_table,
- "orderx" 					=> $orderx_table,
+ "order" 					=> $orderx_table,
  "phylum" 					=> $phylum_table,
  "project" 					=> $project_table,
  "project_dataset" 	=> $project_dataset_table,
@@ -269,9 +270,7 @@ my $import = 0;
 my $transfer = 0;
 
 # Define the list of ranks
-#my @ranks = ('superkingdom','phylum','class','orderx','family','genus','species','strain');
-# Andy -- I moved this FROM below so it would be available throughout the code
-my @ranks = ('superkingdom','phylum','class','orderx','family','genus','species','strain');
+my @ranks = ('superkingdom','phylum','class','order','family','genus','species','strain');
 
 my $start = 'projectdataset';
 my $stop = 'final';
@@ -579,32 +578,21 @@ sub select_cnt_for_limit()
 
 #######################################
 #
-# SELECT count to use for vamps_sequence
+# SELECT count to use in for vamps_sequence
 #
 #######################################
 
 my $selectCountProject =
 # "select count($glob_seq_id_id) from $glob_seq_id_table;";
   "select count(distinct project_id) from vamps_projects_datasets";
-  print "q AA1) selectCountProject = $sourceHost.$selectCountProject\n";
-  print LOG "q AA1) selectCountProject = $sourceHost.$selectCountProject\n";
+  print "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
+  print LOG "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
   my $selectCountProject_h = ExecuteSelect($selectCountProject);
   # my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
 
 my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
-print "2) selectCountProject_int = $selectCountProject_int\n";
-print LOG "2) selectCountProject_int = $selectCountProject_int\n";
-
-#######################################
-#
-# SELECT Illumina project_ids to use for vamps_sequence
-#
-#######################################
-
-my $select_ill_project_ids_q =
-  "select distinct project_id from vamps_projects_datasets";
-  &print_query_out("q AA2) selectIllProjectIds", $sourceHost." ".$select_ill_project_ids_q);  
-my @select_ill_project_ids = &prep_exec_fetchrow_array_query($dbhSource, $select_ill_project_ids_q);
+print "1) selectCountProject_int = $selectCountProject_int\n";
+print LOG "1) selectCountProject_int = $selectCountProject_int\n";
 
 #######################################
 #
@@ -691,32 +679,6 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
 
     my $from_here   = 0;
     my $reads_left  = int($selectCountProject_int);
-    
-    # prepare insert_select_chunck_seq w "?"
-    # run in a cycle w no prepare
-    
-    my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
-            SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
-                  gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
-                  FROM sequence_ill
-                  JOIN sequence_pdr_info_ill USING(sequence_ill_id)
-                  JOIN run_info_ill USING(run_info_ill_id)
-                  JOIN sequence_uniq_info_ill USING(sequence_ill_id)
-                  JOIN taxonomy USING(taxonomy_id)
-                  JOIN rank USING(rank_id)
-                  JOIN vamps_projects_datasets USING(project_id, dataset_id)
-                  JOIN (
-                      SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
-                        JOIN run_info_ill USING(run_info_ill_id)
-                        JOIN (
-                          SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
-                          LIMIT ?, ?
-                          ) AS t USING(project_id)          
-                      ) AS t USING(sequence_pdr_info_ill_id)              
-                GROUP BY sequence_ill_id, project_id, dataset_id
-    ";
-    
-    my $insert_select_chunck_seq_h = $dbhSource->prepare($insert_select_chunck_seq) or warn print LOG "Unable to prepare statement: $insert_select_chunck_seq. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
 
     while($reads_left > 0)
     {
@@ -724,10 +686,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       print LOG "START get_reads seq!!!\n";
       
       my $start_get_reads_seq = time;
-      # &insert_chunk();
-      # ExecuteInsert_newbpcdb2_no_prepare()
-      $insert_select_chunck_seq_h->execute(($from_here, $chunk_size_seqs)) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
-      
+      &insert_chunk();
       my $end_get_reads_seq   = time;
       print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
       print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
@@ -736,36 +695,35 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       $from_here += $chunk_size_seqs;
     }
 
-    # sub insert_chunk()
-    # {
-    #   my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
-    #           SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
-    #                 gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
-    #                 FROM sequence_ill
-    #                 JOIN sequence_pdr_info_ill USING(sequence_ill_id)
-    #                 JOIN run_info_ill USING(run_info_ill_id)
-    #                 JOIN sequence_uniq_info_ill USING(sequence_ill_id)
-    #                 JOIN taxonomy USING(taxonomy_id)
-    #                 JOIN rank USING(rank_id)
-    #                 JOIN vamps_projects_datasets USING(project_id, dataset_id)
-    #                 JOIN (
-    #                     SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
-    #                       JOIN run_info_ill USING(run_info_ill_id)
-    #                       JOIN (
-    #                         SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
-    #                         LIMIT $from_here, $chunk_size_seqs
-    #                         ) AS t USING(project_id)          
-    #                     ) AS t USING(sequence_pdr_info_ill_id)              
-    #               GROUP BY sequence_ill_id, project_id, dataset_id
-    #   ";
-    #   &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-    #   my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
-    #   # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
-    # }
+    sub insert_chunk()
+    {
+      my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
+              SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
+                    gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
+                    FROM sequence_ill
+                    JOIN sequence_pdr_info_ill USING(sequence_ill_id)
+                    JOIN run_info_ill USING(run_info_ill_id)
+                    JOIN sequence_uniq_info_ill USING(sequence_ill_id)
+                    JOIN taxonomy USING(taxonomy_id)
+                    JOIN rank USING(rank_id)
+                    JOIN vamps_projects_datasets USING(project_id, dataset_id)
+                    JOIN (
+                        SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
+                          JOIN run_info_ill USING(run_info_ill_id)
+                          JOIN (
+                            SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
+                            LIMIT $from_here, $chunk_size_seqs
+                            ) AS t USING(project_id)          
+                        ) AS t USING(sequence_pdr_info_ill_id)              
+                  GROUP BY sequence_ill_id, project_id, dataset_id
+      ";
+      &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
+      my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+      # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
+    }
 
     # q 6-3a)
     # 3) update vamps_sequences_transfer table on env454 - add frequencies
-    
     my $UPDATE_temp_seq = 
     "UPDATE vamps_sequences_transfer_temp
     SET frequency = vamps_sequences_transfer_temp.seq_count / dataset_count
@@ -774,11 +732,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # JOIN vamps_projects_datasets USING(project, dataset)
           
     &print_query_out("q 6-3a) UPDATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
-    my $start_time = time;
     ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
-    my $end_time   = time;
-    print "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
-    print LOG "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
 
     # q 6-3b)
     # 3) alter vamps_sequences_transfer table on env454 - add keys; used for taxonomy, see next section
@@ -789,11 +743,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # JOIN vamps_projects_datasets USING(project, dataset)
           
     &print_query_out("q 6-3b) ALTER_temp_seq", $sourceHost." ".$ALTER_temp_seq);
-    $start_time = time;
     ExecuteInsert_newbpcdb2($ALTER_temp_seq);
-    $end_time   = time;
-    print "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
-    print LOG "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
     
     # # 4) decrease join_buffer
     # # q 6-4)
@@ -806,12 +756,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
     unless ($test_only == 1)
     {
-      $start_time = time;
       my $dump_sys = system($dump_seq);
-      $end_time   = time;
-      print "The total time of dump seq_temp is ", $end_time - $start_time, "\n";
-      print LOG "The total time of dump seq_temp is ", $end_time - $start_time, "\n";
-      
       if ($dump_sys) {print "Error dumping vamps_sequences_transfer_temp from env454\n";}
     }    
   }
@@ -925,7 +870,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     PrintUpdate("Exporting data for $final_taxes_table to $taxesFile");
 
     # For each row in the SELECT statement, calculate remaining taxa ranks and write to file
-    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "orderx", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
+    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "order", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
     while(my @dataRow = $selectCube_h->fetchrow())
     {
       # Need to split apart the taxonomy to create separate values for each taxonomic rank
@@ -974,15 +919,6 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     # vamps_data_cube_transfer
     CreateEmpty($tmp_taxes_table);
     ExecuteLoad($taxesFile, $tmp_taxes_table);
-
-    # my $update_new_taxa_name = "INSERT IGNORE INTO ? (?) SELECT distinct superkingdom FROM $tmp_taxes_table";
-    # my $update_new_taxa_name_prepered = &prep_query($update_new_taxa_name);
-    # foreach my $taxa_name ("superkingdom", "phylum", "class", "orderx", "family", "genus", "species", "strain")
-    # {
-    #   my $table_name = "\$".$taxa_name."_table";
-    #   $update_new_taxa_name_prepered->execute($table_name, $taxa_name) || die "Unable to execute MySQL statement: $update_new_taxa_name\nError: " . $dbh->errstr . "(" . (localtime) . ")\n";
-    # }
-
 
     #
     # Create the summed (junk) data cube FROM the regular data cube
@@ -1295,7 +1231,7 @@ if ( ($start eq "norm_tables") )
   my $update_new_superkingdom = "INSERT IGNORE INTO $superkingdom_table" . $tblSuffix . " (superkingdom) SELECT DISTINCT superkingdom FROM $tmp_taxes_table";
   my $update_new_phylum       = "INSERT IGNORE INTO $phylum_table" . $tblSuffix . " (phylum) SELECT DISTINCT phylum FROM $tmp_taxes_table";
   my $update_new_class        = "INSERT IGNORE INTO $class_table" . $tblSuffix . " (class) SELECT DISTINCT class FROM $tmp_taxes_table";
-  my $update_new_orderx       = "INSERT IGNORE INTO $orderx_table" . $tblSuffix . " (orderx) SELECT DISTINCT orderx FROM $tmp_taxes_table";
+  my $update_new_orderx       = "INSERT IGNORE INTO $orderx_table" . $tblSuffix . " (`order`) SELECT DISTINCT `order` FROM $tmp_taxes_table";
   my $update_new_family       = "INSERT IGNORE INTO $family_table" . $tblSuffix . " (family) SELECT DISTINCT family FROM $tmp_taxes_table";
   my $update_new_genus        = "INSERT IGNORE INTO $genus_table" . $tblSuffix . " (genus) SELECT DISTINCT genus FROM $tmp_taxes_table";
   my $update_new_species      = "INSERT IGNORE INTO $species_table" . $tblSuffix . " (species) SELECT DISTINCT species FROM $tmp_taxes_table";
@@ -1323,16 +1259,16 @@ if ( ($start eq "norm_tables") )
 
   # update new_taxonomy
   my $update_new_taxonomy = "INSERT IGNORE INTO $taxonomy_table" . $illSuffix . " (taxon_string_id, superkingdom_id, phylum_id, class_id, orderx_id, family_id, genus_id, species_id, strain_id, rank_id, classifier,
-                                                                                   taxon_string,    superkingdom,    phylum,    class,    orderx,    family,    genus,    species,    strain,    rank
+                                                                                   taxon_string,    superkingdom,    phylum,    class,    `order`,    family,    genus,    species,    strain,    rank
     )
     SELECT distinct taxon_string_id, superkingdom_id, phylum_id, class_id, orderx_id, family_id, genus_id, species_id, strain_id, $rank_table.rank_id, classifier,
-                    taxon_string,    superkingdom, phylum, class, orderx, family, genus, species, strain, rank
+                    taxon_string,    superkingdom, phylum, class, `order`, family, genus, species, strain, rank
     FROM $tmp_taxes_table
     JOIN $taxon_string_table" . $tblSuffix . " using(taxon_string)
     JOIN $superkingdom_table" . $tblSuffix . " using(superkingdom)
     JOIN $phylum_table" . $tblSuffix . " using(phylum)
     JOIN $class_table" . $tblSuffix . " using(class)
-    JOIN $orderx_table" . $tblSuffix . " using(orderx)
+    JOIN $orderx_table" . $tblSuffix . " using(`order`)
     JOIN $family_table" . $tblSuffix . " using(family)
     JOIN $genus_table" . $tblSuffix . " using(genus)
     JOIN $species_table" . $tblSuffix . " using(species)
@@ -1657,7 +1593,7 @@ sub CreateEmpty
       `superkingdom` varchar(60) NOT NULL default '',
       `phylum` varchar(60) NOT NULL default '',
       `class` varchar(60) NOT NULL default '',
-      `orderx` varchar(60) NOT NULL default '',
+      `order` varchar(60) NOT NULL default '',
       `family` varchar(60) NOT NULL default '',
       `genus` varchar(60) NOT NULL default '',
       `species` varchar(60) NOT NULL default '',
@@ -1815,22 +1751,6 @@ sub ExecuteInsert_newbpcdb2
 
 #######################################
 #
-# On newbpcdb2
-# Execute _only_ INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("execute" only, no prepare, no return)
-#
-#######################################
-sub ExecuteInsert_newbpcdb2_no_prepare
-{
-  my $insertSQL = shift;
-  print "EEE13: I'm in ExecuteInsert_newbpcdb2_no_prepare\n";
-  # print "$insertSQL\n";
-  # if ($test_only == 1);
-  $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
-}
-
-
-#######################################
-#
 # Turn on and off indexing
 #
 #######################################
@@ -1948,7 +1868,7 @@ sub AnalyzeTable
 
 #######################################
 #
-# Printing query to screen and LOG
+# Printing queri to screen and LOG
 # Call with a query_name and query
 #
 #######################################
@@ -2545,7 +2465,7 @@ sub create_norm_tables_ill()
     add column superkingdom char(10) NOT NULL default '',
     add column phylum varchar(34) NOT NULL default '',
     add column class varchar(34) NOT NULL default '',
-    add column orderx varchar(34) NOT NULL default '',
+    add column `order` varchar(34) NOT NULL default '',
     add column family varchar(37) NOT NULL default '',
     add column genus varchar(60) NOT NULL default '',
     add column species varchar(37) NOT NULL default '',
@@ -2589,7 +2509,7 @@ sub create_norm_tables_ill()
 
 sub update_current_from_illumina_transfer()
 {
-  my $insert_vamps_data_cube_q         = "INSERT IGNORE INTO $final_taxes_table (project, dataset, taxon_string, superkingdom, phylum, class, orderx, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, orderx, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
+  my $insert_vamps_data_cube_q         = "INSERT IGNORE INTO $final_taxes_table (project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
                                           FROM $tmp_taxes_table";
   my $insert_vamps_export_q            = "INSERT IGNORE INTO $final_reads_table (read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed) SELECT read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed 
                                           FROM $tmp_reads_table";
@@ -2605,7 +2525,7 @@ sub update_current_from_illumina_transfer()
   my $insert_new_superkingdom_q        = "INSERT IGNORE INTO $superkingdom_table (superkingdom) SELECT superkingdom FROM new_superkingdom_transfer";
   my $insert_new_phylum_q              = "INSERT IGNORE INTO $phylum_table (phylum) SELECT phylum FROM new_phylum_transfer";
   my $insert_new_class_q               = "INSERT IGNORE INTO $class_table (class) SELECT class FROM new_class_transfer";
-  my $insert_new_orderx_q              = "INSERT IGNORE INTO $orderx_table (orderx) SELECT orderx FROM new_orderx_transfer";
+  my $insert_new_orderx_q              = "INSERT IGNORE INTO $orderx_table (`order`) SELECT `order` FROM new_orderx_transfer";
   my $insert_new_family_q              = "INSERT IGNORE INTO $family_table (family) SELECT family FROM new_family_transfer";
   my $insert_new_genus_q               = "INSERT IGNORE INTO $genus_table (genus) SELECT genus FROM new_genus_transfer";
   my $insert_new_species_q             = "INSERT IGNORE INTO $species_table (species) SELECT species FROM new_species_transfer";
@@ -2633,7 +2553,7 @@ sub update_current_from_illumina_transfer()
       JOIN new_superkingdom USING(superkingdom)
       JOIN new_phylum USING(phylum)
       JOIN new_class USING(class)
-      JOIN new_orderx USING(orderx)
+      JOIN new_orderx USING(`order`)
       JOIN new_family USING(family)
       JOIN new_genus USING(genus)
       JOIN new_species USING(species)

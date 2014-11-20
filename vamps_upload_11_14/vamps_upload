@@ -29,7 +29,6 @@
 # Assumptions:
 #
 # Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
-# order vs. orderx 2014-11-20 Ash
 #
 # Programming Notes:
 #    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
@@ -150,7 +149,7 @@ my %norm_table_names =
  "dataset" 					=> $dataset_table,
  "family" 					=> $family_table,
  "genus" 						=> $genus_table,
- "order" 					=> $orderx_table,
+ "orderx" 					=> $orderx_table,
  "phylum" 					=> $phylum_table,
  "project" 					=> $project_table,
  "project_dataset" 	=> $project_dataset_table,
@@ -256,7 +255,9 @@ my $import = 0;
 my $transfer = 0;
 
 # Define the list of ranks
-my @ranks = ('superkingdom','phylum','class','order','family','genus','species','strain');
+#my @ranks = ('superkingdom','phylum','class','orderx','family','genus','species','strain');
+# Andy -- I moved this FROM below so it would be available throughout the code
+my @ranks = ('superkingdom','phylum','class','orderx','family','genus','species','strain');
 
 my $start = 'projectdataset';
 my $stop = 'final';
@@ -611,7 +612,7 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
     PrintUpdate("Exporting data for $final_taxes_table to $taxesFile");
 
     # For each row in the SELECT statement, calculate remaining taxa ranks and write to file
-    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "order", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
+    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "orderx", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
     while(my @dataRow = $selectCube_h->fetchrow())
     {
       # Need to split apart the taxonomy to create separate values for each taxonomic rank
@@ -660,6 +661,14 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
     # vamps_data_cube_transfer
     CreateEmpty($tmp_taxes_table);
     ExecuteLoad($taxesFile, $tmp_taxes_table);
+
+    # my $update_new_taxa_name = "INSERT IGNORE INTO ? (?) SELECT distinct superkingdom FROM $tmp_taxes_table";
+    # my $update_new_taxa_name_prepered = &prep_query($update_new_taxa_name);
+    # foreach my $taxa_name ("superkingdom", "phylum", "class", "orderx", "family", "genus", "species", "strain")
+    # {
+    #   my $table_name = "\$".$taxa_name."_table";
+    #   $update_new_taxa_name_prepered->execute($table_name, $taxa_name) || die "Unable to execute MySQL statement: $update_new_taxa_name\nError: " . $dbh->errstr . "(" . (localtime) . ")\n";
+    # }
 
 
     #
@@ -764,7 +773,7 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       "INSERT INTO $tmp_distinct_taxa_table
       SELECT DISTINCT 0, taxon_string, rank,
       (CASE WHEN (taxon_string LIKE '%;NA' OR 
-      (taxon_string LIKE '%phylum_NA' OR taxon_string LIKE '%class_NA' OR taxon_string LIKE '%order_NA' OR taxon_string LIKE '%family_NA' OR taxon_string LIKE '%genus_NA' OR taxon_string LIKE '%species_NA' OR taxon_string LIKE '%strain_NA')) 
+      (taxon_string LIKE '%phylum_NA' OR taxon_string LIKE '%class_NA' OR taxon_string LIKE '%orderx_NA' OR taxon_string LIKE '%family_NA' OR taxon_string LIKE '%genus_NA' OR taxon_string LIKE '%species_NA' OR taxon_string LIKE '%strain_NA')) 
       OR rank = 7 THEN 0 ELSE 1 END) 
       AS num_kids
       FROM $tmp_summed_taxes_table
@@ -1190,7 +1199,7 @@ if ( ($start eq "norm_tables") )
   my $update_new_superkingdom = "INSERT IGNORE INTO $superkingdom_table" . $tblSuffix . " (superkingdom) SELECT DISTINCT superkingdom FROM $tmp_taxes_table";
   my $update_new_phylum       = "INSERT IGNORE INTO $phylum_table" . $tblSuffix . " (phylum) SELECT DISTINCT phylum FROM $tmp_taxes_table";
   my $update_new_class        = "INSERT IGNORE INTO $class_table" . $tblSuffix . " (class) SELECT DISTINCT class FROM $tmp_taxes_table";
-  my $update_new_orderx       = "INSERT IGNORE INTO $orderx_table" . $tblSuffix . " (`order`) SELECT DISTINCT `order` FROM $tmp_taxes_table";
+  my $update_new_orderx       = "INSERT IGNORE INTO $orderx_table" . $tblSuffix . " (orderx) SELECT DISTINCT orderx FROM $tmp_taxes_table";
   my $update_new_family       = "INSERT IGNORE INTO $family_table" . $tblSuffix . " (family) SELECT DISTINCT family FROM $tmp_taxes_table";
   my $update_new_genus        = "INSERT IGNORE INTO $genus_table" . $tblSuffix . " (genus) SELECT DISTINCT genus FROM $tmp_taxes_table";
   my $update_new_species      = "INSERT IGNORE INTO $species_table" . $tblSuffix . " (species) SELECT DISTINCT species FROM $tmp_taxes_table";
@@ -1224,7 +1233,7 @@ if ( ($start eq "norm_tables") )
     JOIN $superkingdom_table" . $tblSuffix . " using(superkingdom)
     JOIN $phylum_table" . $tblSuffix . " using(phylum)
     JOIN $class_table" . $tblSuffix . " using(class)
-    JOIN $orderx_table" . $tblSuffix . " using(`order`)
+    JOIN $orderx_table" . $tblSuffix . " using(orderx)
     JOIN $family_table" . $tblSuffix . " using(family)
     JOIN $genus_table" . $tblSuffix . " using(genus)
     JOIN $species_table" . $tblSuffix . " using(species)
@@ -1470,7 +1479,7 @@ sub CreateEmpty
       `superkingdom` varchar(60) NOT NULL default '',
       `phylum` varchar(60) NOT NULL default '',
       `class` varchar(60) NOT NULL default '',
-      `order` varchar(60) NOT NULL default '',
+      `orderx` varchar(60) NOT NULL default '',
       `family` varchar(60) NOT NULL default '',
       `genus` varchar(60) NOT NULL default '',
       `species` varchar(60) NOT NULL default '',
