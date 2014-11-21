@@ -270,7 +270,7 @@ my $import = 0;
 my $transfer = 0;
 
 # Define the list of ranks
-my @ranks = ('superkingdom','phylum','class','order','family','genus','species','strain');
+my @ranks = ('superkingdom','phylum','class','`order`','family','genus','species','strain');
 
 my $start = 'projectdataset';
 my $stop = 'final';
@@ -489,7 +489,7 @@ if ($start eq "projectdataset")
           JOIN project USING(project_id)
           JOIN dataset USING(dataset_id)
           JOIN run USING(run_id)
-          GROUP BY project, dataset;";
+          GROUP BY project_id, dataset_id;";
 
       print "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
       print LOG "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
@@ -507,7 +507,7 @@ if ($start eq "projectdataset")
         FROM $source_longs_tax_table
         LEFT JOIN $source_project_table USING(project_id)
         LEFT JOIN $source_dataset_table USING(dataset_id)
-        GROUP BY project, dataset
+        GROUP BY project_id, dataset_id
       ";
         # "INSERT INTO $final_project_dataset_counts_table
         # SELECT 0, project, dataset, count(*), 0, 'unknown', dataset
@@ -679,6 +679,13 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
 
     my $from_here   = 0;
     my $reads_left  = int($selectCountProject_int);
+
+    if ($test_only == 1)
+    {
+      $from_here = 0;
+      $chunk_size_seqs = 1;
+      &insert_chunk();      
+    }
 
     while($reads_left > 0)
     {
@@ -870,16 +877,19 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     PrintUpdate("Exporting data for $final_taxes_table to $taxesFile");
 
     # For each row in the SELECT statement, calculate remaining taxa ranks and write to file
-    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "order", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
+    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "`order`", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
     while(my @dataRow = $selectCube_h->fetchrow())
     {
       # Need to split apart the taxonomy to create separate values for each taxonomic rank
       my @taxes = split(';', $dataRow[3]);
       my @insertRow = @dataRow;
 
+      my $check1 = $dataRow[3];
+      print "q CHECK) \$dataRow[3] (check1) = $check1\n";
+      print LOG "q CHECK) \$dataRow[3] (check1) = $check1\n";
+
       # Double check for empty taxonomy strings -- no agreement at superkingdom
-      # 2010-05-18 changed FROM adding 'NA' table to 'superkinkdom_NA'
-      if ($dataRow[3] eq '') {$dataRow[3] = 'Domain_NA';}
+      if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown')) {$dataRow[3] = 'Domain_NA';}
 
       # pop off the these to make room for rank-specific taxa, put on again later
 
