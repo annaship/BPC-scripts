@@ -256,7 +256,7 @@ my $import = 0;
 my $transfer = 0;
 
 # Define the list of ranks
-my @ranks = ('superkingdom','phylum','class','order','family','genus','species','strain');
+my @ranks = ('superkingdom','phylum','class','`order`','family','genus','species','strain');
 
 my $start = 'projectdataset';
 my $stop = 'final';
@@ -611,7 +611,7 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
     PrintUpdate("Exporting data for $final_taxes_table to $taxesFile");
 
     # For each row in the SELECT statement, calculate remaining taxa ranks and write to file
-    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "order", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
+    print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "`order`", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
     while(my @dataRow = $selectCube_h->fetchrow())
     {
       # Need to split apart the taxonomy to create separate values for each taxonomic rank
@@ -620,7 +620,12 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
 
       # Double check for empty taxonomy strings -- no agreement at superkingdom
       # 2010-05-18 changed FROM adding 'NA' table to 'superkinkdom_NA'
-      if ($dataRow[3] eq '') {$dataRow[3] = 'Domain_NA';}
+      # if ($dataRow[3] eq '') {$dataRow[3] = 'Domain_NA';}
+      my $check1 = $dataRow[3];
+      print "q CHECK) \$dataRow[3] (check1) = $check1\n";
+      print LOG "q CHECK) \$dataRow[3] (check1) = $check1\n";
+      
+      if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown')) {$dataRow[3] = 'Domain_NA';}
 
       # pop off the these to make room for rank-specific taxa, put on again later
 
@@ -1634,7 +1639,7 @@ sub ExecuteInsertPassVar
   my $insertSQL = shift;
   my $query_val = shift;  #passing a query value
 
-  # print "HHH1: inside ExecuteInsertPassVar: query_val = $query_val\ninsertSQL = $insertSQL\n\n";
+  print "HHH1: inside ExecuteInsertPassVar: query_val = $query_val\ninsertSQL = $insertSQL\n\n";
 
   my $insertSQL_h = $dbhVamps->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhVamps->errstr . " (" . (localtime) . ")\n";
   $insertSQL_h->execute($query_val) or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
