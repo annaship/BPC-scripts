@@ -1013,19 +1013,6 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     PrintUpdate("Loading summed taxa FROM $tmp_taxes_table to $tmp_summed_taxes_table");
     my @ranks_subarray; # array for building the growing list of taxonomic ranks
     
-    # my $insertQuery_pr =
-    #   "INSERT INTO $tmp_summed_taxes_table
-    #   SELECT DISTINCT 0, concat_ws(';', ?) as taxonomy,
-    #   sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
-    #   ? AS rank, project, dataset, concat(project,'--',dataset), classifier
-    #   FROM vamps_data_cube_transfer
-    #   WHERE taxon_string != ''
-    #   GROUP BY project, dataset, ?
-    #   HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= ?";
-    #   # ORDER BY project, taxonomy";
-    # print "q 4-0) insertQuery_pr = dbhVamps.$insertQuery_pr\n";
-    # print LOG "q 4-0) insertQuery_pr = dbhVamps.$insertQuery_pr\n";
-    
     for (my $i = 0; $i <= $#ranks; $i++)
     {
       #print "i: $i\n";
@@ -1035,8 +1022,11 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       # print "ranks list: $ranks_list\n";
 
       # Insert statement, to insert integrated counts into the output data cube
-      # Prefer to have only one prepare statement, but can't effectively include the
-      # field names USING the "?" syntax.
+      # Prefer to have only one prepare statement, but it's impossible:
+      # "With most drivers, placeholders can't be used for any element of a statement that would prevent the database server from validating the statement and creating a query execution plan for it."
+      # From http://search.cpan.org/~timb/DBI-1.632/DBI.pm#Placeholders_and_Bind_Values
+
+      
       # q 4)
       my $insertQuery =
         "INSERT INTO $tmp_summed_taxes_table
