@@ -565,8 +565,8 @@ sub select_cnt_for_limit()
   my $selectCountReads =
   # "select count($glob_seq_id_id) from $glob_seq_id_table;";
     "select count($table_id) from $table_name";
-  print "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
-  print LOG "q AA) selectCountReads = $sourceHost.$selectCountReads\n";
+  print "q AA1) selectCountReads = $sourceHost.$selectCountReads\n";
+  print LOG "q AA1) selectCountReads = $sourceHost.$selectCountReads\n";
   my $selectCountReads_h = ExecuteSelect($selectCountReads);
   # my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
 
@@ -578,21 +578,33 @@ sub select_cnt_for_limit()
 
 #######################################
 #
-# SELECT count to use in for vamps_sequence
+# SELECT count to use for vamps_sequence
 #
 #######################################
 
 my $selectCountProject =
 # "select count($glob_seq_id_id) from $glob_seq_id_table;";
   "select count(distinct project_id) from vamps_projects_datasets";
-  print "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
-  print LOG "q AA) selectCountProject = $sourceHost.$selectCountProject\n";
+  print "q AA2) selectCountProject = $sourceHost.$selectCountProject\n";
+  print LOG "q AA2) selectCountProject = $sourceHost.$selectCountProject\n";
   my $selectCountProject_h = ExecuteSelect($selectCountProject);
   # my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
 
 my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
-print "1) selectCountProject_int = $selectCountProject_int\n";
-print LOG "1) selectCountProject_int = $selectCountProject_int\n";
+print "2) selectCountProject_int = $selectCountProject_int\n";
+print LOG "2) selectCountProject_int = $selectCountProject_int\n";
+
+
+#######################################
+#
+# SELECT Illumina project_ids to use for vamps_sequence
+#
+#######################################
+
+# my $select_ill_project_ids_q =
+#   "select distinct project_id from vamps_projects_datasets";
+#   &print_query_out("q AA2) selectIllProjectIds", $sourceHost." ".$select_ill_project_ids_q);  
+# my @select_ill_project_ids = &prep_exec_fetchrow_array_query($dbhSource, $select_ill_project_ids_q);
 
 #######################################
 #
@@ -680,11 +692,38 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     my $from_here   = 0;
     my $reads_left  = int($selectCountProject_int);
 
+    
+    # prepare insert_select_chunck_seq w "?"
+    # run in a cycle w no prepare
+    
+    my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
+            SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
+                  gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
+                  FROM sequence_ill
+                  JOIN sequence_pdr_info_ill USING(sequence_ill_id)
+                  JOIN run_info_ill USING(run_info_ill_id)
+                  JOIN sequence_uniq_info_ill USING(sequence_ill_id)
+                  JOIN taxonomy USING(taxonomy_id)
+                  JOIN rank USING(rank_id)
+                  JOIN vamps_projects_datasets USING(project_id, dataset_id)
+                  JOIN (
+                      SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
+                        JOIN run_info_ill USING(run_info_ill_id)
+                        JOIN (
+                          SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
+                          LIMIT ?, ?
+                          ) AS t USING(project_id)          
+                      ) AS t USING(sequence_pdr_info_ill_id)              
+                GROUP BY sequence_ill_id, project_id, dataset_id
+    ";
+    
+    my $insert_select_chunck_seq_h = $dbhSource->prepare($insert_select_chunck_seq) or warn print LOG "Unable to prepare statement: $insert_select_chunck_seq. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+
     if ($test_only == 1)
     {
       $from_here = 0;
       $chunk_size_seqs = 1;
-      &insert_chunk();      
+      &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
     }
 
     while($reads_left > 0)
@@ -693,7 +732,9 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       print LOG "START get_reads seq!!!\n";
       
       my $start_get_reads_seq = time;
-      &insert_chunk();
+      # &insert_chunk();
+      # ExecuteInsert_newbpcdb2_no_prepare()
+      $insert_select_chunck_seq_h->execute(($from_here, $chunk_size_seqs)) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
       my $end_get_reads_seq   = time;
       print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
       print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
@@ -702,33 +743,33 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       $from_here += $chunk_size_seqs;
     }
 
-    sub insert_chunk()
-    {
-      my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
-              SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
-                    gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
-                    FROM sequence_ill
-                    JOIN sequence_pdr_info_ill USING(sequence_ill_id)
-                    JOIN run_info_ill USING(run_info_ill_id)
-                    JOIN sequence_uniq_info_ill USING(sequence_ill_id)
-                    JOIN taxonomy USING(taxonomy_id)
-                    JOIN rank USING(rank_id)
-                    JOIN vamps_projects_datasets USING(project_id, dataset_id)
-                    JOIN (
-                        SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
-                          JOIN run_info_ill USING(run_info_ill_id)
-                          JOIN (
-                            SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
-                            LIMIT $from_here, $chunk_size_seqs
-                            ) AS t USING(project_id)          
-                        ) AS t USING(sequence_pdr_info_ill_id)              
-                  GROUP BY sequence_ill_id, project_id, dataset_id
-      ";
-      &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-      my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
-      # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
-    }
-
+    # sub insert_chunk()
+    # {
+    #   my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
+    #           SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
+    #                 gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
+    #                 FROM sequence_ill
+    #                 JOIN sequence_pdr_info_ill USING(sequence_ill_id)
+    #                 JOIN run_info_ill USING(run_info_ill_id)
+    #                 JOIN sequence_uniq_info_ill USING(sequence_ill_id)
+    #                 JOIN taxonomy USING(taxonomy_id)
+    #                 JOIN rank USING(rank_id)
+    #                 JOIN vamps_projects_datasets USING(project_id, dataset_id)
+    #                 JOIN (
+    #                     SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
+    #                       JOIN run_info_ill USING(run_info_ill_id)
+    #                       JOIN (
+    #                         SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
+    #                         LIMIT $from_here, $chunk_size_seqs
+    #                         ) AS t USING(project_id)          
+    #                     ) AS t USING(sequence_pdr_info_ill_id)              
+    #               GROUP BY sequence_ill_id, project_id, dataset_id
+    #   ";
+    #   &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
+    #   my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+    #   # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
+    # }
+    
     # q 6-3a)
     # 3) update vamps_sequences_transfer table on env454 - add frequencies
     my $UPDATE_temp_seq = 
@@ -739,7 +780,11 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # JOIN vamps_projects_datasets USING(project, dataset)
           
     &print_query_out("q 6-3a) UPDATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
+    my $start_time = time;
     ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
+    my $end_time   = time;
+    print "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
+    print LOG "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
 
     # q 6-3b)
     # 3) alter vamps_sequences_transfer table on env454 - add keys; used for taxonomy, see next section
@@ -747,10 +792,13 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     "ALTER TABLE vamps_sequences_transfer_temp
     ADD KEY comb_key (project, dataset, taxonomy, seq_count)
     ";
-    # JOIN vamps_projects_datasets USING(project, dataset)
           
     &print_query_out("q 6-3b) ALTER_temp_seq", $sourceHost." ".$ALTER_temp_seq);
+    $start_time = time;
     ExecuteInsert_newbpcdb2($ALTER_temp_seq);
+    $end_time   = time;
+    print "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
+    print LOG "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
     
     # # 4) decrease join_buffer
     # # q 6-4)
@@ -763,7 +811,13 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
     unless ($test_only == 1)
     {
+      # my $dump_sys = system($dump_seq);
+      $start_time = time;
       my $dump_sys = system($dump_seq);
+      $end_time   = time;
+      print "The total time of dump seq_temp is ", $end_time - $start_time, "\n";
+      print LOG "The total time of dump seq_temp is ", $end_time - $start_time, "\n";
+      
       if ($dump_sys) {print "Error dumping vamps_sequences_transfer_temp from env454\n";}
     }    
   }
@@ -929,6 +983,15 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     # vamps_data_cube_transfer
     CreateEmpty($tmp_taxes_table);
     ExecuteLoad($taxesFile, $tmp_taxes_table);
+
+# todo:
+    # my $update_new_taxa_name = "INSERT IGNORE INTO ? (?) SELECT distinct superkingdom FROM $tmp_taxes_table";
+    # my $update_new_taxa_name_prepered = &prep_query($update_new_taxa_name);
+    # foreach my $taxa_name ("superkingdom", "phylum", "class", "orderx", "family", "genus", "species", "strain")
+    # {
+    #   my $table_name = "\$".$taxa_name."_table";
+    #   $update_new_taxa_name_prepered->execute($table_name, $taxa_name) || die "Unable to execute MySQL statement: $update_new_taxa_name\nError: " . $dbh->errstr . "(" . (localtime) . ")\n";
+    # }
 
     #
     # Create the summed (junk) data cube FROM the regular data cube
@@ -1761,6 +1824,21 @@ sub ExecuteInsert_newbpcdb2
 
 #######################################
 #
+# On newbpcdb2
+# Execute _only_ INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("execute" only, no prepare, no return)
+#
+#######################################
+sub ExecuteInsert_newbpcdb2_no_prepare
+{
+  my $insertSQL = shift;
+  print "EEE13: I'm in ExecuteInsert_newbpcdb2_no_prepare\n";
+  # print "$insertSQL\n";
+  # if ($test_only == 1);
+  $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
+}
+
+#######################################
+#
 # Turn on and off indexing
 #
 #######################################
@@ -1878,7 +1956,7 @@ sub AnalyzeTable
 
 #######################################
 #
-# Printing queri to screen and LOG
+# Printing query to screen and LOG
 # Call with a query_name and query
 #
 #######################################
