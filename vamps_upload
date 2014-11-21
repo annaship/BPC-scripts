@@ -639,7 +639,14 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       # 2010-05-18 changed FROM adding 'NA' table to $ranks[$i]."_NA";
       for (my $i = 0; $i <= 7; $i++)
       {
-        if ($#taxes < $i) { $taxes[$i] = $ranks[$i] . "_NA"; }
+        if ($#taxes < $i) 
+        { 
+          $taxes[$i] = $ranks[$i] . "_NA"; 
+          if ($ranks[$i] == "`order`")
+          {
+            $taxes[$i] = "order_NA";
+          }          
+        }
       }
 
       # add the taxonomy by ranks and put the count back on the end
