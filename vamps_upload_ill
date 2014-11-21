@@ -711,7 +711,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
                         JOIN run_info_ill USING(run_info_ill_id)
                         JOIN (
                           SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
-                          LIMIT ?, ?
+                          LIMIT ?, $chunk_size_seqs
                           ) AS t USING(project_id)          
                       ) AS t USING(sequence_pdr_info_ill_id)              
                 GROUP BY sequence_ill_id, project_id, dataset_id
@@ -734,7 +734,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       my $start_get_reads_seq = time;
       # &insert_chunk();
       # ExecuteInsert_newbpcdb2_no_prepare()
-      $insert_select_chunck_seq_h->execute(($from_here, $chunk_size_seqs)) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
+      $insert_select_chunck_seq_h->execute($from_here) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
       my $end_get_reads_seq   = time;
       print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
       print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
@@ -1012,13 +1012,27 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     #PrintUpdate("Loading summed taxa FROM $source_table to $tmp_summed_taxes_table");
     PrintUpdate("Loading summed taxa FROM $tmp_taxes_table to $tmp_summed_taxes_table");
     my @ranks_subarray; # array for building the growing list of taxonomic ranks
+    
+    # my $insertQuery_pr =
+    #   "INSERT INTO $tmp_summed_taxes_table
+    #   SELECT DISTINCT 0, concat_ws(';', ?) as taxonomy,
+    #   sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
+    #   ? AS rank, project, dataset, concat(project,'--',dataset), classifier
+    #   FROM vamps_data_cube_transfer
+    #   WHERE taxon_string != ''
+    #   GROUP BY project, dataset, ?
+    #   HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= ?";
+    #   # ORDER BY project, taxonomy";
+    # print "q 4-0) insertQuery_pr = dbhVamps.$insertQuery_pr\n";
+    # print LOG "q 4-0) insertQuery_pr = dbhVamps.$insertQuery_pr\n";
+    
     for (my $i = 0; $i <= $#ranks; $i++)
     {
       #print "i: $i\n";
       # Create the working list of taxonomic ranks
       push(@ranks_subarray, $ranks[$i]);
       my $ranks_list = join(", ", @ranks_subarray); # i.e., superkingdom, phylum, class
-      print "ranks list: $ranks_list\n";
+      # print "ranks list: $ranks_list\n";
 
       # Insert statement, to insert integrated counts into the output data cube
       # Prefer to have only one prepare statement, but can't effectively include the
