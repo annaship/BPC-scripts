@@ -548,35 +548,6 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
 
     open(OUTTAX, ">$taxesFile") or warn print LOG "Unable to open SQL file: $taxesFile (". (localtime) . ")\n";
 
-    # SELECT the taxonomy and project/dataset information
-    #count(*) / dataset_count as frequency, dataset_count, concat(project, '--', dataset) as projectDataset
-    #count(*) / dataset_count as frequency, dataset_count, concat(project, '--', dataset) as projectDataset
-    #concat(project, '--', dataset) as projectDataset
-    # q 3)
-    # my $selectCube =
-    # "
-    # SELECT 0, project, dataset, taxonomy, rank, count(read_id) AS cnt,
-    #   count(read_id) / dataset_count as frequency, dataset_count, 'GAST'
-    #   FROM trimseq 
-    #   LEFT JOIN chimeras USING(read_id)
-    #   LEFT JOIN $source_tax_table USING(read_id)
-    #   JOIN $source_tax_assignment_table USING(read_id)
-    #   JOIN $final_project_dataset_counts_table USING (project_id, dataset_id)
-    #   JOIN $source_taxonomy_table USING(taxonomy_id)
-    #   JOIN $source_rank_table USING(rank_id)
-    #   WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )      
-    # GROUP BY project, dataset, taxonomy
-    # UNION
-    # SELECT 0, project, dataset, taxonomy, rank, count(read_id) as cnt,
-    #     count(read_id) / vamps_projects_datasets.dataset_count as frequency, vamps_projects_datasets.dataset_count, 'RDP'
-    # FROM $source_longs_tax_table
-    #   LEFT JOIN $final_project_dataset_counts_table as vamps_projects_datasets USING (project_id, dataset_id)
-    #   LEFT JOIN $source_taxonomy_table USING(taxonomy_id)
-    #   LEFT JOIN $source_rank_table USING(rank_id)
-    # GROUP BY project, dataset, taxonomy;
-    # ";
-
-    # TODO: uncomment when cimeric moved from trimseq
     my $selectCube =
     "
     SELECT DISTINCT 0, project, dataset, taxonomy, rank, count(read_id) AS cnt,
@@ -627,9 +598,9 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       
       if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown')) 
       {
-        my $check1 = $dataRow[3];
-        print "q CHECK) \$dataRow[3] (check1) = $check1\n";
-        print LOG "q CHECK) \$dataRow[3] (check1) = $check1\n";
+        my $check1 = $dataRow;
+        print "q CHECK1) \$dataRow (check1) = $check1\n";
+        print LOG "q CHECK1) \$dataRow (check1) = $check1\n";
 
         $dataRow[3] = 'Domain_NA';
       }
@@ -642,6 +613,10 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       my $cnt = pop(@insertRow);
       my $rank = pop(@insertRow);
 
+      if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown')) 
+      {
+        $rank = "NA";
+      }
       # For each rank (superkingdom --> strain) insert NAs for missing taxonomy off the end
       # 2010-05-18 changed FROM adding 'NA' table to $ranks[$i]."_NA";
       for (my $i = 0; $i <= 7; $i++)
@@ -649,11 +624,15 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
         if ($#taxes < $i) 
         { 
           $taxes[$i] = $ranks[$i] . "_NA"; 
-          if ($ranks[$i] == "`order`")
-          {
-            $taxes[$i] = "order_NA";
-          }          
+          # print LOG 'TTT $ranks[$i] = ' . $ranks[$i];
+          # print LOG "\n";
         }
+        if ($taxes[$i] eq '`order`_NA')
+        {
+          $taxes[$i] = "order_NA";
+        }          
+        # print LOG 'TTT $taxes[$i] = ' . $taxes[$i];
+        # print LOG "\n";
       }
 
       # add the taxonomy by ranks and put the count back on the end
@@ -1771,9 +1750,14 @@ sub new_tables_count_all
   my %res_count;
   while (my ($key, $value) = each %norm_table_names)
   {
-    PrintUpdate("key = $key:  value = $value\n");
+    PrintUpdate("YYY1 key = $key:  value = $value\n");
      # if ($test_only == 1);
     my $id = $key."_id";
+    if ($id eq "order_id")
+    {
+      $id = "orderx_id";
+    }
+    
     my $table_name = "$value";
     my $table_name_query = "SELECT count($id) FROM $table_name";
     PrintUpdate("table_name_query = $table_name_query\n") if ($test_only == 1);
@@ -1806,8 +1790,12 @@ sub new_tables_count
   {
       if (in_array(\@$table_names, $value))
       {
-        PrintUpdate("key = $key:  value = $value\n") if ($test_only == 1);
+        PrintUpdate("YYY key = $key:  value = $value\n") if ($test_only == 1);
         my $id = $key."_id";
+        if ($id eq "order_id")
+        {
+          $id = "orderx_id";
+        }
         my $table_name = "$value";
         $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, "SELECT count($id) FROM $table_name" . $tblSuffix);
          # unless ($test_only == 1);
