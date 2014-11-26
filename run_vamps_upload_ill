@@ -6,19 +6,25 @@ time vamps_upload_ill -e -i -s projectdataset -stop projectdataset vamps
 # Analyzing vamps_projects_datasets_transfer
 
 #
+# Export sequences table from env454 
+#
+time vamps_upload_ill -e -skip -s sequences -stop sequences vamps
+# Analyzing vamps_sequences_transfer
+
+#
+# Import sequences table into VAMPS
+#
+time vamps_upload_ill -i -skip -s sequences -stop sequences vamps &
+# Analyzing vamps_sequences_transfer
+
+#
 # Export data taxonomy tables
 #
 time vamps_upload_ill -e -i -skip -s taxonomy -stop taxonomy vamps &
-sleep 300
+# sleep 300
 # Analyzing vamps_data_cube_transfer
 # Analyzing vamps_junk_data_cube_transfer
 # Analyzing vamps_taxonomy_transfer
-
-#
-# Export sequences table
-#
-time vamps_upload_ill -e -i -skip -s sequences -stop sequences vamps &
-# Analyzing vamps_sequences_transfer
 
 #
 # Export the reads and anything else after
