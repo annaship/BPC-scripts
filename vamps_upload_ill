@@ -81,6 +81,9 @@ my $usage = "
 # Definition statements
 #
 #######################################
+my $start_time = time;
+my $end_time   = time;
+
 my $argNum       = 1;
 my $tblSuffix    = "_transfer";
 my $tblSuffixOld = "_previous";
@@ -460,8 +463,10 @@ if ($start eq "projectdataset")
       my $truncatePDCQuery = "TRUNCATE $final_project_dataset_counts_table";
       # my $truncatePDCQuery_h = $dbhSource->prepare($truncatePDCQuery) or warn print LOG "Unable to prepare statement: $truncatePDCQuery.  Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
       # $truncatePDCQuery_h->execute or warn print LOG "Unable to execute SQL statement: $truncatePDCQuery.  Error:     " . $truncatePDCQuery_h->errstr . " (" . (localtime) . ")\n";
-      print "q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n";
-      print LOG "q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n";
+      # print "q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n";
+      # print LOG "q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n";
+      &print_query_out("q -1) truncatePDCQuery", $sourceHost." ".$truncatePDCQuery);
+      
       ExecuteInsert_newbpcdb2($truncatePDCQuery);
 
       # Insert the regular 454 tag sequence counts
@@ -491,8 +496,9 @@ if ($start eq "projectdataset")
           JOIN run USING(run_id)
           GROUP BY project_id, dataset_id;";
 
-      print "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
-      print LOG "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
+      # print "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
+      # print LOG "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
+      &print_query_out("q -1) insert_project_datasets", $sourceHost." ".$insert_project_datasets);
 
       ExecuteInsert_newbpcdb2($insert_project_datasets);
       #
@@ -515,8 +521,9 @@ if ($start eq "projectdataset")
         # GROUP BY project, dataset";
       # $insert_project_datasets_h = $dbhSource->prepare($insert_project_datasets) or warn print LOG "Unable to prepare statement: $insert_project_datasets. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
       # $insert_project_datasets_h->execute or warn print LOG "Unable to execute SQL statement: $insert_project_datasets.  Error: " . $insert_project_datasets_h->errstr . " (" . (localtime) . ")\n";
-      print "q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n";
-      print LOG "q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n";
+      # print "q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n";
+      # print LOG "q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n";
+      &print_query_out("q 1a) insert_project_datasets", $sourceHost." ".$insert_project_datasets_a);
 
       # ExecuteInsert_newbpcdb2($insert_project_datasets_a);
 
@@ -565,14 +572,17 @@ sub select_cnt_for_limit()
   my $selectCountReads =
   # "select count($glob_seq_id_id) from $glob_seq_id_table;";
     "select count($table_id) from $table_name";
-  print "q AA1) selectCountReads = $sourceHost.$selectCountReads\n";
-  print LOG "q AA1) selectCountReads = $sourceHost.$selectCountReads\n";
+  # print "q AA1) selectCountReads = $sourceHost.$selectCountReads\n";
+  # print LOG "q AA1) selectCountReads = $sourceHost.$selectCountReads\n";
+  &print_query_out("q AA1) selectCountReads", $sourceHost." ".$selectCountReads);
+
   my $selectCountReads_h = ExecuteSelect($selectCountReads);
   # my $selectCountReads_h = ExecuteSelectTest($selectCountReads);
 
   my ($selectCountReads_int) = $selectCountReads_h->fetchrow_array();  
-  print "1) selectCountReads_int = $selectCountReads_int\n";
-  print LOG "1) selectCountReads_int = $selectCountReads_int\n";
+  # print "1) selectCountReads_int = $selectCountReads_int\n";
+  # print LOG "1) selectCountReads_int = $selectCountReads_int\n";
+  &print_query_out("1) selectCountReads_int", $sourceHost." ".$selectCountReads_int);
   return $selectCountReads_int;
 }
 
@@ -585,14 +595,16 @@ sub select_cnt_for_limit()
 my $selectCountProject =
 # "select count($glob_seq_id_id) from $glob_seq_id_table;";
   "select count(distinct project_id) from vamps_projects_datasets";
-  print "q AA2) selectCountProject = $sourceHost.$selectCountProject\n";
-  print LOG "q AA2) selectCountProject = $sourceHost.$selectCountProject\n";
+  # print "q AA2) selectCountProject = $sourceHost.$selectCountProject\n";
+  # print LOG "q AA2) selectCountProject = $sourceHost.$selectCountProject\n";
+  &print_query_out("q AA2) selectCountProject", $sourceHost." ".$selectCountProject);
   my $selectCountProject_h = ExecuteSelect($selectCountProject);
   # my $selectCountProject_h = ExecuteSelectTest($selectCountProject);
 
 my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();  
-print "2) selectCountProject_int = $selectCountProject_int\n";
-print LOG "2) selectCountProject_int = $selectCountProject_int\n";
+# print "2) selectCountProject_int = $selectCountProject_int\n";
+# print LOG "2) selectCountProject_int = $selectCountProject_int\n";
+&print_query_out("2) selectCountProject_int", $sourceHost." ".$selectCountProject_int);
 
 
 #######################################
@@ -686,8 +698,9 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     my $chunk_size_seqs  = 1;  # dump data to transfer files 1 project records at a time FOR SEQS
     # my $sourceHost = "newbpcdb2";
 
-    print "2) selectCountProject_int = $selectCountProject_int\n";
-    print LOG "2) selectCountProject_int = $selectCountProject_int\n";
+    # print "2) selectCountProject_int = $selectCountProject_int\n";
+    # print LOG "2) selectCountProject_int = $selectCountProject_int\n";
+    &print_query_out("2a) selectCountProject_int", $sourceHost." ".$selectCountProject_int);
 
     my $from_here   = 0;
     my $reads_left  = int($selectCountProject_int);
@@ -696,9 +709,9 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # prepare insert_select_chunck_seq w "?"
     # run in a cycle w no prepare
     
-    my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
+    my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, frequency, dataset_count)
             SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
-                  gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
+                  gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, sum(seq_count) / dataset_count as frequency, dataset_count
                   FROM sequence_ill
                   JOIN sequence_pdr_info_ill USING(sequence_ill_id)
                   JOIN run_info_ill USING(run_info_ill_id)
@@ -718,6 +731,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     ";
     
     my $insert_select_chunck_seq_h = $dbhSource->prepare($insert_select_chunck_seq) or warn print LOG "Unable to prepare statement: $insert_select_chunck_seq. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
+    &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);
 
     if ($test_only == 1)
     {
@@ -736,8 +750,8 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       # ExecuteInsert_newbpcdb2_no_prepare()
       $insert_select_chunck_seq_h->execute($from_here) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
       my $end_get_reads_seq   = time;
-      print "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
-      print LOG "The total time of insert_chunk is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print "The total time of insert_chunk $from_here is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print LOG "The total time of insert_chunk $from_here is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
 
       $reads_left -= $chunk_size_seqs;
       $from_here += $chunk_size_seqs;
@@ -772,25 +786,25 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     
     # q 6-3a)
     # 3) update vamps_sequences_transfer table on env454 - add frequencies
-    my $UPDATE_temp_seq = 
-    "UPDATE vamps_sequences_transfer_temp
-    SET frequency = vamps_sequences_transfer_temp.seq_count / dataset_count
-    ";
+    # my $UPDATE_temp_seq = 
+    # "UPDATE vamps_sequences_transfer_temp
+    # SET frequency = vamps_sequences_transfer_temp.seq_count / dataset_count
+    # ";
 
     # JOIN vamps_projects_datasets USING(project, dataset)
           
-    &print_query_out("q 6-3a) UPDATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
-    my $start_time = time;
-    ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
-    my $end_time   = time;
-    print "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
-    print LOG "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
+    # &print_query_out("q 6-3a) UPDATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
+    # my $start_time = time;
+    # ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
+    # my $end_time   = time;
+    # print "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
+    # print LOG "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
 
     # q 6-3b)
     # 3) alter vamps_sequences_transfer table on env454 - add keys; used for taxonomy, see next section
     my $ALTER_temp_seq = 
     "ALTER TABLE vamps_sequences_transfer_temp
-    ADD KEY comb_key (project, dataset, taxonomy, seq_count)
+    ADD KEY comb_key (project, dataset, taxonomy, rank, seq_count, dataset_count)    
     ";
           
     &print_query_out("q 6-3b) ALTER_temp_seq", $sourceHost." ".$ALTER_temp_seq);
@@ -874,7 +888,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # 10) insert data into vamps_sequences_transfer from temp (uncompress and concat)
     # q 6-10)
     my $insert_vamps_sequences_transfer = 'INSERT INTO vamps_sequences_transfer (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset)
-      select uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
+      SELECT uncompress(sequence_comp) as sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, concat(project, "--", dataset) as project_dataset
       from vamps_sequences_transfer_temp';
     &print_query_out("q 6-10) insert_vamps_sequences_transfer", $vampsHost." ".$insert_vamps_sequences_transfer);
     ExecuteInsert($insert_vamps_sequences_transfer);
@@ -918,8 +932,9 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     GROUP BY project, dataset, taxonomy
     ";
     
-    print "q 3) selectCube = $sourceHost.$selectCube\n";
-    print LOG "q 3) selectCube = $sourceHost.$selectCube\n";
+    # print "q 3) selectCube = $sourceHost.$selectCube\n";
+    # print LOG "q 3) selectCube = $sourceHost.$selectCube\n";
+    &print_query_out("q 3) selectCube", $sourceHost." ".$selectCube);
     my $selectCube_h = ExecuteSelect($selectCube);
 
     #######################################
@@ -938,12 +953,18 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       my @taxes = split(';', $dataRow[3]);
       my @insertRow = @dataRow;
 
-      my $check1 = $dataRow[3];
-      print "q CHECK) \$dataRow[3] (check1) = $check1\n";
-      print LOG "q CHECK) \$dataRow[3] (check1) = $check1\n";
+      # my $check1 = $dataRow[3];
+      # print "q CHECK) \$dataRow[3] (check1) = $check1\n";
+      # print LOG "q CHECK) \$dataRow[3] (check1) = $check1\n";
 
       # Double check for empty taxonomy strings -- no agreement at superkingdom
-      if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown')) {$dataRow[3] = 'Domain_NA';}
+      if (($dataRow[3] eq '') || ($dataRow[3] eq 'Unknown')) 
+      {
+        print LOG "q CHECK) dataRow";
+        print LOG join(", ", @dataRow);
+        
+        $dataRow[3] = 'Domain_NA';
+      }
 
       # pop off the these to make room for rank-specific taxa, put on again later
 
@@ -957,7 +978,19 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       # 2010-05-18 changed FROM adding 'NA' table to $ranks[$i]."_NA";
       for (my $i = 0; $i <= 7; $i++)
       {
-        if ($#taxes < $i) { $taxes[$i] = $ranks[$i] . "_NA"; }
+        # if ($#taxes < $i) { $taxes[$i] = $ranks[$i] . "_NA"; }
+        if ($#taxes < $i) 
+        { 
+          $taxes[$i] = $ranks[$i] . "_NA"; 
+          # print LOG 'TTT $ranks[$i] = ' . $ranks[$i];
+          # print LOG "\n";
+        }
+        if ($taxes[$i] eq '`order`_NA')
+        {
+          $taxes[$i] = "order_NA";
+        }          
+        # print LOG 'TTT $taxes[$i] = ' . $taxes[$i];
+        # print LOG "\n";
       }
 
       # add the taxonomy by ranks and put the count back on the end
@@ -1038,8 +1071,9 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
         GROUP BY project, dataset, $ranks_list
         HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= $i";
         # ORDER BY project, taxonomy";
-      print "q 4) insertQuery = dbhVamps.$insertQuery\n";
-      print LOG "q 4) insertQuery = dbhVamps.$insertQuery\n";
+      # print "q 4) insertQuery = dbhVamps.$insertQuery\n";
+      # print LOG "q 4) insertQuery = dbhVamps.$insertQuery\n";
+      &print_query_out("q 4) insertQuery", "dbhVamps ".$insertQuery);
 
       # Use the ranks_list and the rank index to execute the query
       ExecuteInsertPassVar($insertQuery, $i);
@@ -1066,8 +1100,10 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     #         (CASE WHEN taxon_string LIKE '%;NA' or rank = 7 THEN 0 ELSE 1 END) as num_kids
     #         FROM $tmp_summed_taxes_table
     #         WHERE taxon_string not LIKE '%;NA;NA' and taxon_string != 'NA;NA'";
-    print "q 5) insertDistinctTaxaQuery = dbhVamps.$insertDistinctTaxaQuery\n\n\n";
-    print LOG "q 5) insertDistinctTaxaQuery = dbhVamps.$insertDistinctTaxaQuery\n\n\n";
+    # print "q 5) insertDistinctTaxaQuery = dbhVamps.$insertDistinctTaxaQuery\n\n\n";
+    # print LOG "q 5) insertDistinctTaxaQuery = dbhVamps.$insertDistinctTaxaQuery\n\n\n";
+    &print_query_out("q 5) insertDistinctTaxaQuery", "dbhVamps ".$insertDistinctTaxaQuery);
+
     ExecuteInsert($insertDistinctTaxaQuery);
 
     unless($do_not_analyze)
@@ -1122,8 +1158,9 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     #
     my $selectCountReads_int = &select_cnt_for_limit("sequence_pdr_info_ill");
 
-    print "3) selectCountReads_int = $selectCountReads_int\n";
-    print LOG "3) selectCountReads_int = $selectCountReads_int\n";
+    # print "3) selectCountReads_int = $selectCountReads_int\n";
+    # print LOG "3) selectCountReads_int = $selectCountReads_int\n";
+    &print_query_out("3) selectCountReads_int", $sourceHost." ".$selectCountReads_int);
 
     my $from_here   = 0;
     my $reads_left  = int($selectCountReads_int);
@@ -1177,8 +1214,10 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
             LIMIT $from_here, $chunk_size_reads
             ) AS t USING(sequence_pdr_info_ill_id)          
         ";
-        print "q 7) selectReads = $sourceHost.$selectReads\n";
-        print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
+        # print "q 7) selectReads = $sourceHost.$selectReads\n";
+        # print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
+        &print_query_out("q 7) selectReads", $sourceHost." ".$selectReads);
+        
         my $selectReads_h = ExecuteSelect($selectReads);
         return $selectReads_h;
     }
@@ -1258,8 +1297,9 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
       WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS';
     ";
     
-    print "q 8) selectProjects = $selectProjects\n";
-    print LOG "q 8) selectProjects = $selectProjects\n";
+    &print_query_out("q 8) selectProjects", $sourceHost." ".$selectProjects);
+    # print "q 8) selectProjects = $selectProjects\n";
+    # print LOG "q 8) selectProjects = $selectProjects\n";
     ExecuteDump($selectProjects, $projectDescFile);
   }
 
@@ -1832,14 +1872,14 @@ sub ExecuteInsert_newbpcdb2
 # Execute _only_ INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("execute" only, no prepare, no return)
 #
 #######################################
-sub ExecuteInsert_newbpcdb2_no_prepare
-{
-  my $insertSQL = shift;
-  print "EEE13: I'm in ExecuteInsert_newbpcdb2_no_prepare\n";
-  # print "$insertSQL\n";
-  # if ($test_only == 1);
-  $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
-}
+# sub ExecuteInsert_newbpcdb2_no_prepare
+# {
+#   my $insertSQL = shift;
+#   print "EEE13: I'm in ExecuteInsert_newbpcdb2_no_prepare\n";
+#   # print "$insertSQL\n";
+#   # if ($test_only == 1);
+#   my $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
+# }
 
 #######################################
 #
@@ -1971,7 +2011,7 @@ sub print_query_out
   my $message_part = shift;
   my $message      = "\$query_name = $query_name; $message_part\n";
   print $message;
-  print LOG $message;
+  print LOG "$message (" . (localtime) . ")\n";  
 }
 
 #######################################
@@ -1985,27 +2025,19 @@ sub new_tables_count_all
   my %res_count;
   while (my ($key, $value) = each %norm_table_names)
   {
-    print "key = $key:  value = $value\n";
+    PrintUpdate("YYY2 key = $key:  value = $value\n");
      # if ($test_only == 1);
     my $id = $key."_id";
+    if ($id eq "order_id")
+    {
+      $id = "orderx_id";
+    }
+    
     my $table_name = "$value";
     my $table_name_query = "SELECT count($id) FROM $table_name";
-    print "table_name_query = $table_name_query\n" if ($test_only == 1);
-    # my $temp_h = $dbhSource->prepare($table_name_query) or warn print LOG "Unable to prepare statement: $table_name_query. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
-    # $temp_h->execute or warn print LOG "Unable to execute SQL statement: $table_name_query.  Error: " . $temp_h->errstr . " (" . (localtime) . ")\n";
-    #
-    # if ($table_name eq "new_user_contact")
-    # {
-    #   $res_count{$user_contact_table} = &prep_exec_fetch_query($dbhVamps, "SELECT count(*) FROM $user_contact_table");
-    #   print "$user_contact_table: ".$res_count{$user_contact_table}."\n" if ($test_only == 1);
-    # }
-    # else
-    # {
-      $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, $table_name_query);
-      # print "HEREEE\n";
-      print "table_name = $table_name; res_count = $res_count{$table_name}\n" if ($test_only == 1);
-    # }
-
+    PrintUpdate("table_name_query = $table_name_query\n") if ($test_only == 1);
+    $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, $table_name_query);
+    PrintUpdate("table_name = $table_name; res_count = $res_count{$table_name}\n") if ($test_only == 1);
   }
   return %res_count;
 
@@ -2020,24 +2052,18 @@ sub new_tables_count
   {
       if (in_array(\@$table_names, $value))
       {
-        print "key = $key:  value = $value\n" if ($test_only == 1);
+        PrintUpdate("YYY1 key = $key:  value = $value\n") if ($test_only == 1);
         my $id = $key."_id";
+        if ($id eq "order_id")
+        {
+          $id = "orderx_id";
+        }
+        
         my $table_name = "$value";
         $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, "SELECT count($id) FROM $table_name" . $tblSuffix);
          # unless ($test_only == 1);
-        print "$res_count{$table_name}\n" if ($test_only == 1);
+        PrintUpdate("$res_count{$table_name}\n") if ($test_only == 1);
       }
-    # else
-    # # count all (not transfer)
-    # {
-    #   print "key = $key:  value = $value\n" if ($test_only == 1);
-    #   my $id = $key."_id";
-    #   my $table_name = "$value";
-    #   $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, "SELECT count($id) FROM $table_name");
-    #    # unless ($test_only == 1);
-    #    print "HEREEE\n";
-    #   print "table_name = $table_name; res_count = $res_count{$table_name}\n" if ($test_only == 1);
-    # }
   }
 
   # todo: 1) refactor to DRY!
