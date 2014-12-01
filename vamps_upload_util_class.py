@@ -187,7 +187,7 @@ class SqlUtil:
       return suff_table_names
 
     def update_intermediate_from_illumina_transfer(self, intermediate_names, transfer_names):      
-      insert_vamps_data_cube_q         = """INSERT IGNORE INTO %s (project, dataset, taxon_string, superkingdom, phylum, class, orderx, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, orderx, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
+      insert_vamps_data_cube_q         = """INSERT IGNORE INTO %s (project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
                                               FROM %s""" % (intermediate_names['vamps_data_cube'], transfer_names['vamps_data_cube'])
       insert_vamps_export_q            = """INSERT IGNORE INTO %s (read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed) SELECT read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed 
                                               FROM %s""" % (intermediate_names['vamps_export'], transfer_names['vamps_export'])
@@ -206,7 +206,7 @@ class SqlUtil:
       insert_new_phylum_q              = """INSERT IGNORE INTO %s (phylum) SELECT phylum 
                                               FROM %s""" % (intermediate_names['new_phylum'], transfer_names['new_phylum'])
       insert_new_class_q               = """INSERT IGNORE INTO %s (class) SELECT class FROM %s""" % (intermediate_names['new_class'], transfer_names['new_class'])
-      insert_new_orderx_q              = """INSERT IGNORE INTO %s (orderx) SELECT orderx FROM %s""" % (intermediate_names['new_orderx'], transfer_names['new_orderx'])
+      insert_new_orderx_q              = """INSERT IGNORE INTO %s (`order`) SELECT `order` FROM %s""" % (intermediate_names['new_orderx'], transfer_names['new_orderx'])
       insert_new_family_q              = """INSERT IGNORE INTO %s (family) SELECT family FROM %s""" % (intermediate_names['new_family'], transfer_names['new_family'])
       insert_new_genus_q               = """INSERT IGNORE INTO %s (genus) SELECT genus FROM %s""" % (intermediate_names['new_genus'], transfer_names['new_genus'])
       insert_new_species_q             = """INSERT IGNORE INTO %s (species) SELECT species FROM %s""" % (intermediate_names['new_species'], transfer_names['new_species'])
@@ -234,7 +234,7 @@ class SqlUtil:
           JOIN %s as new_superkingdom USING(superkingdom)
           JOIN %s as new_phylum USING(phylum)
           JOIN %s as new_class USING(class)
-          JOIN %s as new_orderx USING(orderx)
+          JOIN %s as new_orderx USING(`order`)
           JOIN %s as new_family USING(family)
           JOIN %s as new_genus USING(genus)
           JOIN %s as new_species USING(species)
