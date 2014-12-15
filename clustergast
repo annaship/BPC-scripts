@@ -72,11 +72,11 @@ my $usage = "
              -gt          alternative gast table [default: gast_rundate_\$source]
              -mh          maximum number of reference hits to store [default: 15]
              -pctid       minimum percent identity of the read to a reference to be considered a hit [default: 0.70]
-
+             -ignoreterm  ignore terminal gaps when checking for large indels [default: don't ignore] (http://www.drive5.com/usearch/manual/aln_params.html)
+             -strand      plus or both [default: plus]
    steps:  db2fasta, unique, usearch
 
 \n";
-             #-ignoreterm  ignore terminal gaps when checking for large indels [default: don't ignore]
              #-blast       alternative blast database [default: refhvr_\$source]
              #-bt          alternative blast table [default: refhvr_\$source]
 
@@ -122,6 +122,9 @@ my $gast_table;
 my $max_accepts		= 15;
 my $max_rejects		= 0;
 my $pctid_threshold	= 0.70;
+my $ignoreterm    = 0;
+my $gapopen       = "6I/1E";
+my $strand        = "plus";
 
 ## todo: uncommented!
 my $sqlimport_cmd = "/usr/local/mysql/bin/mysqlimport";
@@ -186,6 +189,12 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-mh") {
 		shift @ARGV;
 		$max_accepts = shift @ARGV;
+	} elsif ($ARGV[0] eq "-strand") {
+		shift @ARGV;
+		$strand = shift @ARGV;
+	} elsif ($ARGV[0] eq "-ignoreterm") {
+		shift @ARGV;
+		$ignoreterm = 1;
 	} elsif ($ARGV[0] eq "-v") {
 		$verbose = 1;
 		shift @ARGV;
@@ -287,7 +296,8 @@ if ($vRegion =~ /v[0-9]v[0-9]/i)
     }
 }
 
-if (! $refhvr_udb) { $refhvr_udb = $refhvr_udb_dir . "ref" . $vRegion53; }
+# if (! $refhvr_udb) { $refhvr_udb = $refhvr_udb_dir . "ref" . $vRegion53; }
+if (! $refhvr_udb) { $refhvr_udb = "ref" . $vRegion53; }
 
 # todo: change "blast fasta" in verbose to blast udb?
 if (! $vref_table) { $vref_table = "refhvr_" . $vRegion53; }
@@ -380,6 +390,8 @@ if ( ($start eq "db2fasta") || ($start eq "unique") || ($start eq "usearch") )
 
     &prep_exec_query($dbh, "DROP TABLE IF EXISTS $gast_table");
   
+    if ($verbose) {print "gast_table: $gast_table\n";}
+  
     my $gast_table_id_name = $gast_table . "_id";
     &prep_exec_query($dbh, 
       "CREATE TABLE $gast_table ( 
@@ -459,8 +471,11 @@ END_MESSAGE
         $script_text .= "$fastasampler_cmd\n\n";
         if ($verbose) {print "$fastasampler_cmd\n";}
         my $refhvr_udb_name = $refhvr_udb . ".udb";
+        my $refhvr_udb_full_name = $refhvr_udb_dir . $refhvr_udb_name;
         
-        my $usearch_cmd = $usearch_exe . " -usearch_global $tmp_fasta_filename -gapopen 6I/1E -uc_allhits -strand plus -db $refhvr_udb_name -uc $tmp_usearch_filename -maxaccepts $max_accepts -maxrejects $max_rejects -id $pctid_threshold";
+        if ($ignoreterm == 1) {$gapopen = "0E -gapext 0E"}  
+        
+        my $usearch_cmd = $usearch_exe . " -usearch_global $tmp_fasta_filename -gapopen $gapopen -uc_allhits -strand $strand -db $refhvr_udb_full_name -uc $tmp_usearch_filename -maxaccepts $max_accepts -maxrejects $max_rejects -id $pctid_threshold";
         print "URA clustergast: \$usearch_cmd = $usearch_cmd\n";
         print LOG "From clustergast: \$usearch_cmd = $usearch_cmd\n";
         $script_text .= "$usearch_cmd\n\n";
@@ -468,6 +483,10 @@ END_MESSAGE
     
         # sort the results for valid hits, saving only the ids and pct identity
         my $tophit_cmp = "clustergast_tophit";
+        
+        if ($verbose) {print "vRegion = $vRegion\n";}
+        
+        
         # doing ITS fungal? if so then ignore terminal gaps
         if ($vRegion eq "its1")
         {
