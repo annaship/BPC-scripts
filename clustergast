@@ -433,6 +433,9 @@ END_MESSAGE
     my @lines = split(/\n/, $calcs);
     
     my $i = 1;
+    
+    if ($verbose) {print "Keep all files here, not on temp\n"; print LOG "Keep all files here, not on temp\n"; $tmpDir = "";}
+  
     foreach my $l (@lines)
     {
         # calcnodes returns a series of lines describing each set, parse the set and use for the qsub
@@ -450,6 +453,10 @@ END_MESSAGE
         my $usearch_filename			= $usearch_filename . "_$i.txt";
         my $tmp_fasta_filename		= $tmpDir . $fasta_uniqs_filename . $rand_file . $i;
         my $gast_filename				  = "gast_" . $file_prefix . ".$i.txt";
+        
+        if ($gast_table) { $gast_filename = $gast_table . ".$i.txt"; }
+        
+        
         open (QSUB, ">$script_filename") || die "Unable to write to qsub script: $script_filename.  Exiting\n";
 
         print QSUB "#!/bin/sh\n";
@@ -502,6 +509,7 @@ END_MESSAGE
         # "LOAD INFILE" gave errors on an older MySQL version, use mysqlimport instead
         #my $load_cmd = "mysql -h jbpcdb env454 -e \"load data local infile '$gast_filename' into table $gast_table\"";
         my $load_cmd = "$sqlimport_cmd -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h $db_host $db_name $gast_filename";
+        # "For each text file named on the command line, mysqlimport strips any extension from the file name and uses the result to determine the name of the table into which to import the file's contents. For example, files named patient.txt, patient.text, and patient all would be imported into a table named patient."
         
         #$script_text .= "echo \"loading file $gast_filename into table $gast_table\n\"";
         $script_text .= "$load_cmd\n\n";
@@ -528,7 +536,7 @@ END_MESSAGE
             
         # $tmp_usearch_filename where does this one go?!?
         $script_text .= "$clean_qsubfile_cmd\n\n";
-        if ($verbose) {print "remove qsub file: $clean_qsubfile_cmd\n";}
+        # if ($verbose) {print "remove qsub file: $clean_qsubfile_cmd\n";}
 
         # Print the commands to the qsub script and then
         # submit the script to the cluster
