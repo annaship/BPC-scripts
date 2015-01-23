@@ -451,7 +451,7 @@ END_MESSAGE
     chomp $username;
     my $myemail = "$username" . '@mbl.edu';        
     my $tophit_cmd = "clustergast_tophit";
-    my $qsub_cmd_name = "gast_" . substr($run, 2) . "_" . $vRegion;
+    my $qsub_cmd_name = "gst_" . substr($run, 2) . "_" . $vRegion;
 
 
     # use udb for usearch
