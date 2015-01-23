@@ -63,9 +63,10 @@ class CreateIniFiles:
         print "self.out_file_names_barcodes = %s" % self.out_file_names_barcodes
         
         for idx_key in self.out_file_names_barcodes:
+            dataset_name = self.sample_barcodes[idx_key]
             # print "out_file_names_barcodes key = %s" % (idx_key)
             text = """[general]
-project_name = %s
+dataset_name = %s
 researcher_email = %s
 input_directory = %s
 output_directory = %s
@@ -73,7 +74,7 @@ output_directory = %s
 [files]
 pair_1 = %s
 pair_2 = %s
-""" % (idx_key, email, self.input_dir, "../" + self.out_file_path, idx_key + "_R1.fastq", idx_key + "_R2.fastq")
+""" % (dataset_name, email, self.input_dir, "../" + self.out_file_path, idx_key + "_R1.fastq", idx_key + "_R2.fastq")
 
             # primers = self.get_primers()  
             text += """

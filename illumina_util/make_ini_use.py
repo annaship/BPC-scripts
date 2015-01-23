@@ -5,22 +5,22 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='''Makes ini files for demultiplexed Illumina fastq per barcode from "in_barcode_file_name"
-    Command line example: python make_ini_use.py  --in_barcode_file_name "prep_template.txt"  --pair_1_prefix "........CTACCTGCGGA[AG]GGATCA" --pair_2_prefix "GAGATCC[AG]TTG[CT]T[AG]AAAGTT" --input_dir "results" --out_file_path "results"
+    Command line example: python make_ini_use.py  --in_barcode_file_name "prep_template.txt"  --pair_1_prefix "........CTACCTGCGGA[A,G]GGATCA" --pair_2_prefix "GAGATCC[A,G]TTG[C,T]T[A,G]AAAGTT" --input_dir "results" --out_file_path "results"
     ''')
     # todo: add user_config
     # parser.add_argument('--user_config', metavar = 'CONFIG_FILE',
     #                                     help = 'User configuration to run')
     # ITS
-    # --pair_1_prefix "........CTACCTGCGGA[AG]GGATCA"
-    # --pair_2_prefix "GAGATCC[AG]TTG[CT]T[AG]AAAGTT"
+    # --pair_1_prefix "........CTACCTGCGGA[A,G]GGATCA"
+    # --pair_2_prefix "GAGATCC[A,G]TTG[C,T]T[A,G]AAAGTT"
     # v4            
     # --pair_1_prefix ^........GTGCCAGC[AC]GCCGCGGTAA
-    # --pair_2_prefix ^GGACTAC[ACT][ACG]GGGT[AT]TCTAAT
+    # --pair_2_prefix ^GGACTAC[A,C,T][A,C,G]GGGT[A,T]TCTAAT
 
     parser.add_argument('--pair_1_prefix',
-                                        help = 'Forward (read1) primer. Use regular expressions like "........CTACCTGCGGA[AG]GGATCA".')
+                                        help = 'Forward (read1) primer. Use regular expressions like "........CTACCTGCGGA[A,G]GGATCA".')
     parser.add_argument('--pair_2_prefix',
-                                        help = 'Reverse (read2) primer. Use regular expressions like "GAGATCC[AG]TTG[CT]T[AG]AAAGTT".')
+                                        help = 'Reverse (read2) primer. Use regular expressions like "GAGATCC[A,G]TTG[C,T]T[A,G]AAAGTT".')
     
     parser.add_argument('--out_file_path', default = "",
                                         help = 'Output directory. Default is res_\{input_dir\}. Must exist.')
