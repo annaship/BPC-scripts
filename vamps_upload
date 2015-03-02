@@ -598,10 +598,10 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       
       if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown')) 
       {
-        my $check1 = $dataRow;
-        print "q CHECK1) \$dataRow (check1) = $check1\n";
-        print LOG "q CHECK1) \$dataRow (check1) = $check1\n";
-
+        # my $check1 = $dataRow;
+        # print "q CHECK1) \$dataRow (check1) = $check1\n";
+        # print LOG "q CHECK1) \$dataRow (check1) = $check1\n";
+        # 
         $dataRow[3] = 'Domain_NA';
       }
 
@@ -613,7 +613,7 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       my $cnt = pop(@insertRow);
       my $rank = pop(@insertRow);
 
-      if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown')) 
+      if (($dataRow[3] eq '') || ($dataRow[3] eq 'NA') || ($dataRow[3] eq 'Unknown') || ($dataRow[3] eq 'Domain_NA')) 
       {
         $rank = "NA";
       }
@@ -1125,14 +1125,9 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
   if ($export)
   {
     PrintUpdate("Dumping data for $final_project_desc_table into $projectDescFile");
-    #my $selectProjects = "SELECT project, title, new_description FROM $source_project_table JOIN $final_project_dataset_counts_table USING(project) ORDER BY project";
-    #my $selectProjects = "SELECT distinctrow project, title, description, contact, email, institution
-    #    FROM projects WHERE substring_index(project, '_', -1)  LIKE '_v_' ORDER BY project";
     # q 8)
     # todo: If project_name standard changed - add OR clause!!!
     my $selectProjects =
-    # "SELECT distinctrow null, project, title, description, contact, email, institution, env_source_id
-    #   FROM $source_project_table WHERE project LIKE '%v%' ORDER BY project";
     "SELECT distinctrow null, project, title, project_description as description, contact, email, institution, env_sample_source_id as env_source_id
       FROM $source_project_table
       JOIN contact USING(contact_id)
