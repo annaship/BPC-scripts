@@ -433,32 +433,12 @@ if ($start eq "projectdataset")
       # create an auxilary table
       PrintUpdate( "PPP1: \$test_only = $test_only\n");
       PrintUpdate("Calculating project / dataset counts\n");
-      # create new project_dataset_counts table in env454 (so can be used in joins)  and populate with this query
 
       # q 0b)
       my $truncatePDCQuery = "TRUNCATE $final_project_dataset_counts_table";
-      # my $truncatePDCQuery_h = $dbhSource->prepare($truncatePDCQuery) or warn print LOG "Unable to prepare statement: $truncatePDCQuery.  Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
-      # $truncatePDCQuery_h->execute or warn print LOG "Unable to execute SQL statement: $truncatePDCQuery.  Error:     " . $truncatePDCQuery_h->errstr . " (" . (localtime) . ")\n";
       PrintUpdate("q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n");
       ExecuteInsert_newbpcdb2($truncatePDCQuery);
 
-      # Insert the regular 454 tag sequence counts
-      # q 1)
-      # my $insert_project_datasets =
-      #   "INSERT IGNORE INTO $final_project_dataset_counts_table (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info, project_id, dataset_id, rev_project_name)
-      #   SELECT DISTINCT project, dataset, count(read_id) AS dataset_count, 1, date_trimmed, dataset_description AS dataset_info, project_id, dataset_id, rev_project_name
-      #     FROM trimseq 
-      #     LEFT JOIN chimeras USING(read_id)
-      #     LEFT JOIN $source_tax_table USING(read_id)
-      #     JOIN $source_tax_assignment_table USING(read_id)
-      #     JOIN $source_project_table USING(project_id)
-      #     JOIN $source_dataset_table USING(dataset_id)
-      #     JOIN $source_run_table USING(run_id)
-      #     WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )        
-      #     GROUP BY project, dataset
-      # ";
-
-#TODO: uncomment when cimeric moved from trimseq
       my $insert_project_datasets =
         "INSERT IGNORE INTO $final_project_dataset_counts_table (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info, project_id, dataset_id, rev_project_name)
         SELECT DISTINCT project, dataset, count(read_id) AS dataset_count, 1, date_trimmed, dataset_description AS dataset_info, project_id, dataset_id, rev_project_name
@@ -475,9 +455,6 @@ if ($start eq "projectdataset")
       PrintUpdate("q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n");
 
       ExecuteInsert_newbpcdb2($insert_project_datasets);
-      #
-      # my $insert_project_datasets_h = $dbhSource->prepare($insert_project_datasets) or warn print LOG "Unable to prepare statement: $insert_project_datasets. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
-      # $insert_project_datasets_h->execute or warn print LOG "Unable to execute SQL statement: $insert_project_datasets.  Error: " . $insert_project_datasets_h->errstr . " (" . (localtime) . ")\n";
 
       # Insert the sequence counts for the additional full length taxonomy (tagtax_longs)
       # q 1a)
@@ -489,12 +466,6 @@ if ($start eq "projectdataset")
         LEFT JOIN $source_dataset_table USING(dataset_id)
         GROUP BY project, dataset
       ";
-        # "INSERT INTO $final_project_dataset_counts_table
-        # SELECT 0, project, dataset, count(*), 0, 'unknown', dataset
-        # FROM $source_longs_tax_table
-        # GROUP BY project, dataset";
-      # $insert_project_datasets_h = $dbhSource->prepare($insert_project_datasets) or warn print LOG "Unable to prepare statement: $insert_project_datasets. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
-      # $insert_project_datasets_h->execute or warn print LOG "Unable to execute SQL statement: $insert_project_datasets.  Error: " . $insert_project_datasets_h->errstr . " (" . (localtime) . ")\n";
       PrintUpdate("q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n");
 
       ExecuteInsert_newbpcdb2($insert_project_datasets_a);
@@ -707,50 +678,6 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       ExecuteInsertPassVar($insertQuery, $i);
     }
 
-    # # q 4_1)
-    # my $insertQuery4_1 =
-    #   "INSERT IGNORE INTO $taxon_string_table (taxon_string, rank_number)
-    #     SELECT distinct taxon_string, rank_number
-    #     FROM $tmp_summed_taxes_table
-    #     JOIN $rank_number_table on ($tmp_summed_taxes_table.rank = $rank_number_table.rank_number)
-    #   ";
-    # print "q 4_1) insertQuery = dbhVamps.$insertQuery4_1\n";
-    # print LOG "q 4_1) insertQuery = dbhVamps.$insertQuery4_1\n";
-    # ExecuteInsert($insertQuery4_1);
-    #
-    # # q 4_2)
-    # my $insertQuery4_2 =
-    #   "INSERT IGNORE INTO $summed_data_cube_table
-    #   (taxon_string_id, knt, frequency, dataset_count, rank_number, project_id, dataset_id, project_dataset_id, classifier)
-    #   SELECT
-    #   taxon_string_id, knt, frequency, dataset_count, $rank_number_table.rank_number, project_id, dataset_id, project_dataset_id, classifier
-    #   FROM $tmp_summed_taxes_table
-    #     JOIN $taxon_string_table USING(taxon_string)
-    #     JOIN $rank_number_table on $tmp_summed_taxes_table.rank = $rank_number_table.rank_number
-    #     JOIN $project_dataset_table USING(project_dataset)";
-    # print "q 4_2) insertQuery = dbhVamps.$insertQuery4_2\n";
-    # print LOG "q 4_2) insertQuery = dbhVamps.$insertQuery4_2\n";
-    # ExecuteInsert($insertQuery4_2);
-
-
-    # # q 4a)
-    # my $insert_domain =
-    # "INSERT INTO $tmp_summed_taxes_table
-    #     SELECT 0, concat_ws(';', superkingdom) as taxonomy,
-    #     sum(knt) as sum_tax_counts, sum(knt) / dataset_count as frequency, dataset_count,
-    #     0 as rank, project, dataset, concat(project,'--',dataset), classifier
-    #     FROM $source_table
-    #     WHERE taxon_string != ''
-    #     GROUP BY project, dataset, superkingdom
-    #     HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= 0
-    #     ORDER BY project, taxonomy";
-    #
-    #     print "q 4a) insertQuery = dbhVamps.$insert_domain\n";
-    #     print LOG "q 4a) insertQuery = dbhVamps.$insert_domain\n";
-    #
-    # ExecuteInsert($insert_domain);
-    #}
-
     #
     # Create Distinct Taxonomy Table (vamps_taxonomy))
     #
@@ -768,14 +695,6 @@ if ( ($start eq "taxonomy") || ($start eq "projectdataset") )
       FROM $tmp_summed_taxes_table
       ";
 
-      # WHERE taxon_string not LIKE '%;NA;NA' and taxon_string not LIKE '%_NA;%_NA' and taxon_string != 'NA;NA'";
-      # (CASE WHEN (taxon_string LIKE '%;NA' or taxon_string LIKE '%_NA') OR rank = 7 THEN 0 ELSE 1 END) AS num_kids
-
-    #         my $insertDistinctTaxaQuery =
-    #         "INSERT INTO $tmp_distinct_taxa_table SELECT DISTINCT taxon_string, rank,
-    #         (CASE WHEN taxon_string LIKE '%;NA' or rank = 7 THEN 0 ELSE 1 END) as num_kids
-    #         FROM $tmp_summed_taxes_table
-    #         WHERE taxon_string not LIKE '%;NA;NA' and taxon_string != 'NA;NA'";
     PrintUpdate("q 5) insertDistinctTaxaQuery = dbhVamps.$insertDistinctTaxaQuery\n\n\n");
     ExecuteInsert($insertDistinctTaxaQuery);
 
@@ -855,30 +774,6 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     
     # q 6-3)
     # 3) create vamps_sequences_transfer table on env454 (5 h)
-    # SET SESSION join_buffer_size = $join_buffer_size_new;
-    # my $CREATE_temp_seq = "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
-    #     id int(11) unsigned NOT NULL AUTO_INCREMENT,
-    #     seq_count int(11) unsigned NOT NULL,
-    #     frequency double NOT NULL,
-    #     rep_id char(15) NOT NULL DEFAULT '',
-    #     project_dataset varchar(100) NOT NULL DEFAULT '',
-    #     PRIMARY KEY (id)
-    #   ) 
-    #   SELECT distinct sequence_comp, project, dataset, taxonomy, refhvr_ids,  rank, count(read_id) as seq_count,
-    #         count(read_id) / dataset_count as frequency, distance, read_id as rep_id
-    #         FROM trimseq
-    #         JOIN trimsequence using(trimsequence_id)
-    #         LEFT JOIN chimeras USING(read_id)
-    #         LEFT JOIN tagtax USING(read_id)
-    #         JOIN gast_concat USING(read_id)
-    #         JOIN vamps_projects_datasets USING(project_id, dataset_id)
-    #         JOIN taxonomy USING(taxonomy_id)
-    #         JOIN rank USING(rank_id)
-    #         WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )
-    #       GROUP BY sequence_comp, project, dataset";
-    #       # ; SET SESSION join_buffer_size = $join_buffer_size_old;
-          
-    #TODO: uncomment when cimeric moved from trimseq
     my $CREATE_temp_seq = "CREATE TABLE IF NOT EXISTS vamps_sequences_transfer_temp (
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         seq_count int(11) unsigned NOT NULL,
@@ -897,7 +792,6 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
             JOIN taxonomy USING(taxonomy_id)
             JOIN rank USING(rank_id)
           GROUP BY sequence_comp, project, dataset";
-          # ; SET SESSION join_buffer_size = $join_buffer_size_old;
       
     
           
@@ -1016,23 +910,6 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     #
 
     # q 7)
-    # my $selectReads =
-    # "
-    # SELECT 0, read_id, project, dataset,
-    #   refhvr_ids, distance, taxonomy, uncompress(sequence_comp) as sequence, rank, date_trimmed
-    #   FROM trimseq 
-    #   JOIN trimsequence using(trimsequence_id)
-    #   LEFT JOIN chimeras USING(read_id)
-    #   JOIN $source_gast_table USING(read_id)
-    #   LEFT JOIN $source_tax_table USING(read_id)
-    #   JOIN $source_tax_assignment_table USING(read_id)
-    #   JOIN $source_taxonomy_table USING(taxonomy_id)
-    #   JOIN $source_rank_table USING(rank_id)
-    #   JOIN $final_project_dataset_counts_table USING(project_id, dataset_id)
-    #   WHERE ( (chimeric_denovo is NULL) OR (chimeric_ref is NULL) OR (chimeric = 'N') )    
-    # ";
-    # 
-    #TODO: uncomment when cimeric moved from trimseq
     my $selectReads =
     "
     SELECT DISTINCT 0, read_id, project, dataset,
@@ -1131,8 +1008,8 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     "SELECT distinctrow null, project, title, project_description as description, contact, email, institution, env_sample_source_id as env_source_id
       FROM $source_project_table
       JOIN contact USING(contact_id)
-      WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS';
     ";
+    # WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS';
     # WHERE project LIKE '%v%' OR project LIKE '%Bfl%' ORDER BY project;
     
     PrintUpdate("q 8) selectProjects = $selectProjects\n");
@@ -2137,8 +2014,7 @@ sub add_foreign_key()
   my $add_fk_query4 = 
   "ALTER TABLE $dataset_table".$tblSuffix."
     ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id)";
-  
-  
+    
   my $add_fk_query5 = 
   "ALTER TABLE $project_dataset_table".$tblSuffix."
     ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id),
