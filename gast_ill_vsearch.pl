@@ -123,7 +123,7 @@ my $gast_table;
 
 # USearch variables
 # my $usearch_cmd = "usearch6";
-my $usearch_cmd = "usearch";
+my $usearch_cmd = "vsearch";
 my $min_pctid = 0.80;
 my $max_accepts = 15;
 my $max_rejects = 0;
@@ -324,7 +324,7 @@ if ($ref_filename)
 }
 #$usearch_cmd .= " --gapopen 6I/1E --iddef 3 --global --query $uniques_filename --uc $uclust_filename --maxaccepts $max_accepts --maxrejects $max_rejects --id $min_pctid";
 #$usearch_cmd .= "usearch6 -db /xraid2-2/g454/blastdbs/gast_distributions/refv6.udb -gapopen 6I/1E -usearch_global J2_613_21A_CaymanRock-PERFECT_reads.fa.unique.unique -strand plus -uc_allhits -uc J2_613_21A_CaymanRock-PERFECT_reads.fa.unique.unique.uc -maxaccepts 15 -maxrejects 0 -id 0.8";
-$usearch_cmd .= " -gapopen 6I/1E -usearch_global $uniques_filename -strand plus -uc_allhits -uc $uclust_filename -maxaccepts $max_accepts -maxrejects $max_rejects -id $min_pctid";
+$usearch_cmd .= " -notrunclabels -gapopen 6I/1E -usearch_global $uniques_filename -strand plus -uc_allhits -uc $uclust_filename -maxaccepts $max_accepts -maxrejects $max_rejects -id $min_pctid";
 
 run_command($usearch_cmd);
 my $gast_results_ref = parse_uclust($uclust_filename);
@@ -400,9 +400,9 @@ sub parse_uclust
     {
         if ($line =~ /^H/)
         {
-            #It has a valid hie
+            #It has a valid hit
             chomp $line; 
-    
+          
             my @data;
             #  0=Type, 1=ClusterNr, 2=SeqLength, 3=PctId, 4=Strand, 5=QueryStart, 6=SeedStart, 7=Alignment, 8=Sequence ID, 9= Reference ID
             if ($nodup) # for illumina a header contains spaces
@@ -566,6 +566,10 @@ sub assign_taxonomy
     my $ref_taxa_ref = shift;
     my %ref_taxa = %$ref_taxa_ref;
 
+    # print LOG 'EEE %results = ';
+    # use Data::Dumper;
+    # print LOG Dumper %results; # or \%hash to encapsulate it as a single hashref entity;
+
     # print the field header lines, but not if loading table to the database
     if (! $gast_table)
     {
@@ -590,7 +594,7 @@ sub assign_taxonomy
         my @taxObjects;
         my $distance;
         my %refs_for;
-    
+          
         if (! exists $results{$read})
         {
             # No valid hit in the reference database

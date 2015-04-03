@@ -39,14 +39,11 @@ echo "ITS_OPTION = $ITS_OPTION"
 echo "NAME_PAT = $NAME_PAT"
 echo "Files number: = `echo $NAME_PAT | wc -w`"
 
-echo "module unload usearch"
-module unload usearch
-echo "module load usearch/6.0.217-32"
-module load usearch/6.0.217-32 
-
 for file in $NAME_PAT
 do
   echo "============="
-  echo $file
-  clusterize -inherit /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.udb -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
+  #echo $file
+  echo "clusterize /workspace/ashipunova/test_vsearch/gast_ill_vsearch.pl -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.fa -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast"
+  clusterize /workspace/ashipunova/test_vsearch/gast_ill_vsearch.pl -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.fa -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
+
 done

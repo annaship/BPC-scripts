@@ -726,7 +726,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
                           SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
                           LIMIT ?, $chunk_size_seqs
                           ) AS t USING(project_id)          
-                      ) AS t USING(sequence_pdr_info_ill_id)              
+                      ) AS t1 USING(sequence_pdr_info_ill_id)              
                 GROUP BY sequence_ill_id, project_id, dataset_id
     ";
     
