@@ -30,12 +30,13 @@
 #
 # Revisions: 2012-05-15 by Anna Shipunova. Added new normalize tales, sequences dump.
 #            2013-12-20 by Anna Shipunova. Fix seq_counts to sum in vamps_sequences_transfer_temp
-#            2014-11-17 ASh. Get the sequence table by chunks.
-#            2014-11-20 Ash. Order vs. orderx 
+#            2014-11-17 ASh: Get the sequence table by chunks.
+#            2014-11-20 Ash: Order vs. orderx 
+#            2015-04-14 Ash: remove vamps_export
 #
 # Programming Notes:
 #    20090826 - SMH: added date_trimmed field FROM trimseq into final_reads_table (vamps_export)
-#
+
 ########################################
 use strict;
 use warnings;
@@ -148,7 +149,7 @@ my $taxonomy_table          = "new_taxonomy";
 my $user_table              = "new_user";
 my $user_contact_table      = "new_user_contact";
 # todo: new_read_id on prod!!!
-my $read_id_table           = "new_read_id";
+# my $read_id_table           = "new_read_id";
 # dop table
 my $vamps_auth_table        = "vamps_auth";
 my $vamps_sequences_transfer_temp_table = "vamps_sequences_transfer_temp";
@@ -203,11 +204,11 @@ my $tmp_seqs_table = $final_seqs_table . $tblSuffix;
 my $previous_seqs_table = $final_seqs_table . $tblSuffixOld;
 my $seqsFile = $subdir . $tmp_seqs_table . $fileSuffix;
 
-# Table by individual reads
-my $final_reads_table = "vamps_export";
-my $tmp_reads_table = $final_reads_table . $tblSuffix;
-my $previous_reads_table = $final_reads_table . $tblSuffixOld;
-my $readsFile = $subdir . $tmp_reads_table . $fileSuffix;
+# # Table by individual reads
+# my $final_reads_table = "vamps_export";
+# my $tmp_reads_table = $final_reads_table . $tblSuffix;
+# my $previous_reads_table = $final_reads_table . $tblSuffixOld;
+# my $readsFile = $subdir . $tmp_reads_table . $fileSuffix;
 
 # Table containing unique project/dataset combos, used for community visualization
 # on the vamps side
@@ -1141,143 +1142,143 @@ if ($stop eq "taxonomy") {exit 0;}
 # SELECT data for vamps_exports
 #
 #######################################
-if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "reads") )
-{
-  if($export)
-  {
-    PrintUpdate("Dumping data for $final_reads_table into $readsFile");
-
-    unless ($test_only == 1)
-    {
-      # Clear out the old files, just in case
-      my $rm_err = system("rm $readsFile*");
-      if ($rm_err) {print "Error removing old files $readsFile*\n";}
-    }
-
-    #
-    # SELECT the data for vamps_export_transfer.txt_XX
-    #
-    my $selectCountReads_int = &select_cnt_for_limit("sequence_pdr_info_ill");
-
-    # print "3) selectCountReads_int = $selectCountReads_int\n";
-    # print LOG "3) selectCountReads_int = $selectCountReads_int\n";
-    &print_query_out("3) selectCountReads_int", $sourceHost." ".$selectCountReads_int);
-
-    my $from_here   = 0;
-    my $reads_left  = int($selectCountReads_int);
-    my $file_number = 1;
-    my $out_file    = $readsFile . "_" . $file_number;
-    while($reads_left > 0)
-    {
-        # print "URA01) from_here = $from_here\n";
-        # print "URA02) reads_left = $reads_left\n";
-        
-        print "START get_reads!!!\n";
-        print LOG "START get_reads!!!\n";
-        
-        my $start_get_reads = time;
-        my $selectReads_h   = &get_reads();
-        my $end_get_reads   = time;
-        print "The total time of get_reads is ", $end_get_reads - $start_get_reads, "\n";
-        print LOG "The total time of get_reads is ", $end_get_reads - $start_get_reads, "\n";
-
-        print "START write_file!!!\n";
-        print LOG "START write_file!!!\n";
-        
-        &write_file($selectReads_h);
-        $reads_left -= $chunk_size_reads;
-        $from_here += $chunk_size_reads;
-        $file_number++;
-        $out_file   = $readsFile . "_" . $file_number;
-        print "========================\n";
-        print LOG "========================\n";
-        
-    }
-    
-    sub get_reads()
-    {
-        # print "URA get_reads01) from_here  = $from_here\n";
-        # print "URA get_reads02) reads_left = $reads_left\n";
-        # q 7)
-        my $selectReads =
-        "
-        SELECT DISTINCT 0, $glob_seq_id_id as read_id, project, dataset,
-          refhvr_ids, gast_distance as distance, taxonomy, uncompress(sequence_comp) as sequence, rank, '0000-00-00'
-          FROM $glob_seq_id_table
-          join $run_info_ill_table using($run_info_ill_id)
-          LEFT JOIN $seq_tax_ill_table using($sequence_ill_id)
-          JOIN $sequence_ill_table using($sequence_ill_id)
-          JOIN taxonomy USING(taxonomy_id)
-          JOIN rank USING(rank_id)
-          JOIN vamps_projects_datasets USING(project_id, dataset_id)
-          JOIN (
-            SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill ORDER BY sequence_pdr_info_ill_id
-            LIMIT $from_here, $chunk_size_reads
-            ) AS t USING(sequence_pdr_info_ill_id)          
-        ";
-        # print "q 7) selectReads = $sourceHost.$selectReads\n";
-        # print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
-        &print_query_out("q 7) selectReads", $sourceHost." ".$selectReads);
-        
-        my $selectReads_h = ExecuteSelect($selectReads);
-        return $selectReads_h;
-    }
-    
-    sub write_file()
-    {
-        my $selectReads_h = shift;
-        print "write_file out_file = $out_file\n";
-        print LOG "write_file out_file = $out_file\n";
-
-        # q 7b)
-        # step through and export individual pieces
-        open(READS, ">$out_file");
-        print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
-
-        # print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
-        while(my @row = $selectReads_h->fetchrow_array)
-        {
-            print READS join("\t", @row) . "\n";
-        }
-        close(READS);
-    }    
-  }
-
-  if($import)
-  {
-    CreateEmpty($tmp_reads_table);
-
-    opendir SUBDIR, $subdir or die "Cannot open subdirectory\n";
-
-    my @files = readdir SUBDIR;
-    foreach my $out_file (@files)
-    {
-      #print "$out_file $readsFile\n";   # $readsFile: exports/vamps_export_transfer.txt
-      # $tmp_reads_table . $fileSuffix
-      my $reads_fileName = $subdir . $out_file;
-      if("$reads_fileName" =~ /$readsFile/)
-      {
-        #print "$reads_fileName\n";
-        ExecuteLoad($reads_fileName, $tmp_reads_table);
-      }
-    }
-    close(SUBDIR);
-
-    unless($do_not_analyze)
-    {
-      PrintUpdate("Analyzing $tmp_reads_table");
-      AnalyzeTable($tmp_reads_table);
-    }
-  }
-
-  if ($transfer)
-  {
-    PrintUpdate("Swapping $final_reads_table tables");
-    SwapNew($tmp_reads_table, $final_reads_table, $previous_reads_table);
-  }
-}
-# END start = reads
-if ($stop eq "reads") {exit 0;}
+# if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "reads") )
+# {
+#   if($export)
+#   {
+#     PrintUpdate("Dumping data for $final_reads_table into $readsFile");
+# 
+#     unless ($test_only == 1)
+#     {
+#       # Clear out the old files, just in case
+#       my $rm_err = system("rm $readsFile*");
+#       if ($rm_err) {print "Error removing old files $readsFile*\n";}
+#     }
+# 
+#     #
+#     # SELECT the data for vamps_export_transfer.txt_XX
+#     #
+#     my $selectCountReads_int = &select_cnt_for_limit("sequence_pdr_info_ill");
+# 
+#     # print "3) selectCountReads_int = $selectCountReads_int\n";
+#     # print LOG "3) selectCountReads_int = $selectCountReads_int\n";
+#     &print_query_out("3) selectCountReads_int", $sourceHost." ".$selectCountReads_int);
+# 
+#     my $from_here   = 0;
+#     my $reads_left  = int($selectCountReads_int);
+#     my $file_number = 1;
+#     my $out_file    = $readsFile . "_" . $file_number;
+#     while($reads_left > 0)
+#     {
+#         # print "URA01) from_here = $from_here\n";
+#         # print "URA02) reads_left = $reads_left\n";
+#         
+#         print "START get_reads!!!\n";
+#         print LOG "START get_reads!!!\n";
+#         
+#         my $start_get_reads = time;
+#         my $selectReads_h   = &get_reads();
+#         my $end_get_reads   = time;
+#         print "The total time of get_reads is ", $end_get_reads - $start_get_reads, "\n";
+#         print LOG "The total time of get_reads is ", $end_get_reads - $start_get_reads, "\n";
+# 
+#         print "START write_file!!!\n";
+#         print LOG "START write_file!!!\n";
+#         
+#         &write_file($selectReads_h);
+#         $reads_left -= $chunk_size_reads;
+#         $from_here += $chunk_size_reads;
+#         $file_number++;
+#         $out_file   = $readsFile . "_" . $file_number;
+#         print "========================\n";
+#         print LOG "========================\n";
+#         
+#     }
+#     
+#     sub get_reads()
+#     {
+#         # print "URA get_reads01) from_here  = $from_here\n";
+#         # print "URA get_reads02) reads_left = $reads_left\n";
+#         # q 7)
+#         my $selectReads =
+#         "
+#         SELECT DISTINCT 0, $glob_seq_id_id as read_id, project, dataset,
+#           refhvr_ids, gast_distance as distance, taxonomy, uncompress(sequence_comp) as sequence, rank, '0000-00-00'
+#           FROM $glob_seq_id_table
+#           join $run_info_ill_table using($run_info_ill_id)
+#           LEFT JOIN $seq_tax_ill_table using($sequence_ill_id)
+#           JOIN $sequence_ill_table using($sequence_ill_id)
+#           JOIN taxonomy USING(taxonomy_id)
+#           JOIN rank USING(rank_id)
+#           JOIN vamps_projects_datasets USING(project_id, dataset_id)
+#           JOIN (
+#             SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill ORDER BY sequence_pdr_info_ill_id
+#             LIMIT $from_here, $chunk_size_reads
+#             ) AS t USING(sequence_pdr_info_ill_id)          
+#         ";
+#         # print "q 7) selectReads = $sourceHost.$selectReads\n";
+#         # print LOG "q 7) selectReads = $sourceHost.$selectReads\n";
+#         &print_query_out("q 7) selectReads", $sourceHost." ".$selectReads);
+#         
+#         my $selectReads_h = ExecuteSelect($selectReads);
+#         return $selectReads_h;
+#     }
+#     
+#     sub write_file()
+#     {
+#         my $selectReads_h = shift;
+#         print "write_file out_file = $out_file\n";
+#         print LOG "write_file out_file = $out_file\n";
+# 
+#         # q 7b)
+#         # step through and export individual pieces
+#         open(READS, ">$out_file");
+#         print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
+# 
+#         # print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
+#         while(my @row = $selectReads_h->fetchrow_array)
+#         {
+#             print READS join("\t", @row) . "\n";
+#         }
+#         close(READS);
+#     }    
+#   }
+# 
+#   if($import)
+#   {
+#     CreateEmpty($tmp_reads_table);
+# 
+#     opendir SUBDIR, $subdir or die "Cannot open subdirectory\n";
+# 
+#     my @files = readdir SUBDIR;
+#     foreach my $out_file (@files)
+#     {
+#       #print "$out_file $readsFile\n";   # $readsFile: exports/vamps_export_transfer.txt
+#       # $tmp_reads_table . $fileSuffix
+#       my $reads_fileName = $subdir . $out_file;
+#       if("$reads_fileName" =~ /$readsFile/)
+#       {
+#         #print "$reads_fileName\n";
+#         ExecuteLoad($reads_fileName, $tmp_reads_table);
+#       }
+#     }
+#     close(SUBDIR);
+# 
+#     unless($do_not_analyze)
+#     {
+#       PrintUpdate("Analyzing $tmp_reads_table");
+#       AnalyzeTable($tmp_reads_table);
+#     }
+#   }
+# 
+#   if ($transfer)
+#   {
+#     PrintUpdate("Swapping $final_reads_table tables");
+#     SwapNew($tmp_reads_table, $final_reads_table, $previous_reads_table);
+#   }
+# }
+# # END start = reads
+# if ($stop eq "reads") {exit 0;}
 
 #######################################
 #
@@ -1450,25 +1451,25 @@ if ( ($start eq "norm_tables") )
   #   left join $project_dataset_table using(project_id, dataset_id)
   #   left join $sequence_table using(sequence)";
 
-  my $update_new_read_id1 = "insert ignore into $read_id_table" . $tblSuffix . " (read_id, project_dataset_id, sequence_id)
-    SELECT distinct rep_id, project_dataset_id, sequence_id
-    FROM $tmp_seqs_table
-    left join $project_dataset_table using(project_dataset)
-    left join $sequence_table using(sequence)";
-
-  my $update_new_read_id2 = "insert ignore into $read_id_table" . $tblSuffix . " (read_id, project_dataset_id, sequence_id)
-     SELECT distinct read_id, project_dataset_id, sequence_id
-     FROM $tmp_reads_table
-     left join $project_table using(project)
-     left join $dataset_table using(dataset, project_id)
-     left join $project_dataset_table using(project_id, dataset_id)
-     left join $sequence_table using(sequence)";
+  # my $update_new_read_id1 = "insert ignore into $read_id_table" . $tblSuffix . " (read_id, project_dataset_id, sequence_id)
+  #   SELECT distinct rep_id, project_dataset_id, sequence_id
+  #   FROM $tmp_seqs_table
+  #   left join $project_dataset_table using(project_dataset)
+  #   left join $sequence_table using(sequence)";
+  # 
+  # my $update_new_read_id2 = "insert ignore into $read_id_table" . $tblSuffix . " (read_id, project_dataset_id, sequence_id)
+  #    SELECT distinct read_id, project_dataset_id, sequence_id
+  #    FROM $tmp_reads_table
+  #    left join $project_table using(project)
+  #    left join $dataset_table using(dataset, project_id)
+  #    left join $project_dataset_table using(project_id, dataset_id)
+  #    left join $sequence_table using(sequence)";
 
   my $update_new_sequence1 = "INSERT IGNORE INTO $sequence_table" . $tblSuffix . " (sequence) SELECT DISTINCT sequence FROM $tmp_seqs_table";
 
-  my $update_new_sequence2 = "INSERT IGNORE INTO $sequence_table" . $tblSuffix . " (sequence)
-    SELECT distinct sequence FROM $tmp_reads_table WHERE read_id IN
-      ($missed_read_ids_list)";
+  # my $update_new_sequence2 = "INSERT IGNORE INTO $sequence_table" . $tblSuffix . " (sequence)
+  #   SELECT distinct sequence FROM $tmp_reads_table WHERE read_id IN
+  #     ($missed_read_ids_list)";
   
   # ================
   # Part I
@@ -2291,26 +2292,26 @@ sub rename_names_to_transfer()
   return @transfer_table_names;
 }
 
-sub get_missed_read_ids()
-{
-  my $start_time = $time{'hhmmss', time()};
-  print "Query started at $start_time (hhmmss)\n";
-  
-  my $get_missed_read_ids = "SELECT DISTINCT read_id FROM $read_id_table
-    LEFT JOIN $sequence_table using(sequence_id)
-    WHERE $sequence_table.sequence_id IS NULL";
-  print "GGG1: get_missed_read_ids = $get_missed_read_ids\n" if ($test_only == 1);
-  
-  my @missed_read_ids      = &prep_exec_fetchrow_array_query($dbhVamps, $get_missed_read_ids);
-  my $missed_read_ids_list = join(',', @missed_read_ids);
-  print "MMM: $missed_read_ids_list\n" if ($test_only == 1);
-  
-  my $end_time = $time{'hhmmss', time()};
-  my $diff     = $end_time - $start_time;
-  print "Query ended at $end_time (hhmmss)\n";
-  print "Run time for the query: $diff sec\n";
-  return $missed_read_ids_list;
-}
+# sub get_missed_read_ids()
+# {
+#   my $start_time = $time{'hhmmss', time()};
+#   print "Query started at $start_time (hhmmss)\n";
+#   
+#   my $get_missed_read_ids = "SELECT DISTINCT read_id FROM $read_id_table
+#     LEFT JOIN $sequence_table using(sequence_id)
+#     WHERE $sequence_table.sequence_id IS NULL";
+#   print "GGG1: get_missed_read_ids = $get_missed_read_ids\n" if ($test_only == 1);
+#   
+#   my @missed_read_ids      = &prep_exec_fetchrow_array_query($dbhVamps, $get_missed_read_ids);
+#   my $missed_read_ids_list = join(',', @missed_read_ids);
+#   print "MMM: $missed_read_ids_list\n" if ($test_only == 1);
+#   
+#   my $end_time = $time{'hhmmss', time()};
+#   my $diff     = $end_time - $start_time;
+#   print "Query ended at $end_time (hhmmss)\n";
+#   print "Run time for the query: $diff sec\n";
+#   return $missed_read_ids_list;
+# }
 
 sub prep_exec_fetchrow_array_query()
 {
@@ -2630,8 +2631,8 @@ sub update_current_from_illumina_transfer()
 {
   my $insert_vamps_data_cube_q         = "INSERT IGNORE INTO $final_taxes_table (project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
                                           FROM $tmp_taxes_table";
-  my $insert_vamps_export_q            = "INSERT IGNORE INTO $final_reads_table (read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed) SELECT read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed 
-                                          FROM $tmp_reads_table";
+  # my $insert_vamps_export_q            = "INSERT IGNORE INTO $final_reads_table (read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed) SELECT read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed 
+  #                                         FROM $tmp_reads_table";
   my $insert_vamps_junk_data_cube_q    = "INSERT IGNORE INTO $final_summed_taxes_table (taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier) SELECT taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier 
                                           FROM $tmp_summed_taxes_table";
   my $insert_vamps_projects_datasets_q = "INSERT IGNORE INTO $final_project_dataset_table (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info) SELECT project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info 
