@@ -1,0 +1,20 @@
+#
+# Export the project and dataset information
+#
+vamps_upload_av -t  -skip -s projectdataset -stop projectdataset vampsdev
+
+#
+# Export data taxonomy tables
+#
+vamps_upload_av -t -skip -s taxonomy -stop taxonomy vampsdev
+
+#
+# Export sequences table
+#
+vamps_upload_av -t -skip -s sequences -stop sequences vampsdev
+
+#
+# Export the reads and anything else after
+#
+vamps_upload_av -t -skip -s reads vampsdev
+
