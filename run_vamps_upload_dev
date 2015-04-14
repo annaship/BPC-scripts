@@ -48,5 +48,3 @@ grep -in --color "ERROR" vamps_upload.log
 # grep -in --color "failed" vamps_upload.log
 echo "=========================="
 echo "Manually: Repeat any mysqlimport failed lines if any. Take care of foreign key errors."
-echo "NO! See vamps_upload_util/vamps_upload_util_read.me"
-
