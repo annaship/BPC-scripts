@@ -726,7 +726,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
                           SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
                           LIMIT ?, $chunk_size_seqs
                           ) AS t USING(project_id)          
-                      ) AS t1 USING(sequence_pdr_info_ill_id)              
+                      ) AS t USING(sequence_pdr_info_ill_id)              
                 GROUP BY sequence_ill_id, project_id, dataset_id
     ";
     
@@ -742,8 +742,8 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
 
     while($reads_left > 0)
     {
-      print "START get_reads seq!!!\n";
-      print LOG "START get_reads seq!!!\n";
+      print "START get seq!!!\n";
+      print LOG "START get seq!!!\n";
       
       my $start_get_reads_seq = time;
       # &insert_chunk();
@@ -960,9 +960,10 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       # Double check for empty taxonomy strings -- no agreement at superkingdom
       if (($dataRow[3] eq '') || ($dataRow[3] eq 'Unknown')) 
       {
-        print LOG "q CHECK) dataRow";
-        print LOG join(", ", @dataRow);
-        
+        # print LOG "q CHECK) dataRow";
+        # print LOG join(", ", @dataRow);
+        # print LOG "\n";
+        # q CHECK) dataRow0, AFP_ANT_Bv6, DF01, Unknown, NA, 10698, 0.027611162157, 387452, GAST
         $dataRow[3] = 'Domain_NA';
       }
 
