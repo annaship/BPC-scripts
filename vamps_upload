@@ -449,7 +449,7 @@ if ($start eq "projectdataset")
           JOIN $source_project_table USING(project_id)
           JOIN $source_dataset_table USING(dataset_id)
           JOIN $source_run_table USING(run_id)
-          WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS'
+          WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS%'
           GROUP BY project, dataset
 
       ";
@@ -467,7 +467,7 @@ if ($start eq "projectdataset")
         FROM $source_longs_tax_table
         LEFT JOIN $source_project_table USING(project_id)
         LEFT JOIN $source_dataset_table USING(dataset_id)
-        WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS'
+        WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS%'
         GROUP BY project, dataset
       ";
       PrintUpdate("q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n");
@@ -1012,7 +1012,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     "SELECT distinctrow null, project, title, project_description as description, contact, email, institution, env_sample_source_id as env_source_id
       FROM $source_project_table
       JOIN contact USING(contact_id)
-      WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS';
+      WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS%';
     ";
     # WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS';
     # WHERE project LIKE '%v%' OR project LIKE '%Bfl%' ORDER BY project;

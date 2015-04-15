@@ -1296,7 +1296,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     "SELECT distinctrow 0, project, title, project_description as description, contact, email, institution, env_sample_source_id as env_source_id
       FROM $source_project_table
       JOIN contact USING(contact_id)
-      WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS';
+      WHERE project LIKE '%v%' OR project LIKE '%Bfl%' OR project like '%_ITS%';
     ";
     
     &print_query_out("q 8) selectProjects", $sourceHost." ".$selectProjects);
@@ -2700,10 +2700,11 @@ sub update_current_from_illumina_transfer()
       join new_project_dataset using(project_dataset)
       where new_dataset.project_id = new_project.project_id
     ";
+
+    # $insert_vamps_export_q,
   
     @query_names_exec = (
       $insert_vamps_data_cube_q,
-      $insert_vamps_export_q,
       $insert_vamps_junk_data_cube_q,
       $insert_vamps_projects_datasets_q,
       $insert_vamps_projects_info_q,
