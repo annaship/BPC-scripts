@@ -32,7 +32,6 @@ time vamps_upload_ill -e -i -skip -s taxonomy -stop taxonomy vampsdev &
 # Export the reads and anything else after
 #
 time vamps_upload_ill -e -i -skip -s reads vampsdev &
-# Analyzing vamps_export_transfer
 # Analyzing vamps_projects_info_transfer
 
 # check if we done with work before run the next command

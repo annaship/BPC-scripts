@@ -1,42 +1,96 @@
-01) run only on jake or similar power! (not arthur)
-cd /xraid2-2/g454/vamps/tovamps/; mkdir `date '+%Y%m%d'`; cd `date '+%Y%m%d'`; time run_vamps_upload; mail_done
-15 h
-02) 
-  a) select * from information_schema.tables where table_name in ("new_class", "new_contact", "new_dataset", "new_family", "new_genus", "new_orderx", "new_phylum", "new_project_dataset", "new_project", "new_species", "new_strain", "new_summed_data_cube", "new_superkingdom", "new_taxon_string", "new_taxonomy", "new_user_contact", "new_user", "vamps_export_keys", "vamps_export", "vamps_projects_datasets", "vamps_projects_info", "vamps_projects", "vamps_refhvr", "vamps_sample_xml", "vamps_sequences", "vamps_taxonomy") and table_schema = "vamps"
-  b) SELECT DISTINCT create_time FROM information_schema.tables WHERE TABLE_NAME IN ("new_class", "new_contact", "new_dataset", "new_family", "new_genus", "new_orderx", "new_phylum", "new_project_dataset", "new_project", "new_species", "new_strain", "new_summed_data_cube", "new_superkingdom", "new_taxon_string", "new_taxonomy", "new_user_contact", "new_user", "vamps_export_keys", "vamps_export", "vamps_projects_datasets", "vamps_projects_info", "vamps_projects", "vamps_refhvr", "vamps_sample_xml", "vamps_sequences", "vamps_taxonomy") AND table_schema = "vamps" AND create_time < curdate()
-  -- AND create_time > DATE_ADD(CURDATE(), INTERVAL -4 DAY)
-  d) check check_vamps_upload.log
-  e) redo what's needed, run "check_vamps_upload_transfer.pl -t" to check again
+Instructions for VAMPS update
 
-03) time swap_table_names.py 454 (transfer tables rename to intermediate)
-04) dump from this step in case we have only Illumina later (from vampsdb)
-  cd /xraid2-2/g454/vamps/tovamps/; module load mysql/5.6.12; time mysqldump -h vampsdb vamps new_class_intermediate new_contact_intermediate new_dataset_intermediate new_family_intermediate new_genus_intermediate new_orderx_intermediate new_phylum_intermediate new_project_dataset_intermediate new_project_intermediate new_species_intermediate new_strain_intermediate new_summed_data_cube_intermediate new_superkingdom_intermediate new_taxon_string_intermediate new_taxonomy_intermediate new_user_contact_intermediate new_user_intermediate vamps_data_cube_intermediate vamps_export_intermediate vamps_junk_data_cube_intermediate vamps_projects_datasets_intermediate vamps_projects_info_intermediate vamps_sequences_intermediate vamps_taxonomy_intermediate | gzip > vamps_prod.intermediate_from_454.`date '+%m%d%y'`.sql.gz; mail_done
-1 h
-(Start 07a and 07 simultaneously with 04)
+General comments:
+Run commands on jake, taiga, or tern and use 'top' to check activity of the machine.
+The "time" command is used to report the actual run time for various steps.
+Create a "mail_done" alias in your .bash_profile:
+alias mail_done='echo "The `echo $STY` screen on `hostname` is done with its job." | mail -s "screen on `hostname`" morrison@mbl.edu'
+"mail_done" will send you an email when the command from a screen session is finished.
 
-05) IF only illumina changed: restore from dump  
-cd /xraid2-2/g454/vamps/tovamps/; FILE_NAME=`ll -tr | grep -o vamps_prod.intermediate_from_454*.sql.gz`; time gunzip < $FILE_NAME | mysql -h vampsdb vamps; mail_done
-4.5 h
+Do 01-04 sequentially, but you can start 07 simultaneously with 04 on a different server.
 
-06) check if tables look ok, if current and previous dates didn't change
-  (repeat 2)
+Use 'screen' session.
+If you want a screen log, use "screen -L" flag.  The log will end up in the directory where you issue the screen command.  
+If you are running multiple sessions in the same directory, the log will have output from both.
 
-07a) create an "ill" dir under data and cd
-(cd /xraid2-2/g454/vamps/tovamps/`date '+%Y%m%d'`; mkdir ill; cd ill)
-or (cd /xraid2-2/g454/vamps/tovamps/; mkdir `date '+%Y%m%d'`; cd `date '+%Y%m%d'`; mkdir ill; cd ill)
+01) If there has been any change to 454 projects (datasets renamed, regasting, etc.), do steps 01 through 04:
 
-07) time run_vamps_upload_ill; mail_done
-18 h
-08) check if tables look ok (intermediate, transfer, ill)
-  (+ repeat 2)
+Upload 454 data into vampsdb *transfer tables
 
-09) time swap_table_names.py ill; mail_done (add transfer tables to intermediate)
-14 h
-10) check if tables look ok; 
-    a) repeat 2
-    b) python /xraid/bioware/linux/seqinfo/bin/vamps_upload_util/compare_interm_w_current.py
+cd /xraid2-2/g454/vamps/tovamps/; mkdir `date '+%Y%m%d'`; cd `date '+%Y%m%d'`; time run_vamps_upload; mail_done 
+
+Estimated time: 15 hrs or longer
+This creates a working directory named [current date] in the 'tovamps' directory, changes into it, 
+and uploads 454 data from env454 database to a temporary table in the vamps database.
+
+02) Check that the upload completed successfully:
+  a) Look at the "check_vamps_upload.log" file.  The number of files should equal number of rows in the corresponding table.
+  b) If not, redo what's needed, run the command "check_vamps_upload_transfer.pl -t" to check again
+        If the numbers differ, it is likely because the connection dropped or some other communication error happened
+  c) check all transfer tables visually in SequelPro.  Look at *transfer tables.
+
+03) Rename the "*transfer" tables to "*intermediate":
+    time swap_table_names.py 454
     
-10a) vim /usr/local/www/vamps/docs/includes/notice.html    uncomment the yellow notice
-11) time swap_table_names.py rename; mail_done (swap current to previous, then intermediate to current)
-12) check in vamps
-12a) python /xraid/bioware/linux/seqinfo/bin/vamps_upload_util/compare_res_w_previous.py
+04) Dump the intermediate tables to a file on the server:
+
+cd /xraid2-2/g454/vamps/tovamps/; module load mysql/5.6.12; time mysqldump -h vampsdb vamps new_class_intermediate new_contact_intermediate new_dataset_intermediate new_family_intermediate new_genus_intermediate new_orderx_intermediate new_phylum_intermediate new_project_dataset_intermediate new_project_intermediate new_species_intermediate new_strain_intermediate new_summed_data_cube_intermediate new_superkingdom_intermediate new_taxon_string_intermediate new_taxonomy_intermediate new_user_contact_intermediate new_user_intermediate vamps_data_cube_intermediate vamps_export_intermediate vamps_junk_data_cube_intermediate vamps_projects_datasets_intermediate vamps_projects_info_intermediate vamps_sequences_intermediate vamps_taxonomy_intermediate | gzip > vamps_prod.intermediate_from_454.`date '+%m%d%y'`.sql.gz; mail_done
+
+Estimated time: 1 h
+
+This command does an SQL dump of the *intermediate tables content to a file on server (the tables contain only 454 data at this point).  
+
+05) If there are only Illumina data changes, restore the 454 data from the existing dump file, e.g. vamps_prod.intermediate_from_454.031815.sql.gz
+
+cd /xraid2-2/g454/vamps/tovamps/; FILE_NAME=`ls | grep -o vamps_prod.intermediate_from_454.*.sql.gz`; time gunzip < $FILE_NAME | mysql -h vampsdb vamps; mail_done
+
+Estimated time: 4.5 h
+This string of commands just finds the dump file's name and assigns it to the variable "FILE_NAME".  
+If you know the file name, you can put it into the mysql command without using a variable.
+
+06) Check if the vamps tables look ok (if not done in step 2c).  
+    Look at *transfer tables.
+
+07) Upload Illumina data
+
+    create an "ill" dir under the working directory and change into if you started at 01 (if there was a 454 update)
+        cd /xraid2-2/g454/vamps/tovamps/`date '+%Y%m%d'`; mkdir ill; cd ill # if 454 data and illumina data
+    or else create both directories at this time
+        cd /xraid2-2/g454/vamps/tovamps/; mkdir `date '+%Y%m%d'`; cd `date '+%Y%m%d'`; mkdir ill; cd ill (if only illumina data have been added)
+
+    now upload the Illumimina data to vamps db, into *transfer and *ill tables. This is similar to step 01, but for Illumina.
+    time run_vamps_upload_ill; mail_done 
+
+Estimated time: 18 h
+
+08) Check that the upload completed successfully:
+    Look at *intermediate, *transfer, *ill vampsdb tables using SequelPro. 
+    The *intermediate should not have changed  
+    *transfer and *ill will have been recreated
+    all *_ill should have content 
+
+09) Add Illumina data to 454 in vampsdb tables
+    time swap_table_names.py ill; mail_done 
+    This adds contents of the transfer and ill tables to intermediate tables.  
+    It is similar to 03, but data are added to the existing intermediate table; it is not overwritten. 
+
+Estimated time: 14 h
+
+10) Check to see that the entire process completed successfully
+    a) repeat 02c visual check, look at *intermediate, *transfer, *ill vampsdb tables using SequelPro. 
+    b) run "python /xraid/bioware/linux/seqinfo/bin/vamps_upload_util/compare_interm_w_current.py"
+        This checks table sizes.  If anything has been added, the new table size should be same or bigger than current version.  
+    
+10a) Change the front page of VAMPS site
+    vim /usr/local/www/vamps/docs/includes/notice.html to uncomment the yellow notice (only Andy or Anya can do this; skip this step)
+
+11) Rename the current tables to 'previous' version and *intermediate tables to 'current'.
+    time swap_table_names.py rename; mail_done 
+
+12) Look at the new projects in VAMPS.  Check heat maps, tax tables.  Do they look reasonable?
+
+12a) If you skipped step 10b, run another check on the numbers
+    python /xraid/bioware/linux/seqinfo/bin/vamps_upload_util/compare_res_w_previous.py  
+    "res" = results (current). 
+    
+Congratulations--you are done with the update.  Notify the investigators whose projects have been added or updated!
