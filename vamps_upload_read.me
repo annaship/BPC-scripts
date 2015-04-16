@@ -45,6 +45,8 @@ This command does an SQL dump of the *intermediate tables content to a file on s
 cd /xraid2-2/g454/vamps/tovamps/; FILE_NAME=`ls | grep -o vamps_prod.intermediate_from_454.*.sql.gz`; time gunzip < $FILE_NAME | mysql -h vampsdb vamps; mail_done
 
 Estimated time: 4.5 h
+Warning: The command line will work correctly only if there is only one file with such name. Remove or rename all previous ones.
+
 This string of commands just finds the dump file's name and assigns it to the variable "FILE_NAME".  
 If you know the file name, you can put it into the mysql command without using a variable.
 
@@ -61,7 +63,7 @@ If you know the file name, you can put it into the mysql command without using a
     now upload the Illumimina data to vamps db, into *transfer and *ill tables. This is similar to step 01, but for Illumina.
     time run_vamps_upload_ill; mail_done 
 
-Estimated time: 18 h
+Estimated time: 22 h
 
 08) Check that the upload completed successfully:
     Look at *intermediate, *transfer, *ill vampsdb tables using SequelPro. 
@@ -94,3 +96,15 @@ Estimated time: 14 h
     "res" = results (current). 
     
 Congratulations--you are done with the update.  Notify the investigators whose projects have been added or updated!
+
+Some errors from log files.
+
+1) Error: Cannot add or update a child row: a foreign key constraint fails (`vamps`.`#sql-be5_a36aa`, CONSTRAINT `#sql-be5_a36aa_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `new_project_transfer` (`project_id`))
+
+One of tables was corrupted, ask Anya to investigate or rerun vamps upload.
+
+2) Error: Lost connection to MySQL server during query
+   Error: Table 'env454.vamps_sequences_transfer_temp' doesn't exist (Tue Mar 18 12:28:17 2014)
+
+Because of the losted connection the table wasn't created and all further steps didn't work.
+Rerun vamps upload or just the last step (e.g. run_vamps_upload_ill) if there was no table renaming yet.
