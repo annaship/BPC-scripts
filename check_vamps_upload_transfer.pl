@@ -60,7 +60,7 @@ print "Host = $host_name; Data Base = $db_name; Current dir = $cur_dir\n\n";
 my $log_file_name     = "check_vamps_upload.log";
 open(LOG, ">>$log_file_name") or warn "Unable to write to log file: $log_file_name. (" . (localtime) .")\n";
 
-my @table_names       = ("vamps_data_cube", "vamps_export", "vamps_projects_datasets", "vamps_projects_info");
+my @table_names       = ("vamps_data_cube", "vamps_projects_datasets", "vamps_projects_info");
 # my @table_names       = ("vamps_projects_datasets", "vamps_projects_info");
 my $export_dir        = "exports/";
 my %numbers_file_hash;
