@@ -20,12 +20,12 @@ select opt in "${options[@]}"; do
     "*-PERFECT_reads.fa.unique for Archaeae" ) NAME_PAT="*-PERFECT_reads.fa.unique"; UDB_NAME=refv6a;   echo "You picked option $REPLY"; break;;
     "*MAX-MISMATCH-3.unique" ) NAME_PAT=$REPLY; UDB_NAME=refv6long;   echo "You picked option $REPLY"; break;;
 
-    1 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
-    2 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refv4e; echo "You picked option $REPLY"; break;;
-    3 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refits1; ITS_OPTION=" -full "; echo "You picked option $REPLY"; break;;
-    4 ) NAME_PAT=${options[3]};                    UDB_NAME=refv6; echo "You picked option $REPLY"; break;;
-    5 ) NAME_PAT="*-PERFECT_reads.fa.unique";      UDB_NAME=refv6a; echo "You picked option $REPLY"; break;;
-    6 ) NAME_PAT=${options[5]};                    UDB_NAME=refv6long; echo "You picked option $REPLY"; break;;
+    1 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refv4v5; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
+    2 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refv4e; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
+    3 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refits1; ITS_OPTION=" -full "; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
+    4 ) NAME_PAT=${options[3]};                    UDB_NAME=refv6; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
+    5 ) NAME_PAT="*-PERFECT_reads.fa.unique";      UDB_NAME=refv6a; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
+    6 ) NAME_PAT=${options[5]};                    UDB_NAME=refv6long; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
 
     # $(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;
     *) echo "Invalid option. Try another one."; continue;;
@@ -39,14 +39,11 @@ echo "ITS_OPTION = $ITS_OPTION"
 echo "NAME_PAT = $NAME_PAT"
 echo "Files number: = `echo $NAME_PAT | wc -w`"
 
-echo "module unload usearch"
-module unload usearch
-echo "module load usearch/6.0.217-32"
-module load usearch/6.0.217-32 
-
 for file in $NAME_PAT
 do
   echo "============="
-  echo $file
-  clusterize -inherit /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.udb -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
+  #echo $file
+  echo "clusterize /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.fa -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast"
+  clusterize /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $file -db /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.fa -rtax /xraid2-2/g454/blastdbs/gast_distributions/$UDB_NAME.tax -out $file.gast
+
 done
