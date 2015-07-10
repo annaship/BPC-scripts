@@ -101,12 +101,18 @@ class Index_Numbers_fromDB():
       print self.res_names_dict[idx_num]
       
       new_name = self.res_names_dict[idx_num] + "_" + file_name
-      print "NNN new_name = %s\n++++" % new_name
+      return new_name
       
     def make_new_names(self):
         for file_name in self.onlyfiles:
           if file_name.startswith("IDX"):
-            self.change_name_to_index(file_name)
+            new_name = self.change_name_to_index(file_name)
+            print "NNN new_name = %s\n++++" % new_name
+            
+            try:
+              os.rename(file_name, new_name)
+            except:
+              raise
         
     # def remove_all_new_files(self, path = "."):
     #     for filename in os.listdir(path):
