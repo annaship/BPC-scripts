@@ -75,8 +75,17 @@ class Index_Numbers_fromDB():
         self.domains     = self.get_domain_from_db()
         self.dna_regions = self.get_dna_region_from_db()
         
-        self.check_domain_name()
-        self.check_dna_region_name()
+        if self.check_domain_name() and self.check_dna_region_name():
+          self.make_new_names()
+          print "Renamed"
+        else:
+          print """Not renamed, please check command line arguments:
+          
+          Possible domains: %s
+
+          Possible dna regions: %s
+          """ % (', '.join([str(i[0]) for i in self.domains]), ', '.join([str(i[0]) for i in self.dna_regions]))
+        
         # self.make_new_names()
       
     def get_all_current_names(self):
@@ -102,12 +111,7 @@ class Index_Numbers_fromDB():
         
     def run_query(self, my_query):
       shared.my_conn.cursor.execute (my_query)
-      result = shared.my_conn.cursor.fetchall ()
-      # print "RRR result"
-      # print result
-      #
-      # print ', '.join([str(i[0]) for i in result])
-      
+      result = shared.my_conn.cursor.fetchall ()      
       return result
       
     def get_idx_numbers(self):
@@ -157,9 +161,15 @@ class Index_Numbers_fromDB():
 
     def check_domain_name(self):
       if any(self.domain in domain for domain in self.domains):
-        print "self.domain = %s" % self.domain
+        # print "self.domain = %s" % self.domain
+        return True
+      else:
+        return False
       
     def check_dna_region_name(self):
       if any(self.dna_region in dna_region for dna_region in self.dna_regions):
-        print "self.dna_region = %s" % self.dna_region
+        # print "self.dna_region = %s" % self.dna_region
+        return True
+      else:
+        return False
 
