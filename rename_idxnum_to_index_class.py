@@ -67,18 +67,16 @@ class Index_Numbers_fromDB():
     def __init__(self, domain, dna_region):
       
         if len(dna_region) > 0 and len(domain) > 0:
-          self.dna_region = dna_region
-          self.domain     = domain
-
-          self.res_names_dict = dict(self.get_idx_numbers())
-
+          self.dna_region  = dna_region
+          self.domain      = domain
           self.mypath      = "."
-          self.onlyfiles   = self.get_all_current_names()      
 
           self.domains     = self.get_domain_from_db()
           self.dna_regions = self.get_dna_region_from_db()
         
           if self.check_domain_name() and self.check_dna_region_name():
+            self.res_names_dict = dict(self.get_idx_numbers())
+            self.onlyfiles      = self.get_all_current_names()      
             self.make_new_names()
             print "Renamed"
           else:
@@ -163,14 +161,12 @@ class Index_Numbers_fromDB():
 
     def check_domain_name(self):
       if any(self.domain in domain for domain in self.domains):
-        # print "self.domain = %s" % self.domain
         return True
       else:
         return False
       
     def check_dna_region_name(self):
       if any(self.dna_region in dna_region for dna_region in self.dna_regions):
-        # print "self.dna_region = %s" % self.dna_region
         return True
       else:
         return False
