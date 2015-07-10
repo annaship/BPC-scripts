@@ -69,10 +69,14 @@ class Index_Numbers_fromDB():
 
         self.res_names_dict = dict(self.get_idx_numbers())
 
-        self.mypath = "."
-        self.onlyfiles  = self.get_all_current_names()      
+        self.mypath      = "."
+        self.onlyfiles   = self.get_all_current_names()      
 
-        self.get_domain_from_db()
+        self.domains     = self.get_domain_from_db()
+        self.dna_regions = self.get_dna_region_from_db()
+        
+        self.check_domain_name()
+        self.check_dna_region_name()
         # self.make_new_names()
       
     def get_all_current_names(self):
@@ -128,7 +132,6 @@ class Index_Numbers_fromDB():
             except:
               raise
               
-              
     def get_domain_from_db(self):
       my_query = """SELECT DISTINCT domain
            FROM illumina_adaptor_ref 
@@ -137,15 +140,23 @@ class Index_Numbers_fromDB():
            JOIN illumina_run_key using(illumina_run_key_id)
            JOIN dna_region using(dna_region_id)
       """
-      print my_query
-      domains = self.run_query(my_query)
-      print domains
-      if any(self.domain in domain for domain in domains):
-      # if self.domain in domains:
-        print "URA"
+      return self.run_query(my_query)
       
-      
+    def get_dna_region_from_db(self):
+      my_query = """SELECT DISTINCT dna_region
+           FROM illumina_adaptor_ref 
+           JOIN illumina_adaptor using(illumina_adaptor_id) 
+           JOIN illumina_index using(illumina_index_id)
+           JOIN illumina_run_key using(illumina_run_key_id)
+           JOIN dna_region using(dna_region_id)
+      """
+      return self.run_query(my_query)
+
     def check_domain_name(self):
-      pass
-    def check_dna_refion_name(self):
-      pass
+      if any(self.domain in domain for domain in self.domains):
+        print "self.domain = %s" % self.domain
+      
+    def check_dna_region_name(self):
+      if any(self.dna_region in dna_region for dna_region in self.dna_regions):
+        print "self.dna_region = %s" % self.dna_region
+
