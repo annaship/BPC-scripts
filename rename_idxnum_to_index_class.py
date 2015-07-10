@@ -65,29 +65,30 @@ class Index_Numbers_fromDB():
     ### rename
     
     def __init__(self, domain, dna_region):
-        self.dna_region = dna_region
-        self.domain     = domain
+      
+        if len(dna_region) > 0 and len(domain) > 0:
+          self.dna_region = dna_region
+          self.domain     = domain
 
-        self.res_names_dict = dict(self.get_idx_numbers())
+          self.res_names_dict = dict(self.get_idx_numbers())
 
-        self.mypath      = "."
-        self.onlyfiles   = self.get_all_current_names()      
+          self.mypath      = "."
+          self.onlyfiles   = self.get_all_current_names()      
 
-        self.domains     = self.get_domain_from_db()
-        self.dna_regions = self.get_dna_region_from_db()
+          self.domains     = self.get_domain_from_db()
+          self.dna_regions = self.get_dna_region_from_db()
         
-        if self.check_domain_name() and self.check_dna_region_name():
-          self.make_new_names()
-          print "Renamed"
-        else:
-          print """Not renamed, please check command line arguments:
+          if self.check_domain_name() and self.check_dna_region_name():
+            self.make_new_names()
+            print "Renamed"
+          else:
+            print """Not renamed, please check command line arguments:
           
-          Possible domains: %s
+            Possible domains: %s
 
-          Possible dna regions: %s
-          """ % (', '.join([str(i[0]) for i in self.domains]), ', '.join([str(i[0]) for i in self.dna_regions]))
+            Possible dna regions: %s
+            """ % (', '.join([str(i[0]) for i in self.domains]), ', '.join([str(i[0]) for i in self.dna_regions]))
         
-        # self.make_new_names()
       
     def get_all_current_names(self):
       onlyfiles = [ f for f in os.listdir(self.mypath) if os.path.isfile(os.path.join(self.mypath,f)) ]
