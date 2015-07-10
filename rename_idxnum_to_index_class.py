@@ -66,8 +66,8 @@ class Index_Numbers_fromDB():
         self.dna_region = dna_region
         self.domain     = domain
 
-        self.res_names  = self.get_idx_numbers()
-        print self.res_names
+        self.res_names_dict = dict(self.get_idx_numbers())
+        # print self.res_names_dict
 
         self.mypath = "."
         self.onlyfiles  = self.get_all_current_names()
@@ -81,9 +81,19 @@ class Index_Numbers_fromDB():
       # onlyfiles = [ f for f in os.listdir(self.mypath) if (os.path.isfile(os.path.join(self.mypath,f)) and f.startswith("IDX")) ]
       return onlyfiles
     
+    def get_idx_num(self, file_name):
+      print  "FFF file_name = %s" % file_name
+      idx_num = file_name.split("_")[0][3:]
+      print "idx_num = %s" % idx_num
+      # IDX8_S8_L001_R2_001
+      
+
     def change_name_to_index(self, file_name):
-      print "+++++++"
-      print file_name
+      self.get_idx_num(file_name)
+      # ml = [i for i, v in enumerate(self.res_names) if v[0] == "IDX7"]
+      
+      print self.res_names_dict["07"]
+      # new_name = 
       
     def make_new_names(self):
         for file_name in self.onlyfiles:
