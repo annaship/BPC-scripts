@@ -94,6 +94,13 @@ class Index_Numbers_fromDB():
       new_name = self.res_names_dict[idx_num] + "_" + file_name
       return new_name
         
+    def run_query(self, my_query):
+      shared.my_conn.cursor.execute (my_query)
+      result = shared.my_conn.cursor.fetchall ()
+      print "RRR result"
+      print result
+      return result
+      
     def get_idx_numbers(self):
         # print "domain = %s, dna_region = %s;" % (self.domain, self.dna_region)
         query_sel_name = """SELECT REPLACE(illumina_adaptor, \"A\", \"\") AS IDX_number, illumina_index 
@@ -107,9 +114,11 @@ class Index_Numbers_fromDB():
                           	 	AND illumina_adaptor like \"A%%\"
             """ % (self.domain, self.dna_region)
         # print query_sel_name
-        shared.my_conn.cursor.execute (query_sel_name)
-        res_names = shared.my_conn.cursor.fetchall ()
-        # print res_names
+        # shared.my_conn.cursor.execute (query_sel_name)
+        # res_names = shared.my_conn.cursor.fetchall ()
+        res_names = self.run_query(query_sel_name)
+        print res_names
+
         return res_names
         
     def make_new_names(self):
@@ -120,3 +129,20 @@ class Index_Numbers_fromDB():
               os.rename(file_name, new_name)
             except:
               raise
+              
+              
+    def get_domain_from_db(self):
+      """SELEST DISTINCT domain
+           FROM illumina_adaptor_ref 
+           JOIN illumina_adaptor using(illumina_adaptor_id) 
+           JOIN illumina_index using(illumina_index_id)
+           JOIN illumina_run_key using(illumina_run_key_id)
+           JOIN dna_region using(dna_region_id)
+
+      
+      """
+      
+    def check_domain_name(self):
+      pass
+    def check_dna_refion_name(self):
+      pass
