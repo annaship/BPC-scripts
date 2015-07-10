@@ -103,8 +103,11 @@ class Index_Numbers_fromDB():
     def run_query(self, my_query):
       shared.my_conn.cursor.execute (my_query)
       result = shared.my_conn.cursor.fetchall ()
-      print "RRR result"
-      print result
+      # print "RRR result"
+      # print result
+      #
+      # print ', '.join([str(i[0]) for i in result])
+      
       return result
       
     def get_idx_numbers(self):
