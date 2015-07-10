@@ -81,10 +81,19 @@ class Index_Numbers_fromDB():
       # onlyfiles = [ f for f in os.listdir(self.mypath) if (os.path.isfile(os.path.join(self.mypath,f)) and f.startswith("IDX")) ]
       return onlyfiles
     
+    def change_to_lead_zero(self, idx_num):
+      if len(idx_num) == 1:
+        return ("0" + idx_num)
+    
     def get_idx_num(self, file_name):
       print  "FFF file_name = %s" % file_name
       idx_num = file_name.split("_")[0][3:]
       print "idx_num = %s" % idx_num
+      idx_num = self.change_to_lead_zero(idx_num)
+      # if len(idx_num) == 1:
+      #   idx_num = "0" + idx_num
+      print "III idx_num = %s" % idx_num
+        
       # IDX8_S8_L001_R2_001
       
 
