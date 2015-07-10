@@ -84,25 +84,24 @@ class Index_Numbers_fromDB():
     def change_to_lead_zero(self, idx_num):
       if len(idx_num) == 1:
         return ("0" + idx_num)
+      else: 
+        return idx_num
     
     def get_idx_num(self, file_name):
       print  "FFF file_name = %s" % file_name
       idx_num = file_name.split("_")[0][3:]
-      print "idx_num = %s" % idx_num
+      # print "idx_num = %s" % idx_num
       idx_num = self.change_to_lead_zero(idx_num)
-      # if len(idx_num) == 1:
-      #   idx_num = "0" + idx_num
-      print "III idx_num = %s" % idx_num
-        
-      # IDX8_S8_L001_R2_001
-      
+      # print "III idx_num = %s" % idx_num
+      return idx_num
 
     def change_name_to_index(self, file_name):
-      self.get_idx_num(file_name)
-      # ml = [i for i, v in enumerate(self.res_names) if v[0] == "IDX7"]
+      idx_num = self.get_idx_num(file_name)
+      print "DDD idx_num = %s" % idx_num
+      print self.res_names_dict[idx_num]
       
-      print self.res_names_dict["07"]
-      # new_name = 
+      new_name = self.res_names_dict[idx_num] + "_" + file_name
+      print "NNN new_name = %s\n++++" % new_name
       
     def make_new_names(self):
         for file_name in self.onlyfiles:
