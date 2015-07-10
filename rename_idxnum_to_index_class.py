@@ -59,9 +59,10 @@ class Index_Numbers_fromDB():
     # get idx_numbers from db: get_idx_numbers()
     # get current names: get_all_current_names()
     # create dict: make_self.names_dict()
-    # make_new_names:
-    ## create a new name using a number from the current name
-    ## rename
+    # if domain and dna_region is correct
+    ## make_new_names:
+    ### create a new name using a number from the current name
+    ### rename
     
     def __init__(self, domain, dna_region):
         self.dna_region = dna_region
