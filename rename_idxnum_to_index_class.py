@@ -70,7 +70,9 @@ class Index_Numbers_fromDB():
         self.res_names_dict = dict(self.get_idx_numbers())
 
         self.mypath = "."
-        self.onlyfiles  = self.get_all_current_names()        
+        self.onlyfiles  = self.get_all_current_names()      
+
+        self.get_domain_from_db()
         # self.make_new_names()
       
     def get_all_current_names(self):
@@ -113,12 +115,8 @@ class Index_Numbers_fromDB():
                           	 	AND  dna_region = \"%s\"
                           	 	AND illumina_adaptor like \"A%%\"
             """ % (self.domain, self.dna_region)
-        # print query_sel_name
-        # shared.my_conn.cursor.execute (query_sel_name)
-        # res_names = shared.my_conn.cursor.fetchall ()
-        res_names = self.run_query(query_sel_name)
-        print res_names
 
+        res_names = self.run_query(query_sel_name)
         return res_names
         
     def make_new_names(self):
@@ -132,15 +130,20 @@ class Index_Numbers_fromDB():
               
               
     def get_domain_from_db(self):
-      """SELEST DISTINCT domain
+      my_query = """SELECT DISTINCT domain
            FROM illumina_adaptor_ref 
            JOIN illumina_adaptor using(illumina_adaptor_id) 
            JOIN illumina_index using(illumina_index_id)
            JOIN illumina_run_key using(illumina_run_key_id)
            JOIN dna_region using(dna_region_id)
-
-      
       """
+      print my_query
+      domains = self.run_query(my_query)
+      print domains
+      if any(self.domain in domain for domain in domains):
+      # if self.domain in domains:
+        print "URA"
+      
       
     def check_domain_name(self):
       pass
