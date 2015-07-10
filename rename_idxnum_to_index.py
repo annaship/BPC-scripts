@@ -16,4 +16,4 @@ else:
     if __name__ == '__main__':
     
       shared.my_conn = rename_idxnum_to_index_class.MyConnection('newbpcdb2', 'env454')
-      rename_idxnum_to_index_class.Index_Numbers_fromDB(domain, dna_region).rename_files_to_index()
+      rename_idxnum_to_index_class.Index_Numbers_fromDB(domain, dna_region).make_new_names()
