@@ -28,7 +28,7 @@
 # 
 # Assumptions: 
 #
-# Revisions: work with "." Jul 23 2013
+# Revisions: work with "." Jul 27 2013
 #
 # Programming Notes:
 #
@@ -58,9 +58,6 @@ my $usage = "
  Options:  
            -seq     sequence to search for
            -domain  superkingdom (e.g., Archaea, Bacteria, Eukarya)
-           -ref     reference table (default: refssu)
-           -align   align table (default: refssu_align)
-           
 \n";
 
 #######################################
@@ -165,8 +162,7 @@ if ($domain eq "all")
 } else {
     $selectRefSeqs = "SELECT $refID_field, r.sequence as unalignseq, a.sequence as alignseq from $refTable as r join $alignTable as a using ($refID_field) join taxonomy using(taxonomy_id) where taxonomy like \"$domain%\" and deleted=0 and r.sequence rlike '.*$primerSeq.*' LIMIT 1000";
 }
-print "$selectRefSeqs\n";
- # exit;
+# print "$selectRefSeqs\n"; exit;
 my $selectRefSeqs_h = $dbh->prepare($selectRefSeqs);
 
 #######################################
