@@ -29,6 +29,7 @@
 # Assumptions: 
 #
 # Revisions: work with "." Jul 27 2013
+#            Usage statements to include all valid options Aug 14 2015
 #
 # Programming Notes:
 #
@@ -58,6 +59,8 @@ my $usage = "
  Options:  
            -seq     sequence to search for
            -domain  superkingdom (e.g., Archaea, Bacteria, Eukarya)
+           -ref     reference table (default: refssu)
+           -align   align table (default: refssu_align)
 \n";
 
 #######################################
