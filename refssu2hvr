@@ -202,7 +202,7 @@ $insertVseq .= "
 HAVING length(hvrsequence) >= $min_length AND hvrsequence not like '%N%'";
 
 my $insertVseq_h = $dbh->prepare($insertVseq) or die "Unable to prepare statement: $insertVseq.  Error: " . $dbh->errstr . "\n";
-#print "$insertVseq\n\n";
+print "$insertVseq\n\n";
 
 #######################################
 #
@@ -221,6 +221,10 @@ my $include_reverse = 0;
 
 # Select the primer cutting information
 my $selectPrimers = "SELECT primer, direction, start, end from $primerLocationsTable where region='" . $vRegion . "'";
+if ($verbose) 
+{
+  print "$selectPrimers\n";
+}
 my $selectPrimers_h = $dbh->prepare($selectPrimers) or die "Unable to prepare statement: $selectPrimers.  Error: " . $dbh->errstr . "\n";
 $selectPrimers_h->execute() or die "Unable to execute SQL statement: $selectPrimers.  Error: " . $selectPrimers_h->errstr . "\n";
 
