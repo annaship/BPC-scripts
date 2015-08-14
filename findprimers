@@ -58,6 +58,9 @@ my $usage = "
  Options:  
            -seq     sequence to search for
            -domain  superkingdom (e.g., Archaea, Bacteria, Eukarya)
+           -ref     reference table (default: refssu)
+           -align   align table (default: refssu_align)
+           
 \n";
 
 #######################################
