@@ -228,8 +228,10 @@ my $use_silva_version_number = "";
 if ($silva_version_number)
 {
   $use_silva_version_number = " AND silva_version = '" . $silva_version_number . "'";
+  
+print "HHH";
+print "$use_silva_version_number\n";
 }
-
 # Select the primer cutting information
 my $selectPrimers = "SELECT primer, direction, start, end FROM $primerLocationsTable WHERE region='" . $vRegion . "'" . $use_silva_version_number;
 if ($verbose) 
