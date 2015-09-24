@@ -55,6 +55,7 @@ my $usage = "
            -r   sets the 16s reference table name (default: refssu)
            -d   sets the database name (default: env454)
            -min sets the minimum accepted length for the sequence
+           -s   silva version number
 \n";
 #           -hvr hypervariable region
 #           -p   the primers locations to use (be sure that the 5' is first and the 3' is second)
@@ -77,6 +78,7 @@ my $refTable = "refssu";
 my $primerLocationsTable = "refssu_primerlocs";
 my $vRegion = ""; # hypervariable region of choice
 my $primers = "";
+my $silva_version_number = "";
 
 my $min_length = 50;
 # Data to create
@@ -113,6 +115,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-min") {
 		shift @ARGV;
 		$min_length = shift @ARGV;
+	} elsif ($ARGV[0] eq "-s") {
+		shift @ARGV;
+		$silva_version_number = shift @ARGV;
 	} elsif ($ARGV[0] eq "-v") {
 		shift @ARGV;
 		$verbose = 1;
@@ -218,9 +223,15 @@ my $start_cut;
 my $end_cut;
 my $include_forward = 0;
 my $include_reverse = 0;
+my $use_silva_version_number = "";
+
+if ($silva_version_number)
+{
+  $use_silva_version_number = " AND silva_version = '" . $silva_version_number . "'";
+}
 
 # Select the primer cutting information
-my $selectPrimers = "SELECT primer, direction, start, end from $primerLocationsTable where region='" . $vRegion . "'";
+my $selectPrimers = "SELECT primer, direction, start, end FROM $primerLocationsTable WHERE region='" . $vRegion . "'" . $use_silva_version_number;
 if ($verbose) 
 {
   print "$selectPrimers\n";
