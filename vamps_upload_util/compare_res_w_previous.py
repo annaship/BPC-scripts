@@ -13,5 +13,5 @@ import shared #use shared to call connection from outside of the module
 if __name__ == '__main__':
   shared.my_conn = vamps_upload_util_class.MyConnection('vampsdb', 'vamps')
 #  shared.my_conn = vamps_upload_util_class.MyConnection('bpcweb7.bpcservers.private', 'vamps2')
-  vamps_upload_util_class.SqlUtil().compare_res_w_previous(table_list = ["vamps_data_cube", "vamps_export", "vamps_junk_data_cube", "vamps_projects_datasets", "vamps_sequences", "vamps_taxonomy"])
+  vamps_upload_util_class.SqlUtil().compare_res_w_previous(table_list = ["vamps_data_cube", "vamps_junk_data_cube", "vamps_projects_datasets", "vamps_sequences", "vamps_taxonomy"])
 
