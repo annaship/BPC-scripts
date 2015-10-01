@@ -262,7 +262,7 @@ if (! $foundPrimer) {print "Unable to locate primer in aligned sequences\n";}
 # Print out cnts:
 if ($cnt)
 {
-  print "Counting sequences where primer was found, please wait...";
+  print "Counting sequences where primer was found, please wait...\n";
   $get_counts_sql_h->execute();
   while(my ($cnt_seq) = $get_counts_sql_h->fetchrow())
   {
