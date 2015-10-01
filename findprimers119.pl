@@ -190,8 +190,9 @@ FROM $refTable AS r
   JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
   JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
     WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$primerSeq'";
-    
+
 print "\$get_counts_sql = $get_counts_sql\n"; 
+my $get_counts_sql_h = $dbh->prepare($get_counts_sql);
 
 #######################################
 #
@@ -252,6 +253,13 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 	if ($foundPrimer) {last;}
 }
 if (! $foundPrimer) {print "Unable to locate primer in aligned sequences\n";}
+
+# Print out cnts:
+$get_counts_sql_h->execute();
+while(my ($cnt_seq) = $get_counts_sql_h->fetchrow())
+{
+  print "Primer was found in " . $cnt_seq . "sequences\n";
+}
 
 # Clean up database connections
 $selectRefSeqs_h->finish;
