@@ -63,6 +63,7 @@ my $usage = "
            -domain  superkingdom (e.g., Archaea, Bacteria, Eukarya)
            -ref     reference table (default: refssu)
            -align   align table (default: refssu_align)
+           -cnt     count amount of sequences where primer was found (useful if found in both directions)
 \n";
 
 #######################################
@@ -85,6 +86,7 @@ my $refTable = "refssu";
 my $refID_field = "refssu_name_id";
 my $refssu_name = "CONCAT_WS('_', accession_id, start, stop)";
 my $alignTable = "refssu_align";
+my $cnt = 0;
 my $primerSeq;
 my $domain;
 my $version;
@@ -120,6 +122,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-align") {
 		shift @ARGV;
 		$alignTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-cnt") {
+		shift @ARGV;
+		$cnt = 1;
 	} elsif ($ARGV[0] eq "-version") {
 		shift @ARGV;
 		$version = shift @ARGV;
@@ -255,10 +260,14 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 if (! $foundPrimer) {print "Unable to locate primer in aligned sequences\n";}
 
 # Print out cnts:
-$get_counts_sql_h->execute();
-while(my ($cnt_seq) = $get_counts_sql_h->fetchrow())
+if ($cnt)
 {
-  print "Primer was found in " . $cnt_seq . "sequences\n";
+  print "Counting sequences where primer was found, please wait...";
+  $get_counts_sql_h->execute();
+  while(my ($cnt_seq) = $get_counts_sql_h->fetchrow())
+  {
+    print "Primer was found in " . $cnt_seq . " sequences.\n";
+  }
 }
 
 # Clean up database connections
