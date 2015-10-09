@@ -64,6 +64,7 @@ my $usage = "
            -ref     reference table (default: refssu)
            -align   align table (default: refssu_align)
            -cnt     count amount of sequences where primer was found (useful if found in both directions)
+           -v       verbose
 \n";
 
 #######################################
@@ -125,6 +126,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-cnt") {
 		shift @ARGV;
 		$cnt = 1;
+	} elsif ($ARGV[0] eq "-v") {
+		shift @ARGV;
+    $verbose = 1;
 	} elsif ($ARGV[0] eq "-version") {
 		shift @ARGV;
 		$version = shift @ARGV;
@@ -185,7 +189,11 @@ $selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as a
     WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$primerSeq'
     LIMIT 1000";
 }
+
+if ($verbose)
+{
  print "$selectRefSeqs\n"; 
+}
 #exit;
 my $selectRefSeqs_h = $dbh->prepare($selectRefSeqs);
 
@@ -196,7 +204,10 @@ FROM $refTable AS r
   JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
     WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$primerSeq'";
 
-print "\$get_counts_sql = $get_counts_sql\n"; 
+if ($verbose)
+{
+  print "\$get_counts_sql = $get_counts_sql\n"; 
+}
 my $get_counts_sql_h = $dbh->prepare($get_counts_sql);
 
 #######################################
@@ -210,18 +221,42 @@ my $refStartPos  = 0;
 my $match_length = 0;
 while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 {
+  if ($verbose)
+  {
+    print "\$refssu_name = $refssu_name\n"; 
+    print "\$refSeq      = $refSeq\n"; 
+    print "\$alignSeq    = $alignSeq\n"; 
+  }
+  
 	# Save out original aligned sequence for substring at the end
 	my $initAlignSeq = $alignSeq;
-
+  
 	# Position of the beginning and the end of the primer in the unaliged (ref) sequence
 	if ($refSeq =~ /$primerSeq/) {
+    if ($verbose)
+    {
+      print "\$`  = $`\n"; 
+      print "\$& = $&\n"; 
+    }
         $refStartPos  = length($`); #$PREMATCH from regexp
         $match_length = length($&);
+    }
+    
+    if ($verbose)
+    {
+      print "\$refStartPos  = $refStartPos\n"; 
+      print "\$match_length = $match_length\n"; 
     }
     
     # my $refStartPos = index($refSeq, $primerSeq);
     # my $refEndPos = $refStartPos + length($primerSeq) - 1;
     my $refEndPos = $refStartPos + $match_length - 1;
+    
+    if ($verbose)
+    {
+      print "\$refEndPos  = $refEndPos\n"; 
+    }
+    
 	# Initialize index positions of the aligned sequence
 	my $alignStartPos;
 	my $alignEndPos;
@@ -229,6 +264,12 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 	# Full length of both aligned and unaligned sequences
 	my $alignPos = length($alignSeq);
 	my $refPos = length($refSeq);
+  
+  if ($verbose)
+  {
+    print "\$alignPos = $alignPos\n"; 
+    print "\$refPos   = $refPos\n"; 
+  }
 
 	# Step along the aligned sequence starting at the end, 
 	# chop off gaps, and walk through the actual bases, ticking them off in the unaligned sequence.
@@ -238,16 +279,37 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 		# and grab the last real base
 		$alignSeq =~ s/-*$//;
 		my $base = chop $alignSeq;
+    
+    # if ($verbose)
+    # {
+    #   print "s/-*$//\n\$base = $base\n";
+    # }
 
 		# decrement the position along the reference sequence (step back one base)
 		$refPos--;
 
 		# if you are now at the end of the primer, store as $alignEndPos
-		if ($refPos == $refEndPos) {$alignEndPos = length($alignSeq) + 1;}
+		if ($refPos == $refEndPos) 
+    {
+      $alignEndPos = length($alignSeq) + 1;
+      if ($verbose)
+      {
+        print "at the end of the primer\n\$alignEndPos = $alignEndPos\n";       
+      }
+    }
 
-		# ifyou are now at the beginning of the primer, print out the information
+    if ($verbose && $alignEndPos)
+    {
+      print "\$alignEndPos = $alignEndPos\n"; 
+    }
+
+		# if you are now at the beginning of the primer, print out the information
 		if ($refPos == $refStartPos) 
 		{
+      if ($verbose)
+      {
+        print "at the beginning of the primer, print out the information\n\$refPos = $refPos\n";
+      }
 			$alignStartPos = length($alignSeq) + 1;
 			print "Primer: " . substr($initAlignSeq, $alignStartPos - 1, $alignEndPos - $alignStartPos + 1) . "\n";
 			print "start=$alignStartPos, end=$alignEndPos ($refssu_name)\n";
