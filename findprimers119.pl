@@ -64,6 +64,8 @@ my $usage = "
            -ref     reference table (default: refssu)
            -align   align table (default: refssu_align)
            -cnt     count amount of sequences where primer was found (useful if found in both directions)
+           -f       forward primer (to seach both)
+           -r       reverse primer (to seach both)
            -v       verbose
 \n";
 
@@ -89,6 +91,8 @@ my $refssu_name = "CONCAT_WS('_', accession_id, start, stop)";
 my $alignTable = "refssu_align";
 my $cnt = 0;
 my $primerSeq;
+my $f_primerSeq;
+my $r_primerSeq;
 my $domain;
 my $version;
 
@@ -126,6 +130,12 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-cnt") {
 		shift @ARGV;
 		$cnt = 1;
+	} elsif ($ARGV[0] eq "-f") {
+		shift @ARGV;
+		$f_primerSeq = shift @ARGV;
+	} elsif ($ARGV[0] eq "-r") {
+		shift @ARGV;
+		$r_primerSeq = shift @ARGV;
 	} elsif ($ARGV[0] eq "-v") {
 		shift @ARGV;
     $verbose = 1;
@@ -171,6 +181,16 @@ my $dbh = $condb->dbh();
 
 #Select 5 sequences that have the primer in it
 my $selectRefSeqs;
+my $regexp1;
+if ($f_primerSeq && $r_primerSeq)
+{
+  $regexp1 = $f_primerSeq . ".*" . $r_primerSeq;
+}
+else
+{
+  $regexp1 = $primerSeq;
+}
+
 if ($domain eq "all")
 {
 $selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
@@ -178,21 +198,22 @@ $selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as a
   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
   JOIN $alignTable as a using($refID_field) 
-    WHERE deleted=0 and r.sequence rlike '.*$primerSeq.*' 
+    WHERE deleted=0 and r.sequence REGEXP '$regexp1' 
     LIMIT 1000";
-} else {
+} else 
+{
 $selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
   FROM $refTable as r
   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
   JOIN $alignTable as a using($refID_field) 
-    WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$primerSeq'
+    WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$regexp1'
     LIMIT 1000";
 }
 
 if ($verbose)
 {
- print "$selectRefSeqs\n"; 
+ print "\$selectRefSeqs: $selectRefSeqs\n"; 
 }
 #exit;
 my $selectRefSeqs_h = $dbh->prepare($selectRefSeqs);
@@ -202,7 +223,7 @@ my $get_counts_sql = "SELECT count(refssuid_id)
 FROM $refTable AS r
   JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
   JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
-    WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$primerSeq'";
+    WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$regexp1'";
 
 if ($verbose)
 {
@@ -232,7 +253,7 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 	my $initAlignSeq = $alignSeq;
   
 	# Position of the beginning and the end of the primer in the unaliged (ref) sequence
-	if ($refSeq =~ /$primerSeq/) {
+	if ($refSeq =~ /$regexp1/) {
     if ($verbose)
     {
       print "\$`  = $`\n"; 
@@ -311,8 +332,37 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
         print "at the beginning of the primer, print out the information\n\$refPos = $refPos\n";
       }
 			$alignStartPos = length($alignSeq) + 1;
-			print "Primer: " . substr($initAlignSeq, $alignStartPos - 1, $alignEndPos - $alignStartPos + 1) . "\n";
-			print "start=$alignStartPos, end=$alignEndPos ($refssu_name)\n";
+      
+      if ($f_primerSeq && $r_primerSeq)
+      { 
+        my $f_length;
+        my $r_length;
+        my $start_f;
+        my $start_r;
+        my $end_f;
+        my $end_r;
+        $f_length = length($f_primerSeq);
+        $r_length = length($r_primerSeq);
+        $start_f = $alignStartPos;
+        $end_f = $alignStartPos + $f_length;
+        $start_r = $alignEndPos - $r_length;
+        $end_r = $alignEndPos;
+        
+        if ($verbose)
+        {
+          print "\$start_f = $start_f, \$end_f = $end_f, \$start_r = $start_r, \$end_r = $end_r\n";
+        }
+        
+  			print "Primer F ($f_primerSeq): " . substr($initAlignSeq, $start_f - 1, $end_f - $start_f + 1) . "\n";
+  			print "Primer R: ($r_primerSeq)" . substr($initAlignSeq, $start_r - 1, $end_r - $start_r + 1) . "\n";
+  			print "Primer F: start = $start_f, end = $end_f ($refssu_name)\n";
+  			print "Primer R: start = $start_r, end = $end_r ($refssu_name)\n";
+      }     
+      else
+      {
+  			print "Primer: " . substr($initAlignSeq, $alignStartPos - 1, $alignEndPos - $alignStartPos + 1) . "\n";
+  			print "start=$alignStartPos, end=$alignEndPos ($refssu_name)\n";        
+      } 
 			$foundPrimer = 1;
 			last;
 		}

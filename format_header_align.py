@@ -21,7 +21,7 @@ for line in fileinput.input():
       output_line1 = first_part.strip('>')
       f.write(output_line1) # python will convert \n to os.linesep
       
-      # print output_line1
+      print output_line1
       # add_seq = add_seq + output_line.strip("\n")
     else:
       # output_line2 = line.strip(".") # wrong, makes different length!
