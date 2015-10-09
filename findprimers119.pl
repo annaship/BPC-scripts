@@ -158,7 +158,7 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 
 #if (scalar @ARGV != $argNum) 
 #if ((scalar @ARGV < $minargNum) || (scalar @ARGV > $maxargNum)) 
-if ( (! $primerSeq) || (! $domain) )
+if ( (! ($primerSeq || ($f_primerSeq && $r_primerSeq))) || (! $domain))
 {
 	print "Incorrect number of arguments.\n";
 	print "$usage\n";
@@ -199,7 +199,7 @@ $selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as a
   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
   JOIN $alignTable as a using($refID_field) 
     WHERE deleted=0 and r.sequence REGEXP '$regexp1' 
-    LIMIT 1000";
+    LIMIT 1";
 } else 
 {
 $selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
@@ -208,7 +208,7 @@ $selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as a
   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
   JOIN $alignTable as a using($refID_field) 
     WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$regexp1'
-    LIMIT 1000";
+    LIMIT 1";
 }
 
 if ($verbose)
