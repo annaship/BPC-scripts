@@ -518,13 +518,14 @@ if __name__ == '__main__':
 
   select_ref_seqs = refssu_name_res = ""
   # print parse_arguments()
+  args = parse_arguments()
   
   regexp1 = "CCAGCAGC[CT]GCGGTAA."
-  domain = "Bacter"
+  # domain = "Bacter"
+  domain = args.domain
 
   select_ref_seqs, refssu_name_res = get_sql_queries(regexp1, domain)
   
-  # shared.my_conn = util.MyConnection("newbpcdb2", "env454")
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
   # test_mysql_conn()
