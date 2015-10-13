@@ -465,26 +465,13 @@ def convert_regexp(regexp):
   return ''.join(regexp_ch).replace("Y", "[CT]")
   # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
   
-def get_ref_seqs(select_ref_seqs):
-  
-  shared.my_conn.cursor.execute (select_ref_seqs)
-    
-  res = shared.my_conn.cursor.fetchall ()
-  # print "res"
-  
-  align_seq = res[0][2]
-  # print align_seq
-  print regexp1
-  
-  refssu_name_res = res[0][0]
-  print "refssu_name_res = %s" % (refssu_name_res)
-  
-  regexp_ext = convert_regexp(regexp1)
-  regexp_ext1 = regexp_ext.rstrip("*").rstrip("-")
-  print regexp_ext1
-  # print align_seq.find(regexp_ext)
-
+def get_ref_seqs_position(align_seq):  
   import re
+    
+  regexp_ext = convert_regexp(regexp1)  
+  regexp_ext1 = regexp_ext.rstrip("*").rstrip("-") # removes fuzzy matching from the rigt side, otherwise it gets "-" at the end of the result
+  print regexp_ext1
+
   m = re.search(regexp_ext1, align_seq)
   aligned_primer  = m.group(0)
   align_start_pos = m.start() + 1
@@ -493,9 +480,9 @@ def get_ref_seqs(select_ref_seqs):
 
   return  "aligned_primer\t= %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
   # C-*C-*A-*G-*C-*A-*G-*C-*[CT]-*G-*C-*G-*G-*T-*A-*A-*.
-  # C-CA--G-C---A--G-C--CG---C-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GG--TA-AT
-  # 13126
-  # 13862
+  # aligned_primer  = C-CA--G-C---A--G-C--CG---C-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GG--TA-AT
+  # align_start_pos = 13127
+  # align_end_pos = 13862
 
 
 # ===
@@ -504,8 +491,17 @@ if __name__ == '__main__':
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
   # test_mysql_conn()
+  shared.my_conn.cursor.execute (select_ref_seqs)    
+  res = shared.my_conn.cursor.fetchall ()
   
-  print get_ref_seqs(select_ref_seqs)
+  print regexp1
+  # CCAGCAGC[CT]GCGGTAA.
+  
+  align_seq = res[0][2]
+  print get_ref_seqs_position(align_seq)
+  
+  refssu_name_res = res[0][0]
+  print "refssu_name_res = %s" % (refssu_name_res)
   
   # shared.my_conn.cursor.execute (get_counts_sql)
   # ((35200L,),)
