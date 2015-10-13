@@ -7,7 +7,7 @@ from argparse import RawTextHelpFormatter
 
 # todo:
 # *) add verbose to print outs
-
+# *) remove -* at the end (see Euk example! python findprimers119.py -domain "Eukar" -f "CCAGCA[CG]C[CT]GCGGTAATTCC" -r "[CT][CT][AG]ATCAAGAACGAAAGT")
 #########################################
 #
 # findprimers: finds primer locations in RefSSU
@@ -46,24 +46,22 @@ from argparse import RawTextHelpFormatter
 # Rewritten in python Oct 13 2015. Anna Shipunova (ashipunova@mbl.edu)
 # Search for primers in db, then for both or one in alingned result (convert primer_seq to "-*" first)
 
-
 #######################################
 #
 # Definition statements
 #
 #######################################
-verbose = 0
 
 #Runtime variables
-#inFilename
-#outFilename
-ref_table = "refssu_119_ok"
 refID_field = "refssu_name_id"
 refssu_name = "CONCAT_WS('_', accession_id, start, stop)"
+ref_table = "refssu_119_ok"
 align_table = "refssu_119_align"
 cnt = 0
 primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
 
+# todo:
+# *) ref_table, align_table - add to arguments with default values
 #######################################
 #
 # SQL statements
@@ -461,7 +459,6 @@ def parse_arguments():
   args = parser.parse_args()
   return args
 
-
 #######################################
 #
 # Test for commandline arguments
@@ -537,5 +534,4 @@ R primer: %s
   
   if args.cnt:
     get_counts(get_counts_sql)
-  
   
