@@ -11,7 +11,7 @@ class MyConnection:
   Takes parameters from ~/.my.cnf, default host = "vampsdev", db="test"
   if different use my_conn = MyConnection(host, db)
   """
-  def __init__(self, host="vampsdev", db="test"):
+  def __init__(self, host="vampsdev", db="test", read_default_group="clientvampsdev"):
       self.conn   = None
       self.cursor = None
       self.rows   = 0
@@ -23,7 +23,7 @@ class MyConnection:
           print "host = " + str(host) + ", db = "  + str(db)
           print "=" * 40
 
-          self.conn   = MySQLdb.connect(host=host, db=db, read_default_file="~/.my.cnf")
+          self.conn   = MySQLdb.connect(host=host, db=db, read_default_group=read_default_group, read_default_file="~/.my.cnf")
           self.cursor = self.conn.cursor()
                  
       except MySQLdb.Error, e:
