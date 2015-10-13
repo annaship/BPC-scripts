@@ -87,7 +87,6 @@ align_table = "refssu_119_align"
 cnt = 0
 primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
 
-
 #######################################
 #
 # Test for commandline arguments
@@ -168,8 +167,8 @@ except IndexError:
 # SQL statements
 #
 #######################################
-regexp1 = "TTGTACACACCGCCC"
-domain = "Eukar"
+regexp1 = "CCAGCAGC[CT]GCGGTAA."
+domain = "Bacter"
 select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
   FROM %s as r
   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
@@ -180,8 +179,11 @@ select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq
     
 print "select_ref_seqs: %s" % (select_ref_seqs)
 
-# WHERE domain like '%s%' and deleted=0 and r.sequence REGEXP '%s'
-
+get_counts_sql = """SELECT count(refssuid_id)
+FROM %s AS r
+  JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
+  JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
+    WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (ref_table, domain, regexp1)
 
 # condb = Conjbpcdb::new(db_host, dbName)
 # dbh = condb->dbh()
@@ -455,6 +457,9 @@ def test_mysql_conn():
   shared.my_conn.cursor.execute (query_1)
   res_names = shared.my_conn.cursor.fetchall ()
   print res_names[-1]
+  
+def convert_regexp(regexp):
+  print "regexp = %s" % (regexp)
 
 # ===
 if __name__ == '__main__':
@@ -463,6 +468,11 @@ if __name__ == '__main__':
   
   # test_mysql_conn()
   shared.my_conn.cursor.execute (select_ref_seqs)
-  res = shared.my_conn.cursor.fetchall ()
-  print res
+  # shared.my_conn.cursor.execute (get_counts_sql)
   
+  res = shared.my_conn.cursor.fetchall ()
+  print "res"
+  print res
+  # ((35200L,),)
+  
+  convert_regexp(regexp1)
