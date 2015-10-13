@@ -4,6 +4,9 @@ import sys
 import mysql_util as util
 import shared #use shared to call connection from outside of the module
 
+# todo:
+# *) add verbose to print outs
+
 #########################################
 #
 # findprimers: finds primer locations in RefSSU
@@ -83,8 +86,10 @@ def get_sql_queries(regexp1, domain):
     JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
     JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
       WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (ref_table, domain, regexp1)
+
+  print "get_counts_sql: %s" % (get_counts_sql)
       
-  return (select_ref_seqs, refssu_name_res)
+  return (select_ref_seqs, get_counts_sql)
 
 # condb = Conjbpcdb::new(db_host, dbName)
 # dbh = condb->dbh()
@@ -450,6 +455,13 @@ def form_seq_regexp():
     return convert_regexp(args.f_primer_seq)  
   elif (args.r_primer_seq):
     return convert_regexp(args.r_primer_seq)  
+# todo: DRY
+
+def get_counts(get_counts_sql):
+  shared.my_conn.cursor.execute (get_counts_sql)
+  res = shared.my_conn.cursor.fetchall ()
+  print "Primer was found in %s sequences." % (res[0][0])
+  # ((35200L,),)
 
 # ===
 # time findprimers119 -domain Bacteria -r CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
@@ -471,7 +483,7 @@ if __name__ == '__main__':
   # domain = "Bacter"
   domain = args.domain
 
-  select_ref_seqs, refssu_name_res = get_sql_queries(regexp_ext, domain)
+  select_ref_seqs, get_counts_sql = get_sql_queries(regexp_ext, domain)
   
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
@@ -496,9 +508,7 @@ R primer: %s
   refssu_name_res = res[0][0]
   print "refssu_name_res = %s" % (refssu_name_res)
   
-  # shared.my_conn.cursor.execute (get_counts_sql)
-  # res = shared.my_conn.cursor.fetchall ()
-  # print "Primer was found in %s sequences." % (res[0][0])
-  # ((35200L,),)
+  if args.cnt:
+    get_counts(get_counts_sql)
   
   
