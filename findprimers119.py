@@ -168,16 +168,20 @@ except IndexError:
 # SQL statements
 #
 #######################################
+regexp1 = "TTGTACACACCGCCC"
+domain = "Eukar"
 select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
   FROM %s as r
   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
   JOIN %s as a using(%s) 
-    LIMIT 1""" % (refssu_name, ref_table, align_table, refID_field)
+  WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
+    LIMIT 1""" % (refssu_name, ref_table, align_table, refID_field, domain, regexp1)
     
 print "select_ref_seqs: %s" % (select_ref_seqs)
 
-    # WHERE domain like \"domain%\" and deleted=0 and r.sequence REGEXP 'regexp1'
+# WHERE domain like '%s%' and deleted=0 and r.sequence REGEXP '%s'
+
 
 # condb = Conjbpcdb::new(db_host, dbName)
 # dbh = condb->dbh()
@@ -457,8 +461,8 @@ if __name__ == '__main__':
   # shared.my_conn = util.MyConnection("newbpcdb2", "env454")
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
-  test_mysql_conn()
+  # test_mysql_conn()
   shared.my_conn.cursor.execute (select_ref_seqs)
-  res_names = shared.my_conn.cursor.fetchall ()
-  print res_names
+  res = shared.my_conn.cursor.fetchall ()
+  print res
   
