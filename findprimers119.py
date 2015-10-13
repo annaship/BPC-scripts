@@ -460,19 +460,14 @@ def test_mysql_conn():
   print res_names[-1]
   
 def convert_regexp(regexp):
+  # todo: get all changes
   regexp_ch = [ch + "-*" for ch in regexp.replace("[CT]", "Y")]
   return ''.join(regexp_ch).replace("Y", "[CT]")
   # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
-
-# ===
-if __name__ == '__main__':
-  # shared.my_conn = util.MyConnection("newbpcdb2", "env454")
-  shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
-  # test_mysql_conn()
+def get_ref_seqs(select_ref_seqs):
+  
   shared.my_conn.cursor.execute (select_ref_seqs)
-  # shared.my_conn.cursor.execute (get_counts_sql)
-  # ((35200L,),)
     
   res = shared.my_conn.cursor.fetchall ()
   # print "res"
@@ -480,6 +475,9 @@ if __name__ == '__main__':
   align_seq = res[0][2]
   # print align_seq
   print regexp1
+  
+  refssu_name_res = res[0][0]
+  print "refssu_name_res = %s" % (refssu_name_res)
   
   regexp_ext = convert_regexp(regexp1)
   regexp_ext1 = regexp_ext.rstrip("*").rstrip("-")
@@ -493,8 +491,23 @@ if __name__ == '__main__':
   align_end_pos   = m.end()
 
 
-  print  "aligned_primer = %s\nalign_start_pos = %s\nalign_end_pos = %s\n" %(aligned_primer, align_start_pos, align_end_pos)
+  return  "aligned_primer\t= %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
   # C-*C-*A-*G-*C-*A-*G-*C-*[CT]-*G-*C-*G-*G-*T-*A-*A-*.
   # C-CA--G-C---A--G-C--CG---C-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GG--TA-AT
   # 13126
   # 13862
+
+
+# ===
+if __name__ == '__main__':
+  # shared.my_conn = util.MyConnection("newbpcdb2", "env454")
+  shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+  
+  # test_mysql_conn()
+  
+  print get_ref_seqs(select_ref_seqs)
+  
+  # shared.my_conn.cursor.execute (get_counts_sql)
+  # ((35200L,),)
+  
+  
