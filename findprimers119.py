@@ -458,69 +458,23 @@ ex:    %(prog)s -seq \"CCAGCAGC[CT]GCGGTAA.\" -domain Bacteria
   parser.add_argument('-cnt'   , action="count", default=0, help = 'count amount of sequences where primer was found (useful if found in both directions)')
   parser.add_argument('-f'     , dest = "f_primer_seq", help = 'forward primer')
   parser.add_argument('-r'     , dest = "r_primer_seq", help = 'reverse primer')
+  parser.add_argument('-seq'   , dest = "primer_seq", help = 'primer with unknown direction')
   parser.add_argument('-v'     , action='store_true', help = 'verbose')
 
-  # parser.add_argument('-h', '--help', help='Usage:', required=False)
   args = parser.parse_args()
   return args
 
-  # try:
-  #   if (sys.argv[1] == "help" or sys.argv[1] == "-h"):
-  #       print usage
-  #   if 
-  # except IndexError:
-  #   # print sys.exc_info()[0]
-  #   pass
-
-  # 
-  # while ((scalar @ARGV > 0) && (ARGV[0] =~ /^-/))
-  # {
-  #   if (ARGV[0] =~ /-h/) {
-  #     print scriptHelp
-  #     print usage
-  #     exit 0
-  #   } elsif (ARGV[0] eq "-seq") {
-  #     shift @ARGV
-  #     primerSeq = shift @ARGV
-  #   } elsif (ARGV[0] eq "-domain") {
-  #     shift @ARGV
-  #     domain = shift @ARGV
-  #   } elsif (ARGV[0] eq "-ref") {
-  #     shift @ARGV
-  #     refTable = shift @ARGV
-  #   } elsif (ARGV[0] eq "-align") {
-  #     shift @ARGV
-  #     alignTable = shift @ARGV
-  #   } elsif (ARGV[0] eq "-cnt") {
-  #     shift @ARGV
-  #     cnt = 1
-  #   } elsif (ARGV[0] eq "-f") {
-  #     shift @ARGV
-  #     f_primerSeq = shift @ARGV
-  #   } elsif (ARGV[0] eq "-r") {
-  #     shift @ARGV
-  #     r_primerSeq = shift @ARGV
-  #   } elsif (ARGV[0] eq "-v") {
-  #     shift @ARGV
-  #     verbose = 1
-  #   } elsif (ARGV[0] eq "-version") {
-  #     shift @ARGV
-  #     version = shift @ARGV
-  #   } elsif (ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
-  #     print "Unknown commandline flag \"ARGV[0]\"."
-  #     print usage
-  #     exit -1
-  #   }
-  # }
-  #
 # ===
 if __name__ == '__main__':
 
   select_ref_seqs = refssu_name_res = ""
-  # print parse_arguments()
+  print parse_arguments()
   args = parse_arguments()
   
-  regexp1 = "CCAGCAGC[CT]GCGGTAA."
+  # time findprimers119 -domain Bacteria -r_primer_seq CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
+  # python findprimers119.py -domain "Bacter" -r "CCAGCAGC[CT]GCGGTAA."
+  # regexp1 = "CCAGCAGC[CT]GCGGTAA."
+  regexp1 = args.r_primer_seq
   # domain = "Bacter"
   domain = args.domain
 
