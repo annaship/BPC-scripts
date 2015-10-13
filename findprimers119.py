@@ -478,8 +478,23 @@ if __name__ == '__main__':
   # print "res"
   
   align_seq = res[0][2]
-  print align_seq
+  # print align_seq
+  print regexp1
   
   regexp_ext = convert_regexp(regexp1)
-  print regexp_ext
-  print align_seq.find(regexp_ext)
+  regexp_ext1 = regexp_ext.rstrip("*").rstrip("-")
+  print regexp_ext1
+  # print align_seq.find(regexp_ext)
+
+  import re
+  m = re.search(regexp_ext1, align_seq)
+  aligned_primer  = m.group(0)
+  align_start_pos = m.start() + 1
+  align_end_pos   = m.end()
+
+
+  print  "aligned_primer = %s\nalign_start_pos = %s\nalign_end_pos = %s\n" %(aligned_primer, align_start_pos, align_end_pos)
+  # C-*C-*A-*G-*C-*A-*G-*C-*[CT]-*G-*C-*G-*G-*T-*A-*A-*.
+  # C-CA--G-C---A--G-C--CG---C-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GG--TA-AT
+  # 13126
+  # 13862
