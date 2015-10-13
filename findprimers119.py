@@ -169,6 +169,7 @@ except IndexError:
 #######################################
 regexp1 = "CCAGCAGC[CT]GCGGTAA."
 domain = "Bacter"
+
 select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
   FROM %s as r
   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
@@ -459,7 +460,9 @@ def test_mysql_conn():
   print res_names[-1]
   
 def convert_regexp(regexp):
-  print "regexp = %s" % (regexp)
+  regexp_ch = [ch + "-*" for ch in regexp.replace("[CT]", "Y")]
+  return ''.join(regexp_ch).replace("Y", "[CT]")
+  # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
 
 # ===
 if __name__ == '__main__':
@@ -469,10 +472,14 @@ if __name__ == '__main__':
   # test_mysql_conn()
   shared.my_conn.cursor.execute (select_ref_seqs)
   # shared.my_conn.cursor.execute (get_counts_sql)
-  
-  res = shared.my_conn.cursor.fetchall ()
-  print "res"
-  print res
   # ((35200L,),)
+    
+  res = shared.my_conn.cursor.fetchall ()
+  # print "res"
   
-  convert_regexp(regexp1)
+  align_seq = res[0][2]
+  print align_seq
+  
+  regexp_ext = convert_regexp(regexp1)
+  print regexp_ext
+  print align_seq.find(regexp_ext)
