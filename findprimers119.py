@@ -475,23 +475,23 @@ if __name__ == '__main__':
   # regexp1 = "CCAGCAGC[CT]GCGGTAA."
   
   if (args.f_primer_seq and args.r_primer_seq):
-    print "YESSS"
+    regexp_ext = convert_regexp(args.f_primer_seq) + ".*" + convert_regexp(args.r_primer_seq)
     # regexp1 = args.f_primer_seq.*args.r_primer_seq - add middle part (.* after transformation is done)
   elif (args.primer_seq):
-    regexp1 = args.primer_seq
+    regexp_ext = convert_regexp(args.primer_seq)  
   elif (args.f_primer_seq):
-    regexp1 = args.f_primer_seq
+    regexp_ext = convert_regexp(args.f_primer_seq)  
   elif (args.r_primer_seq):
-    regexp1 = args.r_primer_seq
+    regexp_ext = convert_regexp(args.r_primer_seq)  
 
   # regexp1 = args.r_primer_seq
   
-  print regexp1
+  print regexp_ext
   
   # domain = "Bacter"
   domain = args.domain
 
-  select_ref_seqs, refssu_name_res = get_sql_queries(regexp1, domain)
+  select_ref_seqs, refssu_name_res = get_sql_queries(regexp_ext, domain)
   
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
@@ -499,9 +499,8 @@ if __name__ == '__main__':
   shared.my_conn.cursor.execute (select_ref_seqs)    
   res = shared.my_conn.cursor.fetchall ()
   
-  print "regexp1 = %s" % (regexp1)
+  print "regexp_ext = %s" % (regexp_ext)
   # CCAGCAGC[CT]GCGGTAA.
-  regexp_ext = convert_regexp(regexp1)  
   
   align_seq = res[0][2]
   print get_ref_seqs_position(align_seq, regexp_ext)
