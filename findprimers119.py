@@ -87,8 +87,13 @@ alignTable = "refssu_align"
 cnt = 0
 primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
 
-if __name__ == '__main__':
-  shared.my_conn = util.MyConnection("newbpcdb2", "env454")
+def test_mysql_conn():
+  query_1 = """show tables;		
+        """
+  print query_1
+  shared.my_conn.cursor.execute (query_1)
+  res_names = shared.my_conn.cursor.fetchall ()
+  print res_names[-1]
 
 
 #######################################
@@ -101,17 +106,9 @@ try:
   if (sys.argv[1] == "help" or sys.argv[1] == "-h"):
       print usage
 except IndexError:
-  print sys.exc_info()[0]
+  # print sys.exc_info()[0]
   pass
   
-    
-query_1 = """show tables;		
-      """
-print query_1
-shared.my_conn.cursor.execute (query_1)
-res_names = shared.my_conn.cursor.fetchall ()
-print res_names
-
 # 
 # while ((scalar @ARGV > 0) && (ARGV[0] =~ /^-/))
 # {
@@ -442,3 +439,10 @@ print res_names
 # # Clean up database connections
 # selectRefSeqs_h->finish
 # dbh->disconnect
+
+# ===
+if __name__ == '__main__':
+  # shared.my_conn = util.MyConnection("newbpcdb2", "env454")
+  shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+  
+  test_mysql_conn()
