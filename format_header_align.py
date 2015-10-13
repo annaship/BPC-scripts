@@ -25,7 +25,7 @@ for line in fileinput.input():
       # add_seq = add_seq + output_line.strip("\n")
     else:
       # output_line2 = line.strip(".") # wrong, makes different length!
-      output_line2 = line.replace(".", "-")
+      output_line2 = line.replace(".", "-").replace("U", "T")
       #output_line2 = line.replace("U", "T")
       f.write("|" + output_line2 + "\n")
       

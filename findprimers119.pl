@@ -319,10 +319,10 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
       }
     }
 
-    if ($verbose && $alignEndPos)
-    {
-      print "\$alignEndPos = $alignEndPos\n"; 
-    }
+    # if ($verbose && $alignEndPos)
+    # {
+    #   print "\$alignEndPos = $alignEndPos\n";
+    # }
 
 		# if you are now at the beginning of the primer, print out the information
 		if ($refPos == $refStartPos) 
@@ -341,12 +341,65 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
         my $start_r;
         my $end_f;
         my $end_r;
+        # say qq{>$1< found at $-[ 0 ]} while
+        # $line =~ m{([ (),.;:?!-])}g;
+        
+        my $f_primerSeq_align;
+        my $r_primerSeq_align;
+        # $line =~ m{\d+};
+        # my $pos = length $`;
+        
+        # $initAlignSeq =~ m{($f_primerSeq)};
+        # my $l_pos = length $`;
+        # $f_primerSeq_align = length $&;
+        #
+        # print "\$l_pos of \$f_primerSeq = $l_pos of $f_primerSeq\n";
+        # print "\$f_primerSeq_align      = $f_primerSeq_align\n";
+        # print "\@- = @-\n";
+        # print "\@+ = @+\n";
+        # print "\$-[0] = $-[0]\n";
+        # print "\$+[0] = $+[0]\n";
+        #
+        $initAlignSeq =~ /$f_primerSeq/;
+        print "\n\$MATCH = $&\n";
+        print "\nLeft:  <", substr( $initAlignSeq, 0, $-[0] ),
+              ">\nMatch: <", substr( $initAlignSeq, $-[$#-], $+[$#-] ),
+              ">\nRight: <", substr( $initAlignSeq, $+[$#+] ), ">\n";
+        print "\$-[0] = $-[0]\n";
+        print "\$-[\$#-] = $-[$#-]\n";
+        print "\$+[\$#-] - \$-[\$#-] = $+[$#-] - $-[$#-]\n";
+        print "\$+[\$#-] = $+[$#-]\n";
+              
+        
+        # ----
+
+        # $initAlignSeq =~ m{$r_primerSeq};
+        # $l_pos = length $`;
+        # $r_primerSeq_align = length $&;
+        #
+        # print "\$l_pos of \$r_primerSeq = $l_pos\n";
+        # print "\$r_primerSeq_align      = $r_primerSeq_align\n";
+        # print "\@- = @-\n";
+        # print "\@+ = @+\n";
+        # print "\$-[0] = $-[0]\n";
+        # print "\$+[0] = $+[0]\n";
+
+
+
+        # $initAlignSeq =~ m{$f_primerSeq};
+        # my $l_pos = length $`;
+        # print "\$l_pos of \$f_primerSeq = $l_pos\n";
+        #
+        # $initAlignSeq =~ m{$f_primerSeq};
+        # my $l_pos = length $`;
+        # print "\$l_pos of \$f_primerSeq = $l_pos\n";
+
         $f_length = length($f_primerSeq);
         $r_length = length($r_primerSeq);
         $start_f = $alignStartPos;
-        $end_f = $alignStartPos + $f_length;
-        $start_r = $alignEndPos - $r_length;
+        $end_f = $start_f + $f_length;
         $end_r = $alignEndPos;
+        $start_r = $end_r - $r_length;
         
         if ($verbose)
         {
@@ -354,9 +407,9 @@ while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
         }
         
   			print "Primer F ($f_primerSeq): " . substr($initAlignSeq, $start_f - 1, $end_f - $start_f + 1) . "\n";
-  			print "Primer R: ($r_primerSeq)" . substr($initAlignSeq, $start_r - 1, $end_r - $start_r + 1) . "\n";
-  			print "Primer F: start = $start_f, end = $end_f ($refssu_name)\n";
-  			print "Primer R: start = $start_r, end = $end_r ($refssu_name)\n";
+  			print "Primer R: ($r_primerSeq): " . substr($initAlignSeq, $start_r - 1, $end_r - $start_r + 1) . "\n";
+        # print "Primer F: start = $start_f, end = $end_f ($refssu_name)\n";
+        # print "Primer R: start = $start_r, end = $end_r ($refssu_name)\n";
       }     
       else
       {
