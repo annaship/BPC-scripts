@@ -3,6 +3,7 @@
 import sys
 import mysql_util as util
 import shared #use shared to call connection from outside of the module
+from argparse import RawTextHelpFormatter
 
 # todo:
 # *) add verbose to print outs
@@ -43,6 +44,7 @@ import shared #use shared to call connection from outside of the module
 #
 # Programming Notes:
 # Rewritten in python Oct 13 2015. Anna Shipunova (ashipunova@mbl.edu)
+# Search for primers in db, then for both or one in alingned result (convert primer_seq to "-*" first)
 
 
 #######################################
@@ -396,7 +398,7 @@ def get_ref_seqs_position(align_seq, regexp_ext):
   import re
   
   regexp_ext1 = regexp_ext.rstrip("*").rstrip("-") # removes fuzzy matching from the rigt side, otherwise it gets "-" at the end of the result
-  print regexp_ext1
+  print "regexp_ext1 from get_ref_seqs_position: %s" % (regexp_ext1)
 
   m = re.search(regexp_ext1, align_seq)
   aligned_primer  = m.group(0)
@@ -415,16 +417,37 @@ def get_ref_seqs_position(align_seq, regexp_ext):
 # Set up usage statement
 #
 #######################################
-description = """Find the location of a primer sequence in the aligned RefSSU.\
-               Primer sequence must be inserted as read in 5\'-3\' direction\
-               (reverse complement the distal primers)"""
+description = """Find the location of a primer sequence in the aligned RefSSU.
+Primer sequence must be inserted as read in 5\'-3\' direction (reverse complement the distal primers).
+You can provide both forward and reverse primers or just one of them.
+Primers can have this regular expressions (note the order in square brackets):               
+   'R':'[AG]',
+   'Y':'[CT]',
+   'S':'[CG]',
+   'W':'[AT]',
+   'K':'[GT]',
+   'M':'[AC]',
+   'B':'[CGT]',
+   'D':'[AGT]',
+   'H':'[ACT]',
+   'V':'[ACG]'.
+Use dot '.' instead of 'N'.
+At least one of primer sequences and domain should be provided.
+"""
+
+usage =  """%(prog)s -seq primerseq -domain domainname
+ex: python %(prog)s -seq \"CCAGCAGC[CT]GCGGTAA.\" -domain Bacteria
+    python findprimers119.py -domain 'Eukar' -f 'CCAGCA[CG]C[CT]GCGGTAATTCC' -r '[CT][CT][AG]ATCAAGAACGAAAGT' -cnt
+"""
+# 
+
 
 def parse_arguments():
   import argparse
   
-  parser = argparse.ArgumentParser(usage = """%(prog)s -seq primerseq -domain domainname
-ex:    %(prog)s -seq \"CCAGCAGC[CT]GCGGTAA.\" -domain Bacteria
-  """, description = "%s" % description)
+  # parser = ArgumentParser(description='test', formatter_class=RawTextHelpFormatter)
+  
+  parser = argparse.ArgumentParser(usage = "%s" % usage, description = "%s" % description, formatter_class=RawTextHelpFormatter)
   
   parser.add_argument('-domain', dest = "domain", help = 'superkingdom (in short form: Archae, Bacter, Eukar)')
   parser.add_argument('-ref'   , dest = "ref_table", help = 'reference table (default: refssu)')
@@ -446,10 +469,10 @@ ex:    %(prog)s -seq \"CCAGCAGC[CT]GCGGTAA.\" -domain Bacteria
 #######################################
 
 def form_seq_regexp():
-  if (args.f_primer_seq and args.r_primer_seq):
-    return convert_regexp(args.f_primer_seq) + ".*" + convert_regexp(args.r_primer_seq)
+  # if (args.f_primer_seq and args.r_primer_seq):
+  #   return convert_regexp(args.f_primer_seq) + ".*" + convert_regexp(args.r_primer_seq)
     # regexp1 = args.f_primer_seq.*args.r_primer_seq - add middle part (.* after transformation is done)
-  elif (args.primer_seq):
+  if (args.primer_seq):
     return convert_regexp(args.primer_seq)  
   elif (args.f_primer_seq):
     return convert_regexp(args.f_primer_seq)  
@@ -460,7 +483,7 @@ def form_seq_regexp():
 def get_counts(get_counts_sql):
   shared.my_conn.cursor.execute (get_counts_sql)
   res = shared.my_conn.cursor.fetchall ()
-  print "Primer was found in %s sequences." % (res[0][0])
+  print "%s is found in %s sequences." % (search_in_db, res[0][0])
   # ((35200L,),)
 
 # ===
@@ -473,17 +496,21 @@ if __name__ == '__main__':
   args = parse_arguments()
   
   both = False
+  search_in_db = form_seq_regexp()
   if (args.f_primer_seq and args.r_primer_seq):
-    both = True
+    both         = True
+    search_in_db = args.f_primer_seq  + ".*" + args.r_primer_seq
+    
+  print "search_in_db = %s" % (search_in_db)
 
   regexp_ext = form_seq_regexp()
-  print "regexp_ext = %s" % (regexp_ext)
+  print "regexp_ext   = %s" % (regexp_ext)
   print "both = %s" % (both)
   
   # domain = "Bacter"
   domain = args.domain
 
-  select_ref_seqs, get_counts_sql = get_sql_queries(regexp_ext, domain)
+  select_ref_seqs, get_counts_sql = get_sql_queries(search_in_db, domain)
   
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
@@ -491,7 +518,7 @@ if __name__ == '__main__':
   shared.my_conn.cursor.execute (select_ref_seqs)    
   res = shared.my_conn.cursor.fetchall ()
   
-  print "regexp_ext = %s" % (regexp_ext)
+  # print "regexp_ext = %s" % (regexp_ext)
   # CCAGCAGC[CT]GCGGTAA.
   
   align_seq = res[0][2]
