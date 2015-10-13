@@ -44,32 +44,6 @@ import shared #use shared to call connection from outside of the module
 
 #######################################
 #
-# Set up usage statement
-#
-#######################################
-scriptHelp = """
- findprimers - find the location of a primer sequence in the aligned RefSSU.
-               Primer sequence must be inserted as read in 5'-3' direction
-               (reverse complement the distal primers)
-"""
-
-usage = """
-   Usage:  %s -seq primerseq -domain domainname
-      ex:  %s -seq \"CAACGCGAAGAACCTTACC\" -domain Bacteria
-           %s -seq \"AGGTGCTGCATGGTTGTCG\" -domain Bacteria 
-
- Options:  
-           -domain  superkingdom (e.g., Archaea, Bacteria, Eukarya)
-           -ref     reference table (default: refssu)
-           -align   align table (default: refssu_align)
-           -cnt     count amount of sequences where primer was found (useful if found in both directions)
-           -f       forward primer (to seach both)
-           -r       reverse primer (to seach both)
-           -v       verbose
-""" % (sys.argv[0], sys.argv[0], sys.argv[0])
-
-#######################################
-#
 # Definition statements
 #
 #######################################
@@ -78,8 +52,6 @@ verbose = 0
 #Runtime variables
 #inFilename
 #outFilename
-db_host = "newbpcdb2"
-db_name = "env454"
 ref_table = "refssu_119_ok"
 refID_field = "refssu_name_id"
 refssu_name = "CONCAT_WS('_', accession_id, start, stop)"
@@ -87,60 +59,7 @@ align_table = "refssu_119_align"
 cnt = 0
 primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
 
-#######################################
-#
-# Test for commandline arguments
-#
-#######################################
 
-try:
-  if (sys.argv[1] == "help" or sys.argv[1] == "-h"):
-      print usage
-except IndexError:
-  # print sys.exc_info()[0]
-  pass
-  
-# 
-# while ((scalar @ARGV > 0) && (ARGV[0] =~ /^-/))
-# {
-#   if (ARGV[0] =~ /-h/) {
-#     print scriptHelp
-#     print usage
-#     exit 0
-#   } elsif (ARGV[0] eq "-seq") {
-#     shift @ARGV
-#     primerSeq = shift @ARGV
-#   } elsif (ARGV[0] eq "-domain") {
-#     shift @ARGV
-#     domain = shift @ARGV
-#   } elsif (ARGV[0] eq "-ref") {
-#     shift @ARGV
-#     refTable = shift @ARGV
-#   } elsif (ARGV[0] eq "-align") {
-#     shift @ARGV
-#     alignTable = shift @ARGV
-#   } elsif (ARGV[0] eq "-cnt") {
-#     shift @ARGV
-#     cnt = 1
-#   } elsif (ARGV[0] eq "-f") {
-#     shift @ARGV
-#     f_primerSeq = shift @ARGV
-#   } elsif (ARGV[0] eq "-r") {
-#     shift @ARGV
-#     r_primerSeq = shift @ARGV
-#   } elsif (ARGV[0] eq "-v") {
-#     shift @ARGV
-#     verbose = 1
-#   } elsif (ARGV[0] eq "-version") {
-#     shift @ARGV
-#     version = shift @ARGV
-#   } elsif (ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
-#     print "Unknown commandline flag \"ARGV[0]\"."
-#     print usage
-#     exit -1
-#   }
-# }
-# 
 # 
 # #######################################
 # #
@@ -167,24 +86,27 @@ except IndexError:
 # SQL statements
 #
 #######################################
-regexp1 = "CCAGCAGC[CT]GCGGTAA."
-domain = "Bacter"
+# regexp1 = "CCAGCAGC[CT]GCGGTAA."
+# domain = "Bacter"
 
-select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
-  FROM %s as r
-  JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
-  JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
-  JOIN %s as a using(%s) 
-  WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
-    LIMIT 1""" % (refssu_name, ref_table, align_table, refID_field, domain, regexp1)
+def get_sql_queries(regexp1, domain):
+  select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
+    FROM %s as r
+    JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
+    JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
+    JOIN %s as a using(%s) 
+    WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
+      LIMIT 1""" % (refssu_name, ref_table, align_table, refID_field, domain, regexp1)
     
-print "select_ref_seqs: %s" % (select_ref_seqs)
+  print "select_ref_seqs: %s" % (select_ref_seqs)
 
-get_counts_sql = """SELECT count(refssuid_id)
-FROM %s AS r
-  JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
-  JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
-    WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (ref_table, domain, regexp1)
+  get_counts_sql = """SELECT count(refssuid_id)
+  FROM %s AS r
+    JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
+    JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
+      WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (ref_table, domain, regexp1)
+      
+  return (select_ref_seqs, refssu_name_res)
 
 # condb = Conjbpcdb::new(db_host, dbName)
 # dbh = condb->dbh()
@@ -475,11 +397,12 @@ def convert_regexp(regexp):
   '.':'[ACGT]'
   }
 
-  d_to_letter = {y:x for x,y in d_from_letter.items()}
-  print d_to_letter
+  d_to_letter = {y:x for x,y in d_from_letter.items()} # switching keys and values
+  # print d_to_letter
 
+# http://stackoverflow.com/questions/2400504/easiest-way-to-replace-a-string-using-a-dictionary-of-replacements
   regexp_rep1 = reduce(lambda x, y: x.replace(y, d_to_letter[y]), d_to_letter, regexp1)
-  print "all changes = %s" % (regexp_rep1)
+  # print "all changes = %s" % (regexp_rep1)
 
   regexp_ch = [ch + "-*" for ch in regexp_rep1]
   return reduce(lambda x, y: x.replace(y, d_from_letter[y]), d_from_letter, ''.join(regexp_ch))
@@ -505,9 +428,102 @@ def get_ref_seqs_position(align_seq):
   # align_start_pos = 13127
   # align_end_pos = 13862
 
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+description = """Find the location of a primer sequence in the aligned RefSSU.\
+               Primer sequence must be inserted as read in 5\'-3\' direction\
+               (reverse complement the distal primers)"""
 
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+
+def parse_arguments():
+  import argparse
+  
+  parser = argparse.ArgumentParser(usage = """%(prog)s -seq primerseq -domain domainname
+ex:    %(prog)s -seq \"CCAGCAGC[CT]GCGGTAA.\" -domain Bacteria
+  """, description = "%s" % description)
+  
+  parser.add_argument('-domain', dest = "domain", help = 'superkingdom (in short form: Archae, Bacter, Eukar)')
+  parser.add_argument('-ref'   , dest = "ref_table", help = 'reference table (default: refssu)')
+  parser.add_argument('-align' , dest = "align_table", help = 'align table (default: refssu_align)')
+  parser.add_argument('-cnt'   , action="count", default=0, help = 'count amount of sequences where primer was found (useful if found in both directions)')
+  parser.add_argument('-f'     , dest = "f_primer_seq", help = 'forward primer')
+  parser.add_argument('-r'     , dest = "r_primer_seq", help = 'reverse primer')
+  parser.add_argument('-v'     , action='store_true', help = 'verbose')
+
+  # parser.add_argument('-h', '--help', help='Usage:', required=False)
+  args = parser.parse_args()
+  return args
+
+  # try:
+  #   if (sys.argv[1] == "help" or sys.argv[1] == "-h"):
+  #       print usage
+  #   if 
+  # except IndexError:
+  #   # print sys.exc_info()[0]
+  #   pass
+
+  # 
+  # while ((scalar @ARGV > 0) && (ARGV[0] =~ /^-/))
+  # {
+  #   if (ARGV[0] =~ /-h/) {
+  #     print scriptHelp
+  #     print usage
+  #     exit 0
+  #   } elsif (ARGV[0] eq "-seq") {
+  #     shift @ARGV
+  #     primerSeq = shift @ARGV
+  #   } elsif (ARGV[0] eq "-domain") {
+  #     shift @ARGV
+  #     domain = shift @ARGV
+  #   } elsif (ARGV[0] eq "-ref") {
+  #     shift @ARGV
+  #     refTable = shift @ARGV
+  #   } elsif (ARGV[0] eq "-align") {
+  #     shift @ARGV
+  #     alignTable = shift @ARGV
+  #   } elsif (ARGV[0] eq "-cnt") {
+  #     shift @ARGV
+  #     cnt = 1
+  #   } elsif (ARGV[0] eq "-f") {
+  #     shift @ARGV
+  #     f_primerSeq = shift @ARGV
+  #   } elsif (ARGV[0] eq "-r") {
+  #     shift @ARGV
+  #     r_primerSeq = shift @ARGV
+  #   } elsif (ARGV[0] eq "-v") {
+  #     shift @ARGV
+  #     verbose = 1
+  #   } elsif (ARGV[0] eq "-version") {
+  #     shift @ARGV
+  #     version = shift @ARGV
+  #   } elsif (ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+  #     print "Unknown commandline flag \"ARGV[0]\"."
+  #     print usage
+  #     exit -1
+  #   }
+  # }
+  #
 # ===
 if __name__ == '__main__':
+
+  select_ref_seqs = refssu_name_res = ""
+  # print parse_arguments()
+  
+  regexp1 = "CCAGCAGC[CT]GCGGTAA."
+  domain = "Bacter"
+
+  select_ref_seqs, refssu_name_res = get_sql_queries(regexp1, domain)
+  
   # shared.my_conn = util.MyConnection("newbpcdb2", "env454")
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
