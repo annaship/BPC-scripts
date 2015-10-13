@@ -456,13 +456,17 @@ def form_seq_regexp():
 
 if __name__ == '__main__':
 
-
   select_ref_seqs = refssu_name_res = ""
   print parse_arguments()
   args = parse_arguments()
+  
+  both = False
+  if (args.f_primer_seq and args.r_primer_seq):
+    both = True
 
   regexp_ext = form_seq_regexp()
-  print regexp_ext
+  print "regexp_ext = %s" % (regexp_ext)
+  print "both = %s" % (both)
   
   # domain = "Bacter"
   domain = args.domain
