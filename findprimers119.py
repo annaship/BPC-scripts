@@ -460,8 +460,7 @@ def test_mysql_conn():
   print res_names[-1]
   
 def convert_regexp(regexp):
-  # todo: get all changes
-  
+
   d_from_letter = {
   'R':'[AG]',
   'Y':'[CT]',
@@ -483,7 +482,8 @@ def convert_regexp(regexp):
   print "all changes = %s" % (regexp_rep1)
 
   regexp_ch = [ch + "-*" for ch in regexp_rep1]
-  return ''.join(regexp_ch).replace("Y", "[CT]")
+  return reduce(lambda x, y: x.replace(y, d_from_letter[y]), d_from_letter, ''.join(regexp_ch))
+  
   # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
   
 def get_ref_seqs_position(align_seq):  
