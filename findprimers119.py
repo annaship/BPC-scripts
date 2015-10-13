@@ -80,20 +80,12 @@ verbose = 0
 #outFilename
 db_host = "newbpcdb2"
 db_name = "env454"
-refTable = "refssu"
+ref_table = "refssu_119_ok"
 refID_field = "refssu_name_id"
 refssu_name = "CONCAT_WS('_', accession_id, start, stop)"
-alignTable = "refssu_align"
+align_table = "refssu_119_align"
 cnt = 0
 primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
-
-def test_mysql_conn():
-  query_1 = """show tables;		
-        """
-  print query_1
-  shared.my_conn.cursor.execute (query_1)
-  res_names = shared.my_conn.cursor.fetchall ()
-  print res_names[-1]
 
 
 #######################################
@@ -171,17 +163,27 @@ except IndexError:
 # # We'll use regexp instead - AS, Jul 23 2013
 # # Should be like: G[CT][CT]TAAA..[AG][CT][CT][CT]GTAGC
 # 
-# #######################################
-# #
-# # SQL statements
-# #
-# #######################################
-# 
+#######################################
+#
+# SQL statements
+#
+#######################################
+select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
+  FROM %s as r
+  JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
+  JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
+  JOIN %s as a using(%s) 
+    LIMIT 1""" % (refssu_name, ref_table, align_table, refID_field)
+    
+print "select_ref_seqs: %s" % (select_ref_seqs)
+
+    # WHERE domain like \"domain%\" and deleted=0 and r.sequence REGEXP 'regexp1'
+
 # condb = Conjbpcdb::new(db_host, dbName)
 # dbh = condb->dbh()
 # 
 # #Select 5 sequences that have the primer in it
-# selectRefSeqs
+# select_ref_seqs
 # regexp1
 # if (f_primerSeq && r_primerSeq)
 # {
@@ -194,7 +196,7 @@ except IndexError:
 # 
 # if (domain eq "all")
 # {
-# selectRefSeqs = "SELECT refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
+# select_ref_seqs = "SELECT refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
 #   FROM refTable as r
 #   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
 #   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
@@ -203,7 +205,7 @@ except IndexError:
 #     LIMIT 1"
 # } else 
 # {
-# selectRefSeqs = "SELECT refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
+# select_ref_seqs = "SELECT refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
 #   FROM refTable as r
 #   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
 #   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
@@ -214,10 +216,10 @@ except IndexError:
 # 
 # if (verbose)
 # {
-#  print "\selectRefSeqs: selectRefSeqs\n" 
+#  print "\select_ref_seqs: select_ref_seqs\n" 
 # }
 # #exit
-# selectRefSeqs_h = dbh->prepare(selectRefSeqs)
+# select_ref_seqs_h = dbh->prepare(select_ref_seqs)
 # 
 # #get counts
 # get_counts_sql = "SELECT count(refssuid_id)
@@ -238,10 +240,10 @@ except IndexError:
 # #
 # #######################################
 # foundPrimer  = 0
-# selectRefSeqs_h->execute()
+# select_ref_seqs_h->execute()
 # refStartPos  = 0
 # match_length = 0
-# while((refssu_name, refSeq, alignSeq) = selectRefSeqs_h->fetchrow())
+# while((refssu_name, refSeq, alignSeq) = select_ref_seqs_h->fetchrow())
 # {
 #   if (verbose)
 #   {
@@ -437,8 +439,18 @@ except IndexError:
 # }
 # 
 # # Clean up database connections
-# selectRefSeqs_h->finish
+# select_ref_seqs_h->finish
 # dbh->disconnect
+
+# ===
+
+def test_mysql_conn():
+  query_1 = """show tables;		
+        """
+  print query_1
+  shared.my_conn.cursor.execute (query_1)
+  res_names = shared.my_conn.cursor.fetchall ()
+  print res_names[-1]
 
 # ===
 if __name__ == '__main__':
@@ -446,3 +458,7 @@ if __name__ == '__main__':
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   
   test_mysql_conn()
+  shared.my_conn.cursor.execute (select_ref_seqs)
+  res_names = shared.my_conn.cursor.fetchall ()
+  print res_names
+  
