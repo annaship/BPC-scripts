@@ -59,28 +59,6 @@ align_table = "refssu_119_align"
 cnt = 0
 primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
 
-
-# 
-# #######################################
-# #
-# # Parse commandline arguments, ARGV
-# #
-# #######################################
-# 
-# #if (scalar @ARGV != argNum) 
-# #if ((scalar @ARGV < minargNum) || (scalar @ARGV > maxargNum)) 
-# if ( (! (primerSeq || (f_primerSeq && r_primerSeq))) || (! domain))
-# {
-#   print "Incorrect number of arguments.\n"
-#   print "usage\n"
-#   exit
-# } 
-# 
-# # replace ambiguous . with _ for SQL syntax
-# # primerSeq =~ s/\./_/g
-# # We'll use regexp instead - AS, Jul 23 2013
-# # Should be like: G[CT][CT]TAAA..[AG][CT][CT][CT]GTAGC
-# 
 #######################################
 #
 # SQL statements
@@ -386,7 +364,7 @@ def convert_regexp(regexp):
   d_from_letter = {
   'R':'[AG]',
   'Y':'[CT]',
-  'S':'[GC]',
+  'S':'[CG]',
   'W':'[AT]',
   'K':'[GT]',
   'M':'[AC]',
@@ -436,14 +414,6 @@ description = """Find the location of a primer sequence in the aligned RefSSU.\
                Primer sequence must be inserted as read in 5\'-3\' direction\
                (reverse complement the distal primers)"""
 
-
-#######################################
-#
-# Test for commandline arguments
-#
-#######################################
-
-
 def parse_arguments():
   import argparse
   
@@ -463,29 +433,35 @@ ex:    %(prog)s -seq \"CCAGCAGC[CT]GCGGTAA.\" -domain Bacteria
   args = parser.parse_args()
   return args
 
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+def form_seq_regexp():
+  if (args.f_primer_seq and args.r_primer_seq):
+    return convert_regexp(args.f_primer_seq) + ".*" + convert_regexp(args.r_primer_seq)
+    # regexp1 = args.f_primer_seq.*args.r_primer_seq - add middle part (.* after transformation is done)
+  elif (args.primer_seq):
+    return convert_regexp(args.primer_seq)  
+  elif (args.f_primer_seq):
+    return convert_regexp(args.f_primer_seq)  
+  elif (args.r_primer_seq):
+    return convert_regexp(args.r_primer_seq)  
+
 # ===
+# time findprimers119 -domain Bacteria -r CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
+
 if __name__ == '__main__':
+
 
   select_ref_seqs = refssu_name_res = ""
   print parse_arguments()
   args = parse_arguments()
-  
-  # time findprimers119 -domain Bacteria -r_primer_seq CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
-  # python findprimers119.py -domain "Bacter" -r "CCAGCAGC[CT]GCGGTAA."
-  # regexp1 = "CCAGCAGC[CT]GCGGTAA."
-  
-  if (args.f_primer_seq and args.r_primer_seq):
-    regexp_ext = convert_regexp(args.f_primer_seq) + ".*" + convert_regexp(args.r_primer_seq)
-    # regexp1 = args.f_primer_seq.*args.r_primer_seq - add middle part (.* after transformation is done)
-  elif (args.primer_seq):
-    regexp_ext = convert_regexp(args.primer_seq)  
-  elif (args.f_primer_seq):
-    regexp_ext = convert_regexp(args.f_primer_seq)  
-  elif (args.r_primer_seq):
-    regexp_ext = convert_regexp(args.r_primer_seq)  
 
-  # regexp1 = args.r_primer_seq
-  
+  regexp_ext = form_seq_regexp()
   print regexp_ext
   
   # domain = "Bacter"
