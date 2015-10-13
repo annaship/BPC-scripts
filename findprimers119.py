@@ -474,7 +474,21 @@ if __name__ == '__main__':
   # time findprimers119 -domain Bacteria -r_primer_seq CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
   # python findprimers119.py -domain "Bacter" -r "CCAGCAGC[CT]GCGGTAA."
   # regexp1 = "CCAGCAGC[CT]GCGGTAA."
-  regexp1 = args.r_primer_seq
+  
+  if (args.f_primer_seq and args.r_primer_seq):
+    print "YESSS"
+    # regexp1 = args.f_primer_seq.*args.r_primer_seq - add middle part (.* after transformation is done)
+  elif (args.primer_seq):
+    regexp1 = args.primer_seq
+  elif (args.f_primer_seq):
+    regexp1 = args.f_primer_seq
+  elif (args.r_primer_seq):
+    regexp1 = args.r_primer_seq
+
+  # regexp1 = args.r_primer_seq
+  
+  print regexp1
+  
   # domain = "Bacter"
   domain = args.domain
 
