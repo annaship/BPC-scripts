@@ -399,7 +399,7 @@ def get_ref_seqs_position(align_seq, regexp_ext):
   align_end_pos   = m.end()
 
 
-  return  "aligned_primer\t= %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
+  return  "aligned_primer = %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
   # C-*C-*A-*G-*C-*A-*G-*C-*[CT]-*G-*C-*G-*G-*T-*A-*A-*.
   # aligned_primer  = C-CA--G-C---A--G-C--CG---C-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GG--TA-AT
   # align_start_pos = 13127
@@ -483,7 +483,15 @@ if __name__ == '__main__':
   # CCAGCAGC[CT]GCGGTAA.
   
   align_seq = res[0][2]
-  print get_ref_seqs_position(align_seq, regexp_ext)
+  if (both):
+    f_primer = get_ref_seqs_position(align_seq, convert_regexp(args.f_primer_seq))
+    r_primer = get_ref_seqs_position(align_seq, convert_regexp(args.r_primer_seq))
+    print """Both primers are in the same sequence:\n
+F primer: %s\n
+R primer: %s
+    """ % (f_primer, r_primer)
+  else:
+    print get_ref_seqs_position(align_seq, regexp_ext)
   
   refssu_name_res = res[0][0]
   print "refssu_name_res = %s" % (refssu_name_res)
