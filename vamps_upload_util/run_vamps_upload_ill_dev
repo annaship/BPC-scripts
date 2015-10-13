@@ -3,14 +3,12 @@
 # Export the project and dataset information
 #
 time vamps_upload_ill -e -i -s projectdataset -stop projectdataset vampsdev
-# 10 min
 # Analyzing vamps_projects_datasets_transfer
 
 #
 # Export sequences table from env454 
 #
 time vamps_upload_ill -e -skip -s sequences -stop sequences vampsdev
-# 7 hours
 # Analyzing vamps_sequences_transfer
 
 #
@@ -32,6 +30,7 @@ time vamps_upload_ill -e -i -skip -s taxonomy -stop taxonomy vampsdev &
 # Export the reads and anything else after
 #
 time vamps_upload_ill -e -i -skip -s reads vampsdev &
+# Analyzing vamps_export_transfer
 # Analyzing vamps_projects_info_transfer
 
 # check if we done with work before run the next command
@@ -49,7 +48,6 @@ done
 echo "check_vamps_upload.pl -t"
 time check_vamps_upload.pl -t
 
-# before that - 12h
 if [ "$CHECK_STATUS" == "" ]; then
   echo "run vamps_upload_ill to new tables"
   time vamps_upload_ill -e -i -s norm_tables vampsdev
@@ -64,3 +62,4 @@ grep -in --color "ERROR" vamps_upload.log
 # grep -in --color "failed" vamps_upload.log
 echo "=========================="
 echo "Manually: Repeat any mysqlimport failed lines if any. Take care of foreign key errors."
+echo "NO! rename norm tansfer tables not done. Do that and run_vamps_upload_transfer after. Check. Then run_vamps_upload_ill, check. Then run_vamps_upload_ill_add"

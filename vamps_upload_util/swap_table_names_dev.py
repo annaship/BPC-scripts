@@ -38,8 +38,8 @@ if (sys.argv[1] == "help" or sys.argv[1] == "-h"):
 
 if __name__ == '__main__':
   #shared.my_conn = util.MyConnection('bpcweb7.bpcservers.private', 'vamps2')
-  #shared.my_conn = util.MyConnection('vampsdev', 'vamps')
-  shared.my_conn = util.MyConnection('vampsdb', 'vamps')
+  shared.my_conn = util.MyConnection('vampsdev', 'vamps')
+  #shared.my_conn = util.MyConnection('vampsdb', 'vamps')
   # 1) get names
   # 2) drop _intermediate"
   # 3) change 454 transfer to intermediate 

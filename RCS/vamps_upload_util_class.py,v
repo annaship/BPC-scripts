@@ -1,4 +1,32 @@
-import MySQLdb
+head	1.2;
+access;
+symbols;
+locks
+	ashipunova:1.2; strict;
+comment	@# @;
+
+
+1.2
+date	2015.09.29.23.55.27;	author ashipunova;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2015.09.29.23.55.05;	author ashipunova;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.2
+log
+@insert_new_project_q
+@
+text
+@import MySQLdb
 import sys
 import shared #use shared to call connection from outside of the module
 from pprint import pprint
@@ -287,3 +315,19 @@ class SqlUtil:
         
       # print [(query_name + '\n') for query_name in query_names_exec]
       # [shared.my_conn.cursor.execute (query_name) in query_names_exec]
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d224 7
+d232 1
+a232 1
+        SELECT project, title, project_description, funding, env_sample_source_id, contact_id 
+d235 10
+a244 1
+        """ % (intermediate_names['new_project'], transfer_names['new_project'], intermediate_names['new_contact'])
+@

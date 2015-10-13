@@ -1,10 +1,34 @@
-#!/usr/bin/env perl
+head	1.1;
+access;
+symbols;
+locks
+	ashipunova:1.1; strict;
+comment	@# @;
+
+
+1.1
+date	2015.10.02.15.38.43;	author ashipunova;	state Exp;
+branches;
+next	;
+
+
+desc
+@contact_id -> new_contact_intermediate.contact_id
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#!/usr/bin/env perl
 
 #########################################
 #
 # vamps_upload: Create a data cube for VAMPS
 #
-# Author: Susan Huse, shuse@mbl.edu
+# Author: Susan Huse, shuse@@mbl.edu
 #
 # Date: Tue Aug 12 07:37:52 EDT 2008
 #
@@ -156,8 +180,8 @@ my $vamps_sequences_transfer_temp_table = "vamps_sequences_transfer_temp";
 
 my %previous_res_count;
 my %new_res_count;
-my @table_names_update;
-my @query_names_exec;
+my @@table_names_update;
+my @@query_names_exec;
 my $missed_read_ids_list = "";
 my $query_to_norm_number = 0;
 
@@ -274,12 +298,12 @@ my $import = 0;
 my $transfer = 0;
 
 # Define the list of ranks
-my @ranks = ('superkingdom','phylum','class','`order`','family','genus','species','strain');
+my @@ranks = ('superkingdom','phylum','class','`order`','family','genus','species','strain');
 
 my $start = 'projectdataset';
 my $stop = 'final';
 my $skip = 0;
-my $commandline = $0 . " " . join(" ", @ARGV);
+my $commandline = $0 . " " . join(" ", @@ARGV);
 
 #######################################
 #
@@ -294,7 +318,7 @@ if (! $ARGV[0] )
   exit -1;
 }
 
-while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+while ((scalar @@ARGV > 0) && ($ARGV[0] =~ /^-/))
 {
   if ($ARGV[0] =~ /-h/)
   {
@@ -303,61 +327,61 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
     exit 0;
   } elsif ($ARGV[0] eq "-e")
   {
-    shift @ARGV;
+    shift @@ARGV;
     $export = 1;
   } elsif ($ARGV[0] eq "-i")
   {
-    shift @ARGV;
+    shift @@ARGV;
     $import = 1;
   } elsif ($ARGV[0] eq "-t")
   {
-    shift @ARGV;
+    shift @@ARGV;
     $transfer = 1;
   } elsif ($ARGV[0] eq "-a")
   {
-    shift @ARGV;
+    shift @@ARGV;
     $export = 1;
     $import = 1;
     $transfer = 1;
   } elsif ( ($ARGV[0] eq "-s") || ($ARGV[0] eq "-start") )
   {
-    shift @ARGV;
-    $start = shift @ARGV;
+    shift @@ARGV;
+    $start = shift @@ARGV;
   } elsif ($ARGV[0] eq "-stop")
   {
-    shift @ARGV;
-    $stop = shift @ARGV;
+    shift @@ARGV;
+    $stop = shift @@ARGV;
   } elsif ($ARGV[0] eq "-skip")
   {
-    shift @ARGV;
+    shift @@ARGV;
     $skip = 1;
   } elsif ($ARGV[0] eq "-test")
   {
-    shift @ARGV;
+    shift @@ARGV;
     $test_only = 1;
   } elsif ($ARGV[0] eq "-no_analyze")
   {
-    shift @ARGV;
+    shift @@ARGV;
     $do_not_analyze = 1;
   } elsif ($ARGV[0] =~ /^-/) #unknown parameter, just get rid of it
   {
-    &print_out("Unknown commandline flag \"$ARGV[0]\".\n");
+    print "Unknown commandline flag \"$ARGV[0]\".\n";
     print $usage;
     exit -1;
   }
 }
 
-if (scalar @ARGV != 1)
+if (scalar @@ARGV != 1)
 {
-  &print_out("Incorrect commandline arguments.  Please try again.\n");
+  print "Incorrect commandline arguments.  Please try again.\n";
   print $usage;
   exit -1;
 }
 
 $vampsHost = $ARGV[0];
-if ( ( ($vampsHost ne "vamps") && ($vampsHost ne "vampsdev") ) || (scalar @ARGV > 1) )
+if ( ( ($vampsHost ne "vamps") && ($vampsHost ne "vampsdev") ) || (scalar @@ARGV > 1) )
 {
-  &print_out("Unrecognized vamps hostname, $vampsHost.  Host name must be either vamps or vampsdev\n");
+  print "Unrecognized vamps hostname, $vampsHost.  Host name must be either vamps or vampsdev\n";
   print $usage;
   exit -1;
 }
@@ -370,7 +394,7 @@ if ( ($start ne "projectdataset") && ($start ne "taxonomy") && ($start ne "seque
     && ($start ne "keys") && ($start ne "norm_tables") && ($start ne "rename_norm") && ($start ne "add_illumina") 
     && ($start ne "rollback_illumina") )
 {
-  &print_out("Please SELECT a valid start option\n");
+  print "Please SELECT a valid start option\n";
   print $usage;
   exit -1;
 }
@@ -384,7 +408,7 @@ $stop = "rollback_illumina" if ($start eq "rollback_illumina");
 if ( ($stop ne "projectdataset") && ($stop ne "final") && ($stop ne "taxonomy") && ($stop ne "sequences") && ($stop ne "reads") 
     && ($stop ne "keys") && ($stop ne "norm_tables") && ($stop ne "rename_norm") && ($stop ne "add_illumina") && ($stop ne "rollback_illumina"))
 {
-  &print_out("Please SELECT a valid stop option\n");
+  print "Please SELECT a valid stop option\n";
   print $usage;
   exit -1;
 }
@@ -404,7 +428,7 @@ if (! -d $subdir)
   my $can_mkdir = mkdir $subdir;
   if (! $can_mkdir)
   {
-    &print_out("Unable to locate or create subdirectory, $subdir, for exporting files.\nExiting.\n");
+    print "Unable to locate or create subdirectory, $subdir, for exporting files.\nExiting.\n";
     exit -1;
   }
 }
@@ -454,10 +478,10 @@ if ($start eq "projectdataset")
     if (! $skip)
     {
       # create an auxilary table
-      &print_out("PPP1: \$test_only = $test_only\n");
+      print "PPP1: \$test_only = $test_only\n";
 
 
-      &print_out("Calculating project / dataset counts\n");
+      PrintUpdate("Calculating project / dataset counts\n");
       # create new project_dataset_counts table in env454 (so can be used in joins)  and populate with this query
 
       # q 0b)
@@ -538,20 +562,20 @@ if ($start eq "projectdataset")
 
   if ($import)
   {
-    &print_out("Inserting into $tmp_project_dataset_table");
+    PrintUpdate("Inserting into $tmp_project_dataset_table");
     CreateEmpty($tmp_project_dataset_table);
     ExecuteLoad($projectDatasetFile, $tmp_project_dataset_table);
 
     unless($do_not_analyze)
     {
-      &print_out("Analyzing $tmp_project_dataset_table");
+      PrintUpdate("Analyzing $tmp_project_dataset_table");
       AnalyzeTable($tmp_project_dataset_table);
     }
   }
 
   if ($transfer)
   {
-    &print_out("Swapping $final_project_dataset_table tables");
+    PrintUpdate("Swapping $final_project_dataset_table tables");
     SwapNew($tmp_project_dataset_table, $final_project_dataset_table, $previous_project_dataset_table);
     
     # add code here to update the *NEW* (as of 2012-04-26) vamps_datasets_date table after swapping  -AAV
@@ -617,7 +641,7 @@ my ($selectCountProject_int) = $selectCountProject_h->fetchrow_array();
 # my $select_ill_project_ids_q =
 #   "select distinct project_id from vamps_projects_datasets";
 #   &print_query_out("q AA2) selectIllProjectIds", $sourceHost." ".$select_ill_project_ids_q);  
-# my @select_ill_project_ids = &prep_exec_fetchrow_array_query($dbhSource, $select_ill_project_ids_q);
+# my @@select_ill_project_ids = &prep_exec_fetchrow_array_query($dbhSource, $select_ill_project_ids_q);
 
 #######################################
 #
@@ -643,7 +667,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
   
   if ($export)
   {
-    &print_out("Dumping data for $final_seqs_table");
+    PrintUpdate("Dumping data for $final_seqs_table");
 
     # mysql> show global variables like "join_BUFFER_SIZE";
     # +------------------+---------+
@@ -652,7 +676,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # | join_buffer_size | 8388608 |
     my $join_buffer_size_old = 8388608;
     my $join_buffer_size_new = 8388608*1024*1024;
-    &print_out("TTT: \$test_only = $test_only\n");
+    print "TTT: \$test_only = $test_only\n";
     
     # # 1) increase join_buffer
     # # q 6-1)
@@ -743,16 +767,16 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
 
     while($reads_left > 0)
     {
-      &print_out("START get seq!!!\n");
-      # print LOG "START get seq!!!\n";
+      print "START get seq!!!\n";
+      print LOG "START get seq!!!\n";
       
       my $start_get_reads_seq = time;
       # &insert_chunk();
       # ExecuteInsert_newbpcdb2_no_prepare()
       $insert_select_chunck_seq_h->execute($from_here) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
       my $end_get_reads_seq   = time;
-      &print_out("The total time of insert_chunk $from_here is ", $end_get_reads_seq - $start_get_reads_seq, "\n");
-      # print LOG "The total time of insert_chunk $from_here is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print "The total time of insert_chunk $from_here is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
+      print LOG "The total time of insert_chunk $from_here is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
 
       $reads_left -= $chunk_size_seqs;
       $from_here += $chunk_size_seqs;
@@ -812,8 +836,8 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     $start_time = time;
     ExecuteInsert_newbpcdb2($ALTER_temp_seq);
     $end_time   = time;
-    &print_out("The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n");
-    # print LOG "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
+    print "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
+    print LOG "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
     
     # # 4) decrease join_buffer
     # # q 6-4)
@@ -830,10 +854,10 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       $start_time = time;
       my $dump_sys = system($dump_seq);
       $end_time   = time;
-      &print_out("The total time of dump seq_temp is ", $end_time - $start_time, "\n");
-      # print LOG "The total time of dump seq_temp is ", $end_time - $start_time, "\n";
+      print "The total time of dump seq_temp is ", $end_time - $start_time, "\n";
+      print LOG "The total time of dump seq_temp is ", $end_time - $start_time, "\n";
       
-      if ($dump_sys) {&print_out("Error dumping vamps_sequences_transfer_temp from env454\n");}
+      if ($dump_sys) {print "Error dumping vamps_sequences_transfer_temp from env454\n";}
     }    
   }
     
@@ -852,7 +876,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     unless ($test_only == 1)
     {
       my $upload_sys = system($upload_seq);
-      if ($upload_sys) {&print_out("Error uploading vamps_sequences_transfer_temp on VAMPS\n");}
+      if ($upload_sys) {print "Error uploading vamps_sequences_transfer_temp on VAMPS\n";}
     }    
     # 8) drop vamps_sequences_transfer table on VAMPS
     # q 6-8)
@@ -896,14 +920,14 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
 
     unless($do_not_analyze)
     {
-      &print_out("Analyzing vamps_sequences_transfer");
+      PrintUpdate("Analyzing vamps_sequences_transfer");
       AnalyzeTable("vamps_sequences_transfer");
     }
   }
 
   if ($transfer)
   {
-    &print_out("Swapping $final_seqs_table tables");
+    PrintUpdate("Swapping $final_seqs_table tables");
     SwapNew($tmp_seqs_table, $final_seqs_table, $previous_seqs_table);
   }
 } # END start = sequences
@@ -920,7 +944,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
   if ($export)
   {
 
-    &print_out("Selecting data for $final_taxes_table");
+    PrintUpdate("Selecting data for $final_taxes_table");
 
     open(OUTTAX, ">$taxesFile") or warn print LOG "Unable to open SQL file: $taxesFile (". (localtime) . ")\n";
 
@@ -944,15 +968,15 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     # this must be done in perl because the records are edited as they are moved
     #
     #######################################
-    &print_out("Exporting data for $final_taxes_table to $taxesFile");
+    PrintUpdate("Exporting data for $final_taxes_table to $taxesFile");
 
     # For each row in the SELECT statement, calculate remaining taxa ranks and write to file
     print OUTTAX join("\t", "id", "project", "dataset", "taxonomy", "superkingdom", "phylum", "class", "`order`", "family", "genus", "species", "strain", "rank", "cnt", "frequency", "dataset_count", "classifier") . "\n";
-    while(my @dataRow = $selectCube_h->fetchrow())
+    while(my @@dataRow = $selectCube_h->fetchrow())
     {
       # Need to split apart the taxonomy to create separate values for each taxonomic rank
-      my @taxes = split(';', $dataRow[3]);
-      my @insertRow = @dataRow;
+      my @@taxes = split(';', $dataRow[3]);
+      my @@insertRow = @@dataRow;
 
       # my $check1 = $dataRow[3];
       # print "q CHECK) \$dataRow[3] (check1) = $check1\n";
@@ -962,7 +986,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       if (($dataRow[3] eq '') || ($dataRow[3] eq 'Unknown')) 
       {
         # print LOG "q CHECK) dataRow";
-        # print LOG join(", ", @dataRow);
+        # print LOG join(", ", @@dataRow);
         # print LOG "\n";
         # q CHECK) dataRow0, AFP_ANT_Bv6, DF01, Unknown, NA, 10698, 0.027611162157, 387452, GAST
         $dataRow[3] = 'Domain_NA';
@@ -970,11 +994,11 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
 
       # pop off the these to make room for rank-specific taxa, put on again later
 
-      my $classifier = pop(@insertRow);
-      my $pdcount = pop(@insertRow);
-      my $frequency = pop(@insertRow);
-      my $cnt = pop(@insertRow);
-      my $rank = pop(@insertRow);
+      my $classifier = pop(@@insertRow);
+      my $pdcount = pop(@@insertRow);
+      my $frequency = pop(@@insertRow);
+      my $cnt = pop(@@insertRow);
+      my $rank = pop(@@insertRow);
 
       # For each rank (superkingdom --> strain) insert NAs for missing taxonomy off the end
       # 2010-05-18 changed FROM adding 'NA' table to $ranks[$i]."_NA";
@@ -996,15 +1020,15 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       }
 
       # add the taxonomy by ranks and put the count back on the end
-      push @insertRow, @taxes;
-      push @insertRow, $rank;
-      push @insertRow, $cnt;
-      push @insertRow, $frequency;
-      push @insertRow, $pdcount;
-      push @insertRow, $classifier;
+      push @@insertRow, @@taxes;
+      push @@insertRow, $rank;
+      push @@insertRow, $cnt;
+      push @@insertRow, $frequency;
+      push @@insertRow, $pdcount;
+      push @@insertRow, $classifier;
 
       # Print to the text file
-      print OUTTAX join("\t", @insertRow) . "\n";
+      print OUTTAX join("\t", @@insertRow) . "\n";
     }
   }
 
@@ -1013,7 +1037,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
   #
   if ($import)
   {
-    &print_out("Inserting data into $tmp_taxes_table");
+    PrintUpdate("Inserting data into $tmp_taxes_table");
 
     # vamps_data_cube_transfer
     CreateEmpty($tmp_taxes_table);
@@ -1032,7 +1056,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     # Create the summed (junk) data cube FROM the regular data cube
     #
 
-    &print_out("Creating interim summed taxa table");
+    PrintUpdate("Creating interim summed taxa table");
     # vamps_junk_data_cube_transfer
     CreateEmpty($tmp_summed_taxes_table);
 
@@ -1044,16 +1068,16 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     #{
     my $source_table = $tmp_taxes_table;
 
-    #&print_out("Loading summed taxa FROM $source_table to $tmp_summed_taxes_table");
-    &print_out("Loading summed taxa FROM $tmp_taxes_table to $tmp_summed_taxes_table");
-    my @ranks_subarray; # array for building the growing list of taxonomic ranks
+    #PrintUpdate("Loading summed taxa FROM $source_table to $tmp_summed_taxes_table");
+    PrintUpdate("Loading summed taxa FROM $tmp_taxes_table to $tmp_summed_taxes_table");
+    my @@ranks_subarray; # array for building the growing list of taxonomic ranks
     
     for (my $i = 0; $i <= $#ranks; $i++)
     {
       #print "i: $i\n";
       # Create the working list of taxonomic ranks
-      push(@ranks_subarray, $ranks[$i]);
-      my $ranks_list = join(", ", @ranks_subarray); # i.e., superkingdom, phylum, class
+      push(@@ranks_subarray, $ranks[$i]);
+      my $ranks_list = join(", ", @@ranks_subarray); # i.e., superkingdom, phylum, class
       # print "ranks list: $ranks_list\n";
 
       # Insert statement, to insert integrated counts into the output data cube
@@ -1084,7 +1108,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
     #
     # Create Distinct Taxonomy Table (vamps_taxonomy))
     #
-    &print_out("Creating $tmp_distinct_taxa_table");
+    PrintUpdate("Creating $tmp_distinct_taxa_table");
     # vamps_taxonomy_transfer
     CreateEmpty($tmp_distinct_taxa_table);
     # q 5)
@@ -1110,26 +1134,26 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
 
     unless($do_not_analyze)
     {
-      &print_out("Analyzing $tmp_taxes_table");
+      PrintUpdate("Analyzing $tmp_taxes_table");
       AnalyzeTable($tmp_taxes_table);
 
-      &print_out("Analyzing $tmp_summed_taxes_table");
+      PrintUpdate("Analyzing $tmp_summed_taxes_table");
       AnalyzeTable($tmp_summed_taxes_table);
 
-      &print_out("Analyzing $tmp_distinct_taxa_table");
+      PrintUpdate("Analyzing $tmp_distinct_taxa_table");
       AnalyzeTable($tmp_distinct_taxa_table);
     }
   }
 
   if ($transfer)
   {
-    &print_out("Swapping $final_taxes_table tables");
+    PrintUpdate("Swapping $final_taxes_table tables");
     SwapNew($tmp_taxes_table, $final_taxes_table, $previous_taxes_table);
 
-    &print_out("Swapping $final_summed_taxes_table tables");
+    PrintUpdate("Swapping $final_summed_taxes_table tables");
     SwapNew($tmp_summed_taxes_table, $final_summed_taxes_table, $previous_summed_taxes_table);
 
-    &print_out("Swapping $final_distinct_taxa_table tables");
+    PrintUpdate("Swapping $final_distinct_taxa_table tables");
     SwapNew($tmp_distinct_taxa_table, $final_distinct_taxa_table, $previous_distinct_taxa_table);
   }
 } # End start = taxonomy
@@ -1236,9 +1260,9 @@ if ($stop eq "taxonomy") {exit 0;}
 #         print READS "id, read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed\n";
 # 
 #         # print "URA1) selectReads_h = $sourceHost.$selectReads_h\n";
-#         while(my @row = $selectReads_h->fetchrow_array)
+#         while(my @@row = $selectReads_h->fetchrow_array)
 #         {
-#             print READS join("\t", @row) . "\n";
+#             print READS join("\t", @@row) . "\n";
 #         }
 #         close(READS);
 #     }    
@@ -1250,8 +1274,8 @@ if ($stop eq "taxonomy") {exit 0;}
 # 
 #     opendir SUBDIR, $subdir or die "Cannot open subdirectory\n";
 # 
-#     my @files = readdir SUBDIR;
-#     foreach my $out_file (@files)
+#     my @@files = readdir SUBDIR;
+#     foreach my $out_file (@@files)
 #     {
 #       #print "$out_file $readsFile\n";   # $readsFile: exports/vamps_export_transfer.txt
 #       # $tmp_reads_table . $fileSuffix
@@ -1289,7 +1313,7 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
 {
   if ($export)
   {
-    &print_out("Dumping data for $final_project_desc_table into $projectDescFile");
+    PrintUpdate("Dumping data for $final_project_desc_table into $projectDescFile");
     # q 8)
     # todo: If project_name standard changed - add OR clause!!!
     my $selectProjects =
@@ -1307,20 +1331,20 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
 
   if ($import)
   {
-    &print_out("Inserting into $vampsHost.$tmp_project_desc_table");
+    PrintUpdate("Inserting into $vampsHost.$tmp_project_desc_table");
     CreateEmpty($tmp_project_desc_table);
     ExecuteLoad($projectDescFile, $tmp_project_desc_table);
 
     unless($do_not_analyze)
     {
-      &print_out("Analyzing $tmp_project_desc_table");
+      PrintUpdate("Analyzing $tmp_project_desc_table");
       AnalyzeTable($tmp_project_desc_table);
     }
   }
 
   if ($transfer)
   {
-    &print_out("Swapping $final_project_desc_table tables");
+    PrintUpdate("Swapping $final_project_desc_table tables");
     SwapNew($tmp_project_desc_table, $final_project_desc_table, $previous_project_desc_table);
   }
 }
@@ -1334,17 +1358,17 @@ if ($stop eq "keys") {exit 0;}
 #######################################
 if ( ($start eq "norm_tables") )
 {
-  &print_out("HHH1: start norm tables\n");
+  print "HHH1: start norm tables\n";
 
   # create _transfer copies
-  &print_out("AAA1: create_norm_transfer_tables\n");
+  print "AAA1: create_norm_transfer_tables\n";
   &create_norm_transfer_tables();
   &create_norm_tables_ill();
   
-  &print_out("truncate_norm_transfer_tables\n");
+  print "truncate_norm_transfer_tables\n";
   &truncate_norm_transfer();
   # store_previous_count for new tables
-  &print_out("AAA2: new_tables_count_all\n");
+  print "AAA2: new_tables_count_all\n";
   %previous_res_count = new_tables_count_all();
 
   my $update_new_superkingdom = "INSERT IGNORE INTO $superkingdom_table" . $tblSuffix . " (superkingdom) SELECT DISTINCT superkingdom FROM $tmp_taxes_table";
@@ -1473,25 +1497,25 @@ if ( ($start eq "norm_tables") )
   
   # ================
   # Part I
-  @table_names_update = ($superkingdom_table, $phylum_table, $class_table, $orderx_table, $family_table, $genus_table, $species_table, $strain_table, $taxon_string_table, $user_table, $contact_table);
-  @query_names_exec   = ($update_new_superkingdom, $update_new_phylum, $update_new_class, $update_new_orderx, $update_new_family,
+  @@table_names_update = ($superkingdom_table, $phylum_table, $class_table, $orderx_table, $family_table, $genus_table, $species_table, $strain_table, $taxon_string_table, $user_table, $contact_table);
+  @@query_names_exec   = ($update_new_superkingdom, $update_new_phylum, $update_new_class, $update_new_orderx, $update_new_family,
                                $update_new_genus, $update_new_species, $update_new_strain, $update_new_taxon_string, $update_new_user, $update_new_contact1, $update_new_contact2);
-  &print_out("AAA3: run_count_and_update\n");
+  print "AAA3: run_count_and_update\n";
 
-  &run_count_and_update(\@query_names_exec, \@table_names_update);
+  &run_count_and_update(\@@query_names_exec, \@@table_names_update);
   
   # Part II
-  @table_names_update = ($taxonomy_table, $project_table, $dataset_table, $project_dataset_table, $summed_data_cube_table, $user_contact_table);
-  @query_names_exec   = ($update_new_taxonomy, $update_new_project1, $update_new_dataset, $update_new_project_dataset, $update_new_summed_data_cube, $update_new_user_contact, $update_new_project2);
+  @@table_names_update = ($taxonomy_table, $project_table, $dataset_table, $project_dataset_table, $summed_data_cube_table, $user_contact_table);
+  @@query_names_exec   = ($update_new_taxonomy, $update_new_project1, $update_new_dataset, $update_new_project_dataset, $update_new_summed_data_cube, $update_new_user_contact, $update_new_project2);
 
-  &print_out("AAA4: run_count_and_update Part2\n");
-  &run_count_and_update(\@query_names_exec, \@table_names_update);
+  print "AAA4: run_count_and_update Part2\n";
+  &run_count_and_update(\@@query_names_exec, \@@table_names_update);
 
   # todo: add foreign keys if not exists only!
-  &print_out("AAA5: add_foreign_key\n");
+  print "AAA5: add_foreign_key\n";
   &add_foreign_key();
 
-  &print_out("URA555\n");
+  print "URA555\n";
   
       
   # # Part sequence
@@ -1509,7 +1533,7 @@ if ( ($start eq "norm_tables") )
 # use for env454 upload
 if ( ($start eq "rename_norm") )
 {
-  &print_out("HHH2: start rename norm tables\n");
+  print "HHH2: start rename norm tables\n";
   my $suffix_from = "";
   my $suffix_to   = "";
   # my $tblSuffix = "_transfer";
@@ -1530,23 +1554,23 @@ my $new_last_ids_file_name = 'new_last_ids.txt';
 if ( ($start eq "add_illumina") )
 {
   my %last_ids  = &get_last_id();
-  &print_out("The last ids:\n");
+  print "The last ids:\n";
   while (my ($key, $value) = each %last_ids)
   {
-    &print_out("table name = $key:  max id = $value\n");
+    print "table name = $key:  max id = $value\n";
   }
   &write_to_file($last_ids_file_name, \%last_ids);
   
-  &print_out("HHH3: start to add illumina data to current tables\n");
+  print "HHH3: start to add illumina data to current tables\n";
   # add illumina data to current tables
   &update_current_from_illumina_transfer();  
   # real  6m46.072s  
   
   %last_ids = &get_last_id();
-  &print_out("The new last ids:\n");
+  print "The new last ids:\n";
   while (my ($key, $value) = each %last_ids)
   {
-    &print_out("table name = $key:  max id = $value\n");
+    print "table name = $key:  max id = $value\n";
   }
   &write_to_file($new_last_ids_file_name, \%last_ids);  
 }
@@ -1556,8 +1580,8 @@ if ( ($start eq "rollback_illumina") )
 {
   # TODO: add data from the second file to say "limit"
   my %last_ids_hash = &get_ids_from_file($last_ids_file_name);
-  my @del_by_ids_query_names_exec;
-  &print_out("LLL: last_ids_hash\n");
+  my @@del_by_ids_query_names_exec;
+  print "LLL: last_ids_hash\n";
   while (my ($table_name, $value) = each %last_ids_hash)
   {
     my $id_name = "id";
@@ -1575,13 +1599,13 @@ if ( ($start eq "rollback_illumina") )
     # my $del_query = "DELETE from $table_name where $id_name in (...)";
     # or
     # DELETE FROM table WHERE id NOT IN (SELECT id FROM table ORDER BY id, desc LIMIT 0, 10)
-    push (@del_by_ids_query_names_exec, $del_query);
+    push (@@del_by_ids_query_names_exec, $del_query);
     # print "last_ids_hash: $del_query\n table name = $table_name:  max id = $value\n";
-    &print_out("last_ids_hash: $del_query\n");
+    print "last_ids_hash: $del_query\n";
   }
   
   &key_check_no();
-  &prep_exec_query_with_time(\@del_by_ids_query_names_exec);    
+  &prep_exec_query_with_time(\@@del_by_ids_query_names_exec);    
   &key_check_yes();
 }
 # real  5m11.008s
@@ -1616,11 +1640,11 @@ sub prep_exec_query_print()
   my $sql = shift || die("Please provide an sql statement");
   my $sql_prep = $dbh->prepare($sql) || die "Unable to prepare query: $sql\nError: " . $dbh->errstr . "\n";
   # print "Executing: dbh = $dbh;\nsql = $sql;\nsql_prep = $sql_prep\n";
-  &print_out("Executing: sql = $sql\n");
+  print "Executing: sql = $sql\n";
   unless ($test_only == 1)
   {
     $sql_prep->execute() || die "Unable to execute MySQL statement: $sql\nError: " . $dbh->errstr . "(" . (localtime) . ")\n";
-    &print_out("All right!\n");
+    print "All right!\n";
   }
 }
 
@@ -1629,13 +1653,13 @@ sub prep_exec_query_print()
 # Print out updates to screen and log file
 #
 #######################################
-# sub PrintUpdate
-# {
-#   my $msg = shift;
-# 
-#   print "$msg\n";
-#   print LOG "$msg (" . (localtime) . ")\n";
-# }
+sub PrintUpdate
+{
+  my $msg = shift;
+
+  print "$msg\n";
+  print LOG "$msg (" . (localtime) . ")\n";
+}
 
 #######################################
 #
@@ -2018,19 +2042,6 @@ sub print_query_out
 
 #######################################
 #
-# Printing to screen and LOG
-#
-#######################################
-
-sub print_out
-{
-  my $message1 = shift;
-  print $message1;
-  print LOG "$message1\n(" . (localtime) . ")\n";  
-}
-
-#######################################
-#
 # new_tables_count for new tables
 #
 #######################################
@@ -2040,7 +2051,7 @@ sub new_tables_count_all
   my %res_count;
   while (my ($key, $value) = each %norm_table_names)
   {
-    &print_out("YYY2 key = $key:  value = $value\n");
+    PrintUpdate("YYY2 key = $key:  value = $value\n");
      # if ($test_only == 1);
     my $id = $key."_id";
     if ($id eq "order_id")
@@ -2050,9 +2061,9 @@ sub new_tables_count_all
     
     my $table_name = "$value";
     my $table_name_query = "SELECT count($id) FROM $table_name";
-    &print_out("table_name_query = $table_name_query\n") if ($test_only == 1);
+    PrintUpdate("table_name_query = $table_name_query\n") if ($test_only == 1);
     $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, $table_name_query);
-    &print_out("table_name = $table_name; res_count = $res_count{$table_name}\n") if ($test_only == 1);
+    PrintUpdate("table_name = $table_name; res_count = $res_count{$table_name}\n") if ($test_only == 1);
   }
   return %res_count;
 
@@ -2065,9 +2076,9 @@ sub new_tables_count
 
   while (my ($key, $value) = each %norm_table_names)
   {
-      if (in_array(\@$table_names, $value))
+      if (in_array(\@@$table_names, $value))
       {
-        &print_out("YYY1 key = $key:  value = $value\n") if ($test_only == 1);
+        PrintUpdate("YYY1 key = $key:  value = $value\n") if ($test_only == 1);
         my $id = $key."_id";
         if ($id eq "order_id")
         {
@@ -2077,7 +2088,7 @@ sub new_tables_count
         my $table_name = "$value";
         $res_count{$table_name} = &prep_exec_fetch_query($dbhVamps, "SELECT count($id) FROM $table_name" . $tblSuffix);
          # unless ($test_only == 1);
-        &print_out("$res_count{$table_name}\n") if ($test_only == 1);
+        PrintUpdate("$res_count{$table_name}\n") if ($test_only == 1);
       }
   }
 
@@ -2115,9 +2126,9 @@ sub create_norm_transfer_tables()
 
 sub copy_norm_table_to_transfer()
 {
-  my @table_names = shift;
+  my @@table_names = shift;
 
-  foreach my $table_name (@table_names)
+  foreach my $table_name (@@table_names)
   {
     print "table_name = $table_name\n" if ($test_only == 1);
     my $transfer_name = $table_name."_transfer";
@@ -2141,25 +2152,25 @@ sub copy_norm_table_to_transfer()
 sub prep_exec_query_with_time()
 {
   my $query_names   = shift;
-  # foreach my $query_name (@$query_names)
+  # foreach my $query_name (@@$query_names)
   # {
   #   print "OOO2: in prep_exec_query_with_time; query_name = $query_name\n";
   # }
 
-  foreach my $query_name (@$query_names)
+  foreach my $query_name (@@$query_names)
   {
     $query_to_norm_number++;
-    &print_out("=======================\nQuery #$query_to_norm_number\n");
+    print "=======================\nQuery #$query_to_norm_number\n";
     my $start_time = $time{'hhmmss', time()};
-    &print_out("Query started at $start_time (hhmmss)\n");
+    print "Query started at $start_time (hhmmss)\n";
     &prep_exec_query_print($dbhVamps, $query_name);
     my $warning_str = $dbhVamps->{mysql_info};
     print "$warning_str\n" if ($warning_str);
 
     my $end_time = $time{'hhmmss', time()};
     my $diff = $end_time - $start_time;
-    &print_out("Query ended at $end_time (hhmmss)\n");
-    &print_out("Run time for the query: $diff sec\n");
+    print "Query ended at $end_time (hhmmss)\n";
+    print "Run time for the query: $diff sec\n";
   }
 }
 
@@ -2174,11 +2185,11 @@ sub compare_amount()
   #   print "NNN2: previous_res_count: key_new = $key_new; value_new = $value_new\n";
   # }
 
-  &print_out("III2: in compare_amount\n") if ($test_only == 1);
+  print "III2: in compare_amount\n" if ($test_only == 1);
   while (my ($key_previous, $value_previous) = each %previous_res_count)
   {
     # print "KKK01: \$key_previous: = $key_previous; \$value_previous =: $value_previous\n";
-    &print_out("KKK1: key_previous = $key_previous; \$value_previous = $value_previous\n") if ($test_only == 1);
+    print "KKK1: key_previous = $key_previous; \$value_previous = $value_previous\n" if ($test_only == 1);
     while (my ($key_new, $value_new) = each %new_res_count)
     {
       # print "KKK2: \$key_new: = $key_new; \$value_new = $value_new\n";
@@ -2188,21 +2199,21 @@ sub compare_amount()
         if ($value_new >= $value_previous)
         {
           
-          &print_out("The numbers are good!\n");
-          &print_out("Table name: $key_new".$tblSuffix."; value = $value_new;\n");
+          print "The numbers are good!\n";
+          print "Table name: $key_new".$tblSuffix."; value = $value_new;\n";
           # $key_new: \$value_previous == \$value_new: $value_new\n";
-          &print_out("PPP1: \$key_previous = $key_previous; \$value_previous = $value_previous\n") if ($test_only == 1);
-          &print_out("KKK3: \$key_new      = $key_new;      \$value_new      = $value_new\n") if ($test_only == 1);
+          print "PPP1: \$key_previous = $key_previous; \$value_previous = $value_previous\n" if ($test_only == 1);
+          print "KKK3: \$key_new      = $key_new;      \$value_new      = $value_new\n" if ($test_only == 1);
            # if ($test_only == 1);
           
           # &rename_from_transfer($key_previous, $key_new);
         }
         else
         {
-          &print_out("\$value_previous is less then \$value_new:\n");
-          &print_out("Previous: $key_previous is $value_previous\n");
-          &print_out("New: $key_new".$tblSuffix." is $value_new\n");
-          &print_out("Take care of the tables and rerun vamps_upload -norm!\n");
+          print "\$value_previous is less then \$value_new:\n";
+          print "Previous: $key_previous is $value_previous\n";
+          print "New: $key_new".$tblSuffix." is $value_new\n";
+          print "Take care of the tables and rerun vamps_upload -norm!\n";
           # todo: uncommented on production
           # if ($key_previous ne "new_contact")
           # {
@@ -2218,8 +2229,8 @@ sub compare_amount()
 }
 
 sub in_array {
-    my ($arr, $search_for) = @_;
-    foreach my $value (@$arr)
+    my ($arr, $search_for) = @@_;
+    foreach my $value (@@$arr)
     {
         return 1 if $value eq $search_for;
     }
@@ -2232,7 +2243,7 @@ sub rename_from_transfer()
   my $key_previous = shift;
   my $key_new      = shift;
  
-  &print_out("HHHHEEERE\nkey_previous = $key_previous; key_new = $key_new\n") if ($test_only == 1);
+  print "HHHHEEERE\nkey_previous = $key_previous; key_new = $key_new\n" if ($test_only == 1);
 
   # my $delete_previous = "DROP TABLE IF EXISTS $key_previous"."_previous";
   my $rename1 = "RENAME TABLE $key_previous TO $key_previous"."_previous";
@@ -2240,9 +2251,9 @@ sub rename_from_transfer()
 
   # print "\$delete_previous = $delete_previous\n";# if ($test_only == 1);
   # &prep_exec_query($dbhVamps, $delete_previous) unless ($test_only == 1);
-  &print_out("\$rename1 = $rename1\n") if ($test_only == 1);
+  print "\$rename1 = $rename1\n" if ($test_only == 1);
   &prep_exec_query($dbhVamps, $rename1) unless ($test_only == 1);
-  &print_out("\$rename2 = $rename2\n") if ($test_only == 1);
+  print "\$rename2 = $rename2\n" if ($test_only == 1);
   &prep_exec_query($dbhVamps, $rename2) unless ($test_only == 1);  
 }
 
@@ -2258,51 +2269,51 @@ sub run_count_and_update()
   my $table_names_update = shift;
   
   # print "AAA12: copy_norm_table_to_transfer table_names_update\n";
-  # &copy_norm_table_to_transfer(@table_names_update);
+  # &copy_norm_table_to_transfer(@@table_names_update);
 
   # print "AAA13: prep_exec_query_with_time(query_names_exec)\n";
-  # my @transfer_table_names = &rename_names_to_transfer($table_names_update);
+  # my @@transfer_table_names = &rename_names_to_transfer($table_names_update);
   
-  # foreach my $transfer_table_name (@transfer_table_names)
+  # foreach my $transfer_table_name (@@transfer_table_names)
   # {
   #   print "NNN1: transfer_table_name = $transfer_table_name\n";
   # }
   
   # prepare and execute
-  &print_out("AAA10: prep_exec_query_with_time\n");  
+  print "AAA10: prep_exec_query_with_time\n";  
   &prep_exec_query_with_time($query_names_exec);
   
   # print "AAA14: new_res_count = new_tables_count(table_names_update)\n";
-  # %new_res_count = new_tables_count(\@transfer_table_names);
-  &print_out("AAA11: new_tables_count\n");  
+  # %new_res_count = new_tables_count(\@@transfer_table_names);
+  print "AAA11: new_tables_count\n";  
   %new_res_count = new_tables_count($table_names_update);
   
   # ----------
   while (my ($key_new, $value_new) = each %new_res_count)
   {
-    &print_out("NNN1: $key_new".$tblSuffix.": $value_new\n");
+    print "NNN1: $key_new".$tblSuffix.": $value_new\n";
   }
   
   # ----------
   
   # compare size with old and exit <
-  &print_out("AAA12: compare_amount\n");
+  print "AAA12: compare_amount\n";
   &compare_amount();
   
   # &update_table_w_file();
-  # &copy_norm_table_to_transfer(@table_names_update);
+  # &copy_norm_table_to_transfer(@@table_names_update);
 }
 
 sub rename_names_to_transfer()
 {
   my $table_names = shift;
-  my @transfer_table_names;
-  foreach my $table_name (@$table_names)
+  my @@transfer_table_names;
+  foreach my $table_name (@@$table_names)
   {
     $table_name = $table_name . $tblSuffix;
-    push (@transfer_table_names, $table_name);    
+    push (@@transfer_table_names, $table_name);    
   }
-  return @transfer_table_names;
+  return @@transfer_table_names;
 }
 
 # sub get_missed_read_ids()
@@ -2315,8 +2326,8 @@ sub rename_names_to_transfer()
 #     WHERE $sequence_table.sequence_id IS NULL";
 #   print "GGG1: get_missed_read_ids = $get_missed_read_ids\n" if ($test_only == 1);
 #   
-#   my @missed_read_ids      = &prep_exec_fetchrow_array_query($dbhVamps, $get_missed_read_ids);
-#   my $missed_read_ids_list = join(',', @missed_read_ids);
+#   my @@missed_read_ids      = &prep_exec_fetchrow_array_query($dbhVamps, $get_missed_read_ids);
+#   my $missed_read_ids_list = join(',', @@missed_read_ids);
 #   print "MMM: $missed_read_ids_list\n" if ($test_only == 1);
 #   
 #   my $end_time = $time{'hhmmss', time()};
@@ -2328,19 +2339,19 @@ sub rename_names_to_transfer()
 
 sub prep_exec_fetchrow_array_query()
 {
-  my @result;
-  &print_out("III222: in prep_exec_fetchrow_array_query\n") if ($test_only == 1);
+  my @@result;
+  print "III222: in prep_exec_fetchrow_array_query\n" if ($test_only == 1);
   my $dbh = shift;
   my $sql = shift || die("Please provide an sql statement");
   my $sql_prep = $dbh->prepare_cached($sql) || die "Unable to prepare MySQL statement: $sql\n. Error: " . $dbh->errstr . "\n";    
   $sql_prep->execute() || die "Unable to execute MySQL statement: $sql. Error: " . $dbh->errstr . "\n";
-  # my (@result) = $sql_prep->fetchrow_array();
-  while (my @data = $sql_prep->fetchrow_array()) 
+  # my (@@result) = $sql_prep->fetchrow_array();
+  while (my @@data = $sql_prep->fetchrow_array()) 
   {
-    push @result, @data;
+    push @@result, @@data;
   }
   
-  return @result;
+  return @@result;
 }
 
 sub update_table_w_file()
@@ -2349,7 +2360,7 @@ sub update_table_w_file()
 
   # changed to match mysqlimport requirements, mysql LOAD DATA LOCAL INFILE throws inconsistent errors
   my ( $temp_aux_fh, $temp_aux_filename )   = tempfile( SUFFIX => '.temp_aux', DIR => $tmp_path );
-  &print_out("FFF1: temp_aux_fh = $temp_aux_fh; temp_aux_filename = $temp_aux_filename\n") if ($test_only == 1);
+  print "FFF1: temp_aux_fh = $temp_aux_fh; temp_aux_filename = $temp_aux_filename\n" if ($test_only == 1);
  
  
   # if ($temp_aux_filename !~ /$outtemp_auxTable/)
@@ -2361,7 +2372,7 @@ sub update_table_w_file()
   my $table = "new_superkingdom";
   my $select_query  = "SELECT DISTINCT * FROM $table;";
   my $write_to_file = system("mysql -h $vampsHost $vampsDB --show-warnings -e \"$select_query\" > $temp_aux_filename");
-  &print_out("Executing: write_to_file = mysql -h $vampsHost $vampsDB --show-warnings -e \"$select_query\" > $temp_aux_filename\n");
+  print "Executing: write_to_file = mysql -h $vampsHost $vampsDB --show-warnings -e \"$select_query\" > $temp_aux_filename\n";
   if ($write_to_file) {warn "Error writing into $temp_aux_filename\n";}
   
   my $write_to_db   = "LOAD DATA LOCAL INFILE '" . $temp_aux_filename . "' INTO TABLE new_superkingdom_copy IGNORE 1 LINES;";  
@@ -2372,14 +2383,14 @@ sub update_table_w_file()
 
   my $sql_prep = $dbhVamps->prepare($write_to_db) || die "Unable to prepare query: $write_to_db\nError: " . $dbhVamps->errstr . "\n";
   # print "Executing: dbh = $dbhVamps;\nsql = $sql;\nsql_prep = $sql_prep\n";
-  &print_out("Executing: write_to_db = $write_to_db\n");
+  print "Executing: write_to_db = $write_to_db\n";
   $sql_prep->execute() || die "Unable to execute MySQL statement: $write_to_db\nError: " . $dbhVamps->errstr . "(" . (localtime) . ")\n";
 
   my $remove_temp_file = system("rm $temp_aux_filename");
   if ($remove_temp_file) {warn "Error removing $temp_aux_filename\n";}
   
-  # my @query_names = ($write_to_file, $write_to_db);
-  # &prep_exec_query_with_time(\@query_names);
+  # my @@query_names = ($write_to_file, $write_to_db);
+  # &prep_exec_query_with_time(\@@query_names);
     
 }
 
@@ -2399,7 +2410,7 @@ sub check_foreign_key()
   
   my $fk_exists = &prep_exec_fetch_query($dbhVamps, $fk_exists_query);
   
-  &print_out("FFFFF: fk_exists = $fk_exists\n$fk_exists_query\n");
+  print "FFFFF: fk_exists = $fk_exists\n$fk_exists_query\n";
   return $fk_exists;
 }
 
@@ -2407,7 +2418,7 @@ sub add_foreign_key()
 {
   my ($fk_exists_query1, $fk_exists_query2, $fk_exists_query3, $fk_exists_query4, $fk_exists_query5, $fk_exists_query6, $fk_exists_query7,
       $add_fk_query1, $add_fk_query2, $add_fk_query3, $add_fk_query4, $add_fk_query5, $add_fk_query6, $add_fk_query7) = "";
-  my @query_names_exec = ();
+  my @@query_names_exec = ();
       
   my $fk_exists1 = &check_foreign_key($taxon_string_table.$tblSuffix, $rank_number_table, "rank_number");
   
@@ -2416,7 +2427,7 @@ sub add_foreign_key()
   $add_fk_query1 = 
   "ALTER TABLE $taxon_string_table".$tblSuffix."
     ADD FOREIGN KEY (rank_number) REFERENCES $rank_number_table (rank_number);";
-  push (@query_names_exec, $add_fk_query1) unless ($fk_exists1);
+  push (@@query_names_exec, $add_fk_query1) unless ($fk_exists1);
 
   # if one fk exists we assume that all exist
   my $fk_exists2 = &check_foreign_key($taxonomy_table.$tblSuffix, $superkingdom_table.$tblSuffix, "superkingdom_id");
@@ -2433,27 +2444,27 @@ sub add_foreign_key()
     ADD FOREIGN KEY (species_id) REFERENCES $species_table".$tblSuffix." (species_id),
     ADD FOREIGN KEY (strain_id) REFERENCES $strain_table".$tblSuffix." (strain_id),
     ADD FOREIGN KEY (rank_id) REFERENCES $rank_table (rank_id);";
-  push (@query_names_exec, $add_fk_query2) unless ($fk_exists2);
+  push (@@query_names_exec, $add_fk_query2) unless ($fk_exists2);
   
   my $fk_exists3 = &check_foreign_key($project_table.$tblSuffix, $contact_table.$tblSuffix, "contact_id");
   $add_fk_query3 = 
   "ALTER TABLE $project_table".$tblSuffix."
     ADD FOREIGN KEY (contact_id) REFERENCES $contact_table".$tblSuffix." (contact_id),
     ADD FOREIGN KEY (env_sample_source_id) REFERENCES $env_sample_source_table (env_sample_source_id)";
-  push (@query_names_exec, $add_fk_query3) unless ($fk_exists3);
+  push (@@query_names_exec, $add_fk_query3) unless ($fk_exists3);
   
   my $fk_exists4 = &check_foreign_key($dataset_table.$tblSuffix, $project_table.$tblSuffix, "project_id");
   $add_fk_query4 = 
   "ALTER TABLE $dataset_table".$tblSuffix."
     ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id)";
-  push (@query_names_exec, $add_fk_query4) unless ($fk_exists4);
+  push (@@query_names_exec, $add_fk_query4) unless ($fk_exists4);
   
   my $fk_exists5 = &check_foreign_key($project_dataset_table.$tblSuffix, $project_table.$tblSuffix, "project_id");
   $add_fk_query5 = 
   "ALTER TABLE $project_dataset_table".$tblSuffix."
     ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id),
     ADD FOREIGN KEY (dataset_id) REFERENCES $dataset_table".$tblSuffix." (dataset_id)";
-  push (@query_names_exec, $add_fk_query5) unless ($fk_exists5);
+  push (@@query_names_exec, $add_fk_query5) unless ($fk_exists5);
   
   my $fk_exists6 = &check_foreign_key($summed_data_cube_table.$tblSuffix, $taxon_string_table.$tblSuffix, "taxon_string_id");
   $add_fk_query6 = 
@@ -2462,14 +2473,14 @@ sub add_foreign_key()
     ADD FOREIGN KEY (project_id) REFERENCES $project_table".$tblSuffix." (project_id),
     ADD FOREIGN KEY (dataset_id) REFERENCES $dataset_table".$tblSuffix." (dataset_id),
     ADD FOREIGN KEY (project_dataset_id) REFERENCES $project_dataset_table".$tblSuffix." (project_dataset_id)";
-  push (@query_names_exec, $add_fk_query6) unless ($fk_exists6);
+  push (@@query_names_exec, $add_fk_query6) unless ($fk_exists6);
   
   my $fk_exists7 = &check_foreign_key($user_contact_table.$tblSuffix, $user_table.$tblSuffix, "user_id");
   $add_fk_query7 = 
   "ALTER TABLE $user_contact_table".$tblSuffix."
     ADD FOREIGN KEY (user_id) REFERENCES $user_table".$tblSuffix." (user_id),
     ADD FOREIGN KEY (contact_id) REFERENCES $contact_table".$tblSuffix." (contact_id)";
-  push (@query_names_exec, $add_fk_query7) unless ($fk_exists7);
+  push (@@query_names_exec, $add_fk_query7) unless ($fk_exists7);
 
     # print "OOO1: add_fk_query2 = $add_fk_query2\n";
   
@@ -2477,11 +2488,11 @@ sub add_foreign_key()
   # {
   #   print "OOO1: $a\n";
   # }
-    # @query_names_exec = ($add_fk_query1, $add_fk_query2, $add_fk_query3, $add_fk_query4, $add_fk_query5, $add_fk_query6, $add_fk_query7);
-    # foreach my $t (@query_names_exec)
+    # @@query_names_exec = ($add_fk_query1, $add_fk_query2, $add_fk_query3, $add_fk_query4, $add_fk_query5, $add_fk_query6, $add_fk_query7);
+    # foreach my $t (@@query_names_exec)
     # {print "TTTTT: $t\n";}
       
-    &prep_exec_query_with_time(\@query_names_exec);    
+    &prep_exec_query_with_time(\@@query_names_exec);    
 }
 
 sub rename_tables()
@@ -2491,11 +2502,11 @@ sub rename_tables()
   
   while (my ($key, $value) = each %norm_table_names)
   {
-    &print_out("key = $key:  value = $value\n");
+    print "key = $key:  value = $value\n";
      # if ($test_only == 1);
     my $table_name = "$value";
     my $table_name_query    = "RENAME TABLE $table_name" . $suffix_from . " to $table_name" . $suffix_to;
-    &print_out("table_name_query = $table_name_query\n") if ($test_only == 1);
+    print "table_name_query = $table_name_query\n" if ($test_only == 1);
     &prep_exec_query($dbhVamps, $table_name_query);
     # print "HEREEE\n";  
   }
@@ -2531,7 +2542,7 @@ sub truncate_norm_transfer()
 {
   # An order is important because of foreign keys
   # TODO: create as, drop table, rename (instead of truncate)
-  my @tables = (
+  my @@tables = (
   "new_user_contact_transfer",
   "new_summed_data_cube_transfer", 
   "new_project_dataset_transfer", 
@@ -2549,7 +2560,7 @@ sub truncate_norm_transfer()
   "new_superkingdom_transfer", 
   "new_taxon_string_transfer", 
   "new_user_transfer");
-  foreach my $table_name (@tables)
+  foreach my $table_name (@@tables)
   {
     my $table_name_temp = $table_name."_temp";
     
@@ -2568,16 +2579,16 @@ sub create_norm_tables_ill()
 {
   # ill tables: drop, create, alter
   # to have correct ids we have to send values
-  my @table_names = ("new_taxonomy", "new_dataset", "new_project_dataset", "new_summed_data_cube", "new_user_contact");
+  my @@table_names = ("new_taxonomy", "new_dataset", "new_project_dataset", "new_summed_data_cube", "new_user_contact");
 
   # drop
   # An order is important because of foreign keys
-  foreach my $table_name (@table_names)
+  foreach my $table_name (@@table_names)
   {
     my $table_name_ill = $table_name."_ill";
     
     my $drop_table_ill_query = "DROP TABLE IF EXISTS $table_name_ill";
-    &print_out("$drop_table_ill_query\n");
+    print "$drop_table_ill_query\n";
     &prep_exec_query($dbhVamps, $drop_table_ill_query);   
   }
   
@@ -2587,10 +2598,10 @@ sub create_norm_tables_ill()
   my $create_new_project_dataset_ill  = "CREATE TABLE `new_project_dataset_ill` LIKE new_project_dataset";
   my $create_new_summed_data_cube_ill = "CREATE TABLE `new_summed_data_cube_ill` LIKE new_summed_data_cube";
   my $create_new_user_contact_ill     = "CREATE TABLE `new_user_contact_ill` LIKE new_user_contact";
-  @query_names_exec = ($create_new_taxonomy_ill, $create_new_dataset_ill, $create_new_project_dataset_ill, $create_new_summed_data_cube_ill, $create_new_user_contact_ill);
-  &print_out("QQQ1: create ill tables\n");
+  @@query_names_exec = ($create_new_taxonomy_ill, $create_new_dataset_ill, $create_new_project_dataset_ill, $create_new_summed_data_cube_ill, $create_new_user_contact_ill);
+  print "QQQ1: create ill tables\n";
 
-  &prep_exec_query_with_time(\@query_names_exec);
+  &prep_exec_query_with_time(\@@query_names_exec);
   
   # alter
   my $alter_new_taxonomy_ill = "ALTER TABLE `new_taxonomy_ill` 
@@ -2633,10 +2644,10 @@ sub create_norm_tables_ill()
     add key contact (contact)        
     ";
   
-  @query_names_exec = ($alter_new_taxonomy_ill, $alter_new_dataset_ill, $alter_new_project_dataset_ill, $alter_new_summed_data_cube_ill, $alter_new_user_contact_ill);
-  &print_out("QQQ2: alter ill tables\n");
+  @@query_names_exec = ($alter_new_taxonomy_ill, $alter_new_dataset_ill, $alter_new_project_dataset_ill, $alter_new_summed_data_cube_ill, $alter_new_user_contact_ill);
+  print "QQQ2: alter ill tables\n";
 
-  &prep_exec_query_with_time(\@query_names_exec);
+  &prep_exec_query_with_time(\@@query_names_exec);
   
 }
 
@@ -2722,7 +2733,7 @@ sub update_current_from_illumina_transfer()
 
     # $insert_vamps_export_q,
   
-    @query_names_exec = (
+    @@query_names_exec = (
       $insert_vamps_data_cube_q,
       $insert_vamps_junk_data_cube_q,
       $insert_vamps_projects_datasets_q,
@@ -2747,9 +2758,9 @@ sub update_current_from_illumina_transfer()
       $insert_new_project_dataset_q,
       $insert_new_summed_data_cube_q
     );
-    &print_out("SSS1: insert ill data\n");
+    print "SSS1: insert ill data\n";
 
-    &prep_exec_query_with_time(\@query_names_exec);  
+    &prep_exec_query_with_time(\@@query_names_exec);  
 }
 
 sub get_last_id()
@@ -2757,13 +2768,13 @@ sub get_last_id()
   my %last_ids;
   while (my ($key, $value) = each %norm_table_names)
   {
-    &print_out("key = $key:  value = $value\n") if ($test_only == 1);
+    print "key = $key:  value = $value\n" if ($test_only == 1);
     my $id = $key."_id";
     my $table_name = "$value";
     my $table_name_query = "SELECT max($id) FROM $table_name";
-    &print_out("table_name_query = $table_name_query\n") if ($test_only == 1);
+    print "table_name_query = $table_name_query\n" if ($test_only == 1);
     $last_ids{$table_name} = &prep_exec_fetch_query($dbhVamps, $table_name_query);
-    &print_out("table_name = $table_name; last_ids = $last_ids{$table_name}\n") if ($test_only == 1);
+    print "table_name = $table_name; last_ids = $last_ids{$table_name}\n" if ($test_only == 1);
   }
   
   my $get_last_id_vamps_data_cube_q         = "select max(id) from vamps_data_cube";
@@ -2774,7 +2785,7 @@ sub get_last_id()
   my $get_last_id_vamps_sequences_q         = "select max(id) from vamps_sequences";
   my $get_last_id_vamps_taxonomy_q          = "select max(id) from vamps_taxonomy";
   
-  my @vamps_table_names = (
+  my @@vamps_table_names = (
     "vamps_data_cube",
     "vamps_export",
     "vamps_junk_data_cube",
@@ -2784,12 +2795,12 @@ sub get_last_id()
     "vamps_taxonomy"
   );
   
-  foreach my $vamps_table_name (@vamps_table_names)
+  foreach my $vamps_table_name (@@vamps_table_names)
   {
     my $table_name_query = "SELECT max(id) FROM $vamps_table_name";
-    &print_out("table_name_query = $table_name_query\n") if ($test_only == 1);
+    print "table_name_query = $table_name_query\n" if ($test_only == 1);
     $last_ids{$vamps_table_name} = &prep_exec_fetch_query($dbhVamps, $table_name_query);
-    &print_out("table_name = $vamps_table_name; last_ids = $last_ids{$vamps_table_name}\n") if ($test_only == 1);
+    print "table_name = $vamps_table_name; last_ids = $last_ids{$vamps_table_name}\n" if ($test_only == 1);
   }
   return %last_ids;
 }
@@ -2813,19 +2824,19 @@ sub write_to_file()
 
 sub key_check_no()
 {
-  &print_out("\n=======================\n");
-  &prep_exec_query_print($dbhVamps, 'SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;');
-  &prep_exec_query_print($dbhVamps, 'SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;');
-  &prep_exec_query_print($dbhVamps, 'SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE="TRADITIONAL";');
+  print "\n=======================\n";
+  &prep_exec_query_print($dbhVamps, 'SET @@OLD_UNIQUE_CHECKS=@@@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;');
+  &prep_exec_query_print($dbhVamps, 'SET @@OLD_FOREIGN_KEY_CHECKS=@@@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;');
+  &prep_exec_query_print($dbhVamps, 'SET @@OLD_SQL_MODE=@@@@SQL_MODE, SQL_MODE="TRADITIONAL";');
 }
 
 sub key_check_yes()
 {
-  &print_out("\n=======================\n");
-  &prep_exec_query_print($dbhVamps, 'SET SQL_MODE=@OLD_SQL_MODE');
-  &prep_exec_query_print($dbhVamps, 'SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS');
-  &prep_exec_query_print($dbhVamps, 'SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS');
-  &print_out("\n=======================\n");
+  print "\n=======================\n";
+  &prep_exec_query_print($dbhVamps, 'SET SQL_MODE=@@OLD_SQL_MODE');
+  &prep_exec_query_print($dbhVamps, 'SET FOREIGN_KEY_CHECKS=@@OLD_FOREIGN_KEY_CHECKS');
+  &prep_exec_query_print($dbhVamps, 'SET UNIQUE_CHECKS=@@OLD_UNIQUE_CHECKS');
+  print "\n=======================\n";
 }
   
 sub get_ids_from_file()
@@ -2838,11 +2849,12 @@ sub get_ids_from_file()
 
   while (<$fh>) {
       chomp;        
-      my @row = split;
+      my @@row = split;
       # print "\n====== Dumper row ==\n";
-      # print Dumper @row;
+      # print Dumper @@row;
       $last_ids_hash{$row[0]} = $row[1];
   }
   close $fh;
   return %last_ids_hash;
 }
+@

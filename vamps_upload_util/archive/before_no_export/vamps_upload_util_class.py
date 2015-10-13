@@ -55,7 +55,7 @@ class SqlUtil:
         pass
         
     # compare with previous:
-    def compare_res_w_previous(self, table_list = ["vamps_data_cube", "vamps_junk_data_cube", "vamps_projects_datasets", "vamps_sequences", "vamps_taxonomy"]):
+    def compare_res_w_previous(self, table_list = ["vamps_data_cube", "vamps_export", "vamps_junk_data_cube", "vamps_projects_datasets", "vamps_sequences", "vamps_taxonomy"]):
       # print type(table_list)
       for table_name in table_list:
         res1 = ""
@@ -83,7 +83,7 @@ class SqlUtil:
         else:
           print ("Hurray! "+table_name+": "+res_previous+" < "+res1)
 
-    def compare_interm_w_current(self, table_list = ["vamps_data_cube", "vamps_junk_data_cube", "vamps_projects_datasets", "vamps_sequences", "vamps_taxonomy"]):
+    def compare_interm_w_current(self, table_list = ["vamps_data_cube", "vamps_export", "vamps_junk_data_cube", "vamps_projects_datasets", "vamps_sequences", "vamps_taxonomy"]):
       # print type(table_list)
       for table_name in table_list:
         res1 = ""
@@ -189,8 +189,8 @@ class SqlUtil:
     def update_intermediate_from_illumina_transfer(self, intermediate_names, transfer_names):      
       insert_vamps_data_cube_q         = """INSERT IGNORE INTO %s (project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
                                               FROM %s""" % (intermediate_names['vamps_data_cube'], transfer_names['vamps_data_cube'])
- #     insert_vamps_export_q            = """INSERT IGNORE INTO %s (read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed) SELECT read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed 
- #                                             FROM %s""" % (intermediate_names['vamps_export'], transfer_names['vamps_export'])
+      insert_vamps_export_q            = """INSERT IGNORE INTO %s (read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed) SELECT read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed 
+                                              FROM %s""" % (intermediate_names['vamps_export'], transfer_names['vamps_export'])
       insert_vamps_junk_data_cube_q    = """INSERT IGNORE INTO %s (taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier) SELECT taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier 
                                               FROM %s""" % (intermediate_names['vamps_junk_data_cube'], transfer_names['vamps_junk_data_cube'])
       insert_vamps_projects_datasets_q = """INSERT IGNORE INTO %s (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info) SELECT project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info 
@@ -221,27 +221,11 @@ class SqlUtil:
         join %s as new_user using(user)
         join %s as new_contact using(contact)
       """ % (intermediate_names['new_user_contact'], intermediate_names['new_user'], intermediate_names['new_contact'])
-      
-      # insert_new_project_q             = """INSERT IGNORE INTO %s (project, title, project_description, funding, env_sample_source_id, contact_id)
-      #   SELECT project, title, project_description, funding, env_sample_source_id, contact_id
-      #   FROM %s
-      #   JOIN %s using(contact_id)
-      #   """ % (intermediate_names['new_project'], transfer_names['new_project'], intermediate_names['new_contact'])
-      
       insert_new_project_q             = """INSERT IGNORE INTO %s (project, title, project_description, funding, env_sample_source_id, contact_id) 
-        SELECT project, title, project_description, funding, env_sample_source_id, new_contact_intermediate.contact_id  
+        SELECT project, title, project_description, funding, env_sample_source_id, contact_id 
         FROM %s
         JOIN %s using(contact_id)
-        JOIN %s using(contact, email, institution)
-        """ % (intermediate_names['new_project'], transfer_names['new_project'], transfer_names['new_contact'], intermediate_names['new_contact'])
-        
-# date
-# Tue Sep 29 19:51:03 EDT 2015
-        # SELECT project, title, project_description, funding, env_sample_source_id, new_contact_intermediate.contact_id
-        #       FROM new_project_transfer
-        #       JOIN new_contact_transfer USING(contact_id)
-        #       JOIN new_contact_intermediate USING(contact, email, institution)
-      
+        """ % (intermediate_names['new_project'], transfer_names['new_project'], intermediate_names['new_contact'])
       insert_new_taxonomy_q            = """INSERT IGNORE INTO %s (taxon_string_id, superkingdom_id, phylum_id, class_id, orderx_id, family_id, genus_id, species_id, strain_id, rank_id, classifier) 
         SELECT new_taxon_string.taxon_string_id, new_superkingdom.superkingdom_id, new_phylum.phylum_id, new_class.class_id, new_orderx.orderx_id, new_family.family_id, 
           new_genus.genus_id, new_species.species_id, new_strain.strain_id, new_rank.rank_id, classifier
@@ -278,7 +262,7 @@ class SqlUtil:
           where new_dataset.project_id = new_project.project_id
         """ % (intermediate_names['new_summed_data_cube'], intermediate_names['new_project'], intermediate_names['new_dataset'], intermediate_names['new_taxon_string'], intermediate_names['new_project_dataset'])
 
-      query_names_exec = [ insert_vamps_data_cube_q, insert_vamps_junk_data_cube_q, insert_vamps_projects_datasets_q, insert_vamps_projects_info_q, insert_vamps_sequences_q, insert_vamps_taxonomy_q, insert_new_superkingdom_q, insert_new_phylum_q, insert_new_class_q, insert_new_orderx_q, insert_new_family_q, insert_new_genus_q, insert_new_species_q, insert_new_strain_q, insert_new_taxon_string_q, insert_new_user_q, insert_new_contact_q, insert_new_user_contact_q, insert_new_project_q, insert_new_taxonomy_q, insert_new_dataset_q, insert_new_project_dataset_q, insert_new_summed_data_cube_q ]
+      query_names_exec = [ insert_vamps_data_cube_q, insert_vamps_export_q, insert_vamps_junk_data_cube_q, insert_vamps_projects_datasets_q, insert_vamps_projects_info_q, insert_vamps_sequences_q, insert_vamps_taxonomy_q, insert_new_superkingdom_q, insert_new_phylum_q, insert_new_class_q, insert_new_orderx_q, insert_new_family_q, insert_new_genus_q, insert_new_species_q, insert_new_strain_q, insert_new_taxon_string_q, insert_new_user_q, insert_new_contact_q, insert_new_user_contact_q, insert_new_project_q, insert_new_taxonomy_q, insert_new_dataset_q, insert_new_project_dataset_q, insert_new_summed_data_cube_q ]
       # print """SSS1: insert ill data\n"""
       for query_name in query_names_exec:
         print query_name

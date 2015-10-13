@@ -1,10 +1,32 @@
-#!/usr/bin/env perl
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2015.10.01.20.54.38;	author ashipunova;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#!/usr/bin/env perl
 
 #########################################
 #
 # findprimers: finds primer locations in RefSSU
 #
-# Author: Susan Huse, shuse@mbl.edu
+# Author: Susan Huse, shuse@@mbl.edu
 #
 # Date: Sun Oct 14 19:56:25 EDT 2007
 #
@@ -30,6 +52,8 @@
 #
 # Revisions: work with "." Jul 27 2013
 #            Usage statements to include all valid options Aug 14 2015
+#	           Change table names (joins) to use with Silva119 (ASh) Sep 24 2015
+#            Show accession_id with start and stop. (Ash) Oct 1 2015
 #
 # Programming Notes:
 #
@@ -81,6 +105,7 @@ my $dbName = "env454";
 my $db_host = "newbpcdb2";
 my $refTable = "refssu";
 my $refID_field = "refssu_name_id";
+my $refssu_name = "CONCAT_WS('_', accession_id, start, stop)";
 my $alignTable = "refssu_align";
 my $primerSeq;
 my $domain;
@@ -99,27 +124,27 @@ if (! $ARGV[0] )
 	exit -1;
 } 
 
-while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+while ((scalar @@ARGV > 0) && ($ARGV[0] =~ /^-/))
 {
 	if ($ARGV[0] =~ /-h/) {
 		print $scriptHelp;
 		print $usage;
 		exit 0;
 	} elsif ($ARGV[0] eq "-seq") {
-		shift @ARGV;
-		$primerSeq = shift @ARGV;
+		shift @@ARGV;
+		$primerSeq = shift @@ARGV;
 	} elsif ($ARGV[0] eq "-domain") {
-		shift @ARGV;
-		$domain = shift @ARGV;
+		shift @@ARGV;
+		$domain = shift @@ARGV;
 	} elsif ($ARGV[0] eq "-ref") {
-		shift @ARGV;
-		$refTable = shift @ARGV;
+		shift @@ARGV;
+		$refTable = shift @@ARGV;
 	} elsif ($ARGV[0] eq "-align") {
-		shift @ARGV;
-		$alignTable = shift @ARGV;
+		shift @@ARGV;
+		$alignTable = shift @@ARGV;
 	} elsif ($ARGV[0] eq "-version") {
-		shift @ARGV;
-		$version = shift @ARGV;
+		shift @@ARGV;
+		$version = shift @@ARGV;
 	} elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
 		print "Unknown commandline flag \"$ARGV[0]\".";
 		print $usage;
@@ -134,8 +159,8 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 #
 #######################################
 
-#if (scalar @ARGV != $argNum) 
-#if ((scalar @ARGV < $minargNum) || (scalar @ARGV > $maxargNum)) 
+#if (scalar @@ARGV != $argNum) 
+#if ((scalar @@ARGV < $minargNum) || (scalar @@ARGV > $maxargNum)) 
 if ( (! $primerSeq) || (! $domain) )
 {
 	print "Incorrect number of arguments.\n";
@@ -161,12 +186,34 @@ my $dbh = $condb->dbh();
 my $selectRefSeqs;
 if ($domain eq "all")
 {
-    $selectRefSeqs = "SELECT $refID_field, r.sequence as unalignseq, a.sequence as alignseq from $refTable as r join $alignTable as a using ($refID_field) where deleted=0 and r.sequence rlike '.*$primerSeq.*' LIMIT 1000";
+$selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
+  FROM $refTable as r
+  JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
+  JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
+  JOIN $alignTable as a using($refID_field) 
+    WHERE deleted=0 and r.sequence rlike '.*$primerSeq.*' 
+    LIMIT 1000";
 } else {
-    $selectRefSeqs = "SELECT $refID_field, r.sequence as unalignseq, a.sequence as alignseq from $refTable as r join $alignTable as a using ($refID_field) join taxonomy using(taxonomy_id) where taxonomy like \"$domain%\" and deleted=0 and r.sequence rlike '.*$primerSeq.*' LIMIT 1000";
+$selectRefSeqs = "SELECT $refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
+  FROM $refTable as r
+  JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
+  JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
+  JOIN $alignTable as a using($refID_field) 
+    WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$primerSeq'
+    LIMIT 1000";
 }
-# print "$selectRefSeqs\n"; exit;
+ print "$selectRefSeqs\n"; 
+#exit;
 my $selectRefSeqs_h = $dbh->prepare($selectRefSeqs);
+
+#get counts
+my $get_counts_sql = "SELECT count(refssuid_id)
+FROM $refTable AS r
+  JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
+  JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
+    WHERE taxonomy like \"$domain%\" and deleted=0 and r.sequence REGEXP '$primerSeq'";
+    
+print "\$get_counts_sql = $get_counts_sql\n"; 
 
 #######################################
 #
@@ -177,7 +224,7 @@ my $foundPrimer  = 0;
 $selectRefSeqs_h->execute();
 my $refStartPos  = 0;
 my $match_length = 0;
-while(my ($refId, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
+while(my ($refssu_name, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 {
 	# Save out original aligned sequence for substring at the end
 	my $initAlignSeq = $alignSeq;
@@ -219,7 +266,7 @@ while(my ($refId, $refSeq, $alignSeq) = $selectRefSeqs_h->fetchrow())
 		{
 			$alignStartPos = length($alignSeq) + 1;
 			print "Primer: " . substr($initAlignSeq, $alignStartPos - 1, $alignEndPos - $alignStartPos + 1) . "\n";
-			print "start=$alignStartPos, end=$alignEndPos ($refId)\n";
+			print "start=$alignStartPos, end=$alignEndPos ($refssu_name)\n";
 			$foundPrimer = 1;
 			last;
 		}
@@ -231,3 +278,4 @@ if (! $foundPrimer) {print "Unable to locate primer in aligned sequences\n";}
 # Clean up database connections
 $selectRefSeqs_h->finish;
 $dbh->disconnect;
+@
