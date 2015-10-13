@@ -503,7 +503,9 @@ if __name__ == '__main__':
   refssu_name_res = res[0][0]
   print "refssu_name_res = %s" % (refssu_name_res)
   
-  # shared.my_conn.cursor.execute (get_counts_sql)
+  shared.my_conn.cursor.execute (get_counts_sql)
+  res = shared.my_conn.cursor.fetchall ()
+  print "Primer was found in %s sequences." % (res[0][0])
   # ((35200L,),)
   
   
