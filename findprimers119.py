@@ -461,13 +461,34 @@ def test_mysql_conn():
   
 def convert_regexp(regexp):
   # todo: get all changes
-  regexp_ch = [ch + "-*" for ch in regexp.replace("[CT]", "Y")]
+  
+  d_from_letter = {
+  'R':'[AG]',
+  'Y':'[CT]',
+  'S':'[GC]',
+  'W':'[AT]',
+  'K':'[GT]',
+  'M':'[AC]',
+  'B':'[CGT]',
+  'D':'[AGT]',
+  'H':'[ACT]',
+  'V':'[ACG]',
+  '.':'[ACGT]'
+  }
+
+  d_to_letter = {y:x for x,y in d_from_letter.items()}
+  print d_to_letter
+
+  regexp_rep1 = reduce(lambda x, y: x.replace(y, d_to_letter[y]), d_to_letter, regexp1)
+  print "all changes = %s" % (regexp_rep1)
+
+  regexp_ch = [ch + "-*" for ch in regexp_rep1]
   return ''.join(regexp_ch).replace("Y", "[CT]")
   # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
   
 def get_ref_seqs_position(align_seq):  
   import re
-    
+  
   regexp_ext = convert_regexp(regexp1)  
   regexp_ext1 = regexp_ext.rstrip("*").rstrip("-") # removes fuzzy matching from the rigt side, otherwise it gets "-" at the end of the result
   print regexp_ext1
@@ -494,7 +515,7 @@ if __name__ == '__main__':
   shared.my_conn.cursor.execute (select_ref_seqs)    
   res = shared.my_conn.cursor.fetchall ()
   
-  print regexp1
+  print "regexp1 = %s" % (regexp1)
   # CCAGCAGC[CT]GCGGTAA.
   
   align_seq = res[0][2]
@@ -503,9 +524,9 @@ if __name__ == '__main__':
   refssu_name_res = res[0][0]
   print "refssu_name_res = %s" % (refssu_name_res)
   
-  shared.my_conn.cursor.execute (get_counts_sql)
-  res = shared.my_conn.cursor.fetchall ()
-  print "Primer was found in %s sequences." % (res[0][0])
+  # shared.my_conn.cursor.execute (get_counts_sql)
+  # res = shared.my_conn.cursor.fetchall ()
+  # print "Primer was found in %s sequences." % (res[0][0])
   # ((35200L,),)
   
   
