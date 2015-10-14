@@ -76,8 +76,6 @@ class Findprimer:
     if args.verbose:
       print message
 
-  # todo:
-  # *) ref_table, align_table - add to arguments with default values
   #######################################
   #
   # SQL statements
@@ -138,10 +136,11 @@ class Findprimer:
     query_1 = """show tables;		
   """
     self.print_v("from test_mysql_conn = %s" % (query_1))
-    shared.my_conn.cursor.execute (self.query_1)
+    shared.my_conn.cursor.execute (query_1)
     res_names = shared.my_conn.cursor.fetchall ()
     self.print_v("from test_mysql_conn")
     self.print_v(res_names[-1])
+    sys.exit(0)
   
   def make_dicts(self):
     self.d_from_letter = {
@@ -274,7 +273,6 @@ class Findprimer:
     self.print_v("self.both = %s" % (self.both))
     
   def get_info_from_db(self):
-    # test_mysql_conn()
     shared.my_conn.cursor.execute (self.select_ref_seqs)    
     info_from_db   = shared.my_conn.cursor.fetchall ()
     self.print_v("From get_info_from_db, info_from_db: ")
@@ -302,6 +300,7 @@ if __name__ == '__main__':
   findprimers.align_table = args.align_table
   
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+  findprimers.test_mysql_conn()
   
   findprimers.search_in_db = findprimers.form_seq_regexp()
   findprimers.print_v("From __main__, findprimers.search_in_db = %s" % (findprimers.search_in_db))

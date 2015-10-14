@@ -13,7 +13,7 @@ class MyConnection:
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   shared.my_conn = util.MyConnection(read_default_group="clientvampsdev")
   """
-  def __init__(self, read_default_group="clientvampsdev"):
+  def __init__(self, host="vampsdev", db="test", read_default_group="clientvampsdev"):
       self.conn   = None
       self.cursor = None
       self.rows   = 0
@@ -22,13 +22,23 @@ class MyConnection:
               
       try:
           print "=" * 40
-          # print "host = " + str(host) + ", db = "  + str(db)
           print "group = " + str(read_default_group)
           print "=" * 40
 
           self.conn   = MySQLdb.connect(read_default_group=read_default_group, read_default_file="~/.my.cnf")
           self.cursor = self.conn.cursor()
                  
+      except MySQLdb.OperationalError, e:
+        print "HHH"
+        print "=" * 40
+        print "host = " + str(host) + ", db = "  + str(db)
+        print "=" * 40
+        
+        self.conn   = MySQLdb.connect(host=host, db=db, read_default_group="client", read_default_file="~/.my.cnf")
+        self.cursor = self.conn.cursor()      
+        
+        print "EEE Error %d: %s" % (e.args[0], e.args[1])
+        # raise
       except MySQLdb.Error, e:
           print "Error %d: %s" % (e.args[0], e.args[1])
           raise
