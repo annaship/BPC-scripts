@@ -180,12 +180,14 @@ class Findprimer:
   
     # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
   
-  def get_ref_seqs_position(self):  
+  def get_ref_seqs_position(self, primer_seq):  
     import re
   
-    self.print_v("From get_ref_seqs_position() self.search_in_db: %s" % (self.search_in_db))
+    self.print_v("From get_ref_seqs_position(), removes fuzzy matching from the right side, otherwise it gets '-' at the end of the result (bad for counting).")
+    primer_seq = primer_seq.rstrip("*").rstrip("-") 
+    self.print_v("From get_ref_seqs_position() primer_seq: %s" % (primer_seq))
 
-    m = re.search(self.search_in_db, self.align_seq)
+    m = re.search(primer_seq, self.align_seq)
     aligned_primer  = m.group(0)
     align_start_pos = m.start() + 1
     align_end_pos   = m.end()
@@ -270,9 +272,6 @@ class Findprimer:
       self.both = True
       self.search_in_db = args.f_primer_seq  + ".*" + args.r_primer_seq
 
-    self.print_v("From form_search_in_db(), removes fuzzy matching from the right side, otherwise it gets '-' at the end of the result.")
-    self.search_in_db = self.search_in_db.rstrip("*").rstrip("-") 
-
     self.print_v("From form_search_in_db, self.search_in_db = %s" % (self.search_in_db))
     self.print_v("self.both = %s" % (self.both))
     
@@ -310,14 +309,14 @@ if __name__ == '__main__':
   findprimers.get_info_from_db()
   
   if (findprimers.both):
-    f_primer = findprimers.get_ref_seqs_position(self.align_seq, findprimers.convert_regexp(args.f_primer_seq))
-    r_primer = findprimers.get_ref_seqs_position(self.align_seq, findprimers.convert_regexp(args.r_primer_seq))
+    f_primer = findprimers.get_ref_seqs_position(findprimers.convert_regexp(args.f_primer_seq))
+    r_primer = findprimers.get_ref_seqs_position(findprimers.convert_regexp(args.r_primer_seq))
     print """From __main__. Both primers are in the same sequence:\n
 F primer: %s\n
 R primer: %s
     """ % (f_primer, r_primer)
   else:
-    print findprimers.get_ref_seqs_position()
+    print findprimers.get_ref_seqs_position(findprimers.search_in_db)
   
   print "findprimers.refssu_name_res = %s" % (findprimers.refssu_name_res)
   
