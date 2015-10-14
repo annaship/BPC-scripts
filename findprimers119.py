@@ -4,6 +4,7 @@ import sys
 import mysql_util as util
 import shared #use shared to call connection from outside of the module
 from argparse import RawTextHelpFormatter
+import socket
 
 # todo:
 # *) add possibility work without groups in .my.cnf
@@ -135,11 +136,11 @@ class Findprimer:
   def test_mysql_conn(self):
     query_1 = """show tables;		
   """
-    self.print_v("from test_mysql_conn = %s" % (query_1))
+    print "from test_mysql_conn = %s" % (query_1)
     shared.my_conn.cursor.execute (query_1)
     res_names = shared.my_conn.cursor.fetchall ()
-    self.print_v("from test_mysql_conn")
-    self.print_v(res_names[-1])
+    print "from test_mysql_conn"
+    print res_names[-1]
     sys.exit(0)
   
   def make_dicts(self):
@@ -286,6 +287,18 @@ class Findprimer:
     self.print_v("From get_info_from_db, self.refssu_name_res: ")
     self.print_v(self.refssu_name_res)
     
+    
+  def get_mysql_connection(self):
+    findprimers.print_v("socket.gethostname():")
+    findprimers.print_v(socket.gethostname())
+    my_hostname = socket.gethostname()
+    if my_hostname.endswith(".local"):
+      shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+    else:
+      shared.my_conn = util.MyConnection(host="newbpcdb2", db="env454")
+    # findprimers.test_mysql_conn()
+  
+  
 # ===
 # time findprimers119 -domain Bacteria -r CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
 
@@ -299,8 +312,7 @@ if __name__ == '__main__':
   findprimers.ref_table   = args.ref_table
   findprimers.align_table = args.align_table
   
-  shared.my_conn = util.MyConnection(read_default_group="clientenv454")
-  findprimers.test_mysql_conn()
+  findprimers.get_mysql_connection()
   
   findprimers.search_in_db = findprimers.form_seq_regexp()
   findprimers.print_v("From __main__, findprimers.search_in_db = %s" % (findprimers.search_in_db))
