@@ -79,7 +79,8 @@ def get_sql_queries(regexp1, domain):
     WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
       LIMIT 1""" % (refssu_name, ref_table, align_table, refID_field, domain, regexp1)
     
-  print "select_ref_seqs: %s" % (select_ref_seqs)
+  if args.verbose:
+    print "select_ref_seqs from get_sql_queries(): %s" % (select_ref_seqs)
 
   get_counts_sql = """SELECT count(refssuid_id)
   FROM %s AS r
@@ -87,24 +88,11 @@ def get_sql_queries(regexp1, domain):
     JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
       WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (ref_table, domain, regexp1)
 
-  print "get_counts_sql: %s" % (get_counts_sql)
+  if args.verbose:
+    print "get_counts_sql from get_sql_queries(): %s" % (get_counts_sql)
       
   return (select_ref_seqs, get_counts_sql)
 
-# condb = Conjbpcdb::new(db_host, dbName)
-# dbh = condb->dbh()
-# 
-# #Select 5 sequences that have the primer in it
-# select_ref_seqs
-# regexp1
-# if (f_primerSeq && r_primerSeq)
-# {
-#   regexp1 = f_primerSeq . ".*" . r_primerSeq
-# }
-# else
-# {
-#   regexp1 = primerSeq
-# }
 # 
 # if (domain eq "all")
 # {
@@ -125,244 +113,25 @@ def get_sql_queries(regexp1, domain):
 #     WHERE taxonolike \"domain%\" and deleted=0 and r.sequence REGEXP 'regexp1'
 #     LIMIT 1"
 # }
-# 
-# if (verbose)
-# {
-#  print "\select_ref_seqs: select_ref_seqs\n" 
-# }
-# #exit
-# select_ref_seqs_h = dbh->prepare(select_ref_seqs)
-# 
-# #get counts
-# get_counts_sql = "SELECT count(refssuid_id)
-# FROM refTable AS r
-#   JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
-#   JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
-#     WHERE taxonolike \"domain%\" and deleted=0 and r.sequence REGEXP 'regexp1'"
-# 
-# if (verbose)
-# {
-#   print "\get_counts_sql = get_counts_sql\n" 
-# }
-# get_counts_sql_h = dbh->prepare(get_counts_sql)
-# 
 # #######################################
 # #
 # # Find a valid sequence to search through, for each silva alignment version
 # #
 # #######################################
-# foundPrimer  = 0
-# select_ref_seqs_h->execute()
-# refStartPos  = 0
-# match_length = 0
-# while((refssu_name, refSeq, alignSeq) = select_ref_seqs_h->fetchrow())
-# {
-#   if (verbose)
-#   {
-#     print "\refssu_name = refssu_name\n" 
-#     print "\refSeq      = refSeq\n" 
-#     print "\alignSeq    = alignSeq\n" 
-#   }
-#   
-#   # Save out original aligned sequence for substring at the end
-#   initAlignSeq = alignSeq
-#   
-#   # Position of the beginning and the end of the primer in the unaliged (ref) sequence
-#   if (refSeq =~ /regexp1/) {
-#     if (verbose)
-#     {
-#       print "\`  = `\n" 
-#       print "\& = &\n" 
-#     }
-#         refStartPos  = length(`) #PREMATCH from regexp
-#         match_length = length(&)
-#     }
-#     
-#     if (verbose)
-#     {
-#       print "\refStartPos  = refStartPos\n" 
-#       print "\match_length = match_length\n" 
-#     }
-#     
-#     # refStartPos = index(refSeq, primerSeq)
-#     # refEndPos = refStartPos + length(primerSeq) - 1
-#     refEndPos = refStartPos + match_length - 1
-#     
-#     if (verbose)
-#     {
-#       print "\refEndPos  = refEndPos\n" 
-#     }
-#     
-#   # Initialize index positions of the aligned sequence
-#   alignStartPos
-#   alignEndPos
-# 
-#   # Full length of both aligned and unaligned sequences
-#   alignPos = length(alignSeq)
-#   refPos = length(refSeq)
-#   
-#   if (verbose)
-#   {
-#     print "\alignPos = alignPos\n" 
-#     print "\refPos   = refPos\n" 
-#   }
-# 
-#   # Step along the aligned sequence starting at the end, 
-#   # chop off gaps, and walk through the actual bases, ticking them off in the unaligned sequence.
-#   while (alignSeq)
-#   {
-#     # remove trailing gap characters
-#     # and grab the last real base
-#     alignSeq =~ s/-*//
-#     base = chop alignSeq
-#     
-#     # if (verbose)
-#     # {
-#     #   print "s/-*//\n\base = base\n"
-#     # }
-# 
-#     # decrement the position along the reference sequence (step back one base)
-#     refPos--
-# 
-#     # if you are now at the end of the primer, store as alignEndPos
-#     if (refPos == refEndPos) 
-#     {
-#       alignEndPos = length(alignSeq) + 1
-#       if (verbose)
-#       {
-#         print "at the end of the primer\n\alignEndPos = alignEndPos\n"       
-#       }
-#     }
-# 
-#     # if (verbose && alignEndPos)
-#     # {
-#     #   print "\alignEndPos = alignEndPos\n"
-#     # }
-# 
-#     # if you are now at the beginning of the primer, print out the information
-#     if (refPos == refStartPos) 
-#     {
-#       if (verbose)
-#       {
-#         print "at the beginning of the primer, print out the information\n\refPos = refPos\n"
-#       }
-#       alignStartPos = length(alignSeq) + 1
-#       
-#       if (f_primerSeq && r_primerSeq)
-#       { 
-#         f_length
-#         r_length
-#         start_f
-#         start_r
-#         end_f
-#         end_r
-#         # say qq{>1< found at -[ 0 ]} while
-#         # line =~ m{([ (),.:?!-])}g
-#         
-#         f_primerSeq_align
-#         r_primerSeq_align
-#         # line =~ m{\d+}
-#         # pos = length `
-#         
-#         # initAlignSeq =~ m{(f_primerSeq)}
-#         # l_pos = length `
-#         # f_primerSeq_align = length &
-#         #
-#         # print "\l_pos of \f_primerSeq = l_pos of f_primerSeq\n"
-#         # print "\f_primerSeq_align      = f_primerSeq_align\n"
-#         # print "\@- = @-\n"
-#         # print "\@+ = @+\n"
-#         # print "\-[0] = -[0]\n"
-#         # print "\+[0] = +[0]\n"
-#         #
-#         initAlignSeq =~ /f_primerSeq/
-#         print "\n\MATCH = &\n"
-#         print "\nLeft:  <", substr( initAlignSeq, 0, -[0] ),
-#               ">\nMatch: <", substr( initAlignSeq, -[#-], +[#-] ),
-#               ">\nRight: <", substr( initAlignSeq, +[#+] ), ">\n"
-#         print "\-[0] = -[0]\n"
-#         print "\-[\#-] = -[#-]\n"
-#         print "\+[\#-] - \-[\#-] = +[#-] - -[#-]\n"
-#         print "\+[\#-] = +[#-]\n"
-#               
-#         
-#         # ----
-# 
-#         # initAlignSeq =~ m{r_primerSeq}
-#         # l_pos = length `
-#         # r_primerSeq_align = length &
-#         #
-#         # print "\l_pos of \r_primerSeq = l_pos\n"
-#         # print "\r_primerSeq_align      = r_primerSeq_align\n"
-#         # print "\@- = @-\n"
-#         # print "\@+ = @+\n"
-#         # print "\-[0] = -[0]\n"
-#         # print "\+[0] = +[0]\n"
-# 
-# 
-# 
-#         # initAlignSeq =~ m{f_primerSeq}
-#         # l_pos = length `
-#         # print "\l_pos of \f_primerSeq = l_pos\n"
-#         #
-#         # initAlignSeq =~ m{f_primerSeq}
-#         # l_pos = length `
-#         # print "\l_pos of \f_primerSeq = l_pos\n"
-# 
-#         f_length = length(f_primerSeq)
-#         r_length = length(r_primerSeq)
-#         start_f = alignStartPos
-#         end_f = start_f + f_length
-#         end_r = alignEndPos
-#         start_r = end_r - r_length
-#         
-#         if (verbose)
-#         {
-#           print "\start_f = start_f, \end_f = end_f, \start_r = start_r, \end_r = end_r\n"
-#         }
-#         
-#         print "Primer F (f_primerSeq): " . substr(initAlignSeq, start_f - 1, end_f - start_f + 1) . "\n"
-#         print "Primer R: (r_primerSeq): " . substr(initAlignSeq, start_r - 1, end_r - start_r + 1) . "\n"
-#         # print "Primer F: start = start_f, end = end_f (refssu_name)\n"
-#         # print "Primer R: start = start_r, end = end_r (refssu_name)\n"
-#       }     
-#       else
-#       {
-#         print "Primer: " . substr(initAlignSeq, alignStartPos - 1, alignEndPos - alignStartPos + 1) . "\n"
-#         print "start=alignStartPos, end=alignEndPos (refssu_name)\n"        
-#       } 
-#       foundPrimer = 1
-#       last
-#     }
-#   }
-#   if (foundPrimer) {last}
-# }
-# if (! foundPrimer) {print "Unable to locate primer in aligned sequences\n"}
-# 
-# # Print out cnts:
-# if (cnt)
-# {
-#   print "Counting sequences where primer was found, please wait...\n"
-#   get_counts_sql_h->execute()
-#   while((cnt_seq) = get_counts_sql_h->fetchrow())
-#   {
-#     print "Primer was found in " . cnt_seq . " sequences.\n"
-#   }
-# }
-# 
-# # Clean up database connections
-# select_ref_seqs_h->finish
-# dbh->disconnect
 
 # ===
 
 def test_mysql_conn():
   query_1 = """show tables;		
-        """
-  print query_1
+"""
+  if args.verbose:
+    print "from test_mysql_conn"
+    print query_1
   shared.my_conn.cursor.execute (query_1)
   res_names = shared.my_conn.cursor.fetchall ()
-  print res_names[-1]
+  if args.verbose:
+    print "from test_mysql_conn"
+    print res_names[-1]
   
 def convert_regexp(regexp):
 
@@ -380,12 +149,17 @@ def convert_regexp(regexp):
   '.':'[ACGT]'
   }
 
-  d_to_letter = {y:x for x,y in d_from_letter.items()} # switching keys and values
-  # print d_to_letter
+  if args.verbose:
+  print "From convert_regexp, switching keys and values in d_from_letter"
+  d_to_letter = {y:x for x,y in d_from_letter.items()}
+  if args.verbose:
+    print "from convert_regexp, d_to_letter = "
+    print d_to_letter
 
 # http://stackoverflow.com/questions/2400504/easiest-way-to-replace-a-string-using-a-dictionary-of-replacements
   regexp_rep1 = reduce(lambda x, y: x.replace(y, d_to_letter[y]), d_to_letter, regexp)
-  # print "all changes = %s" % (regexp_rep1)
+  if args.verbose:
+    print "From convert_regexp. all changes = %s" % (regexp_rep1)
 
   regexp_ch = [ch + "-*" for ch in regexp_rep1]
   return reduce(lambda x, y: x.replace(y, d_from_letter[y]), d_from_letter, ''.join(regexp_ch))
@@ -395,8 +169,11 @@ def convert_regexp(regexp):
 def get_ref_seqs_position(align_seq, regexp_ext):  
   import re
   
-  regexp_ext1 = regexp_ext.rstrip("*").rstrip("-") # removes fuzzy matching from the rigt side, otherwise it gets "-" at the end of the result
-  print "regexp_ext1 from get_ref_seqs_position: %s" % (regexp_ext1)
+  if args.verbose:
+    print "From get_ref_seqs_position(), removes fuzzy matching from the rigt side, otherwise it gets "-" at the end of the result."
+  regexp_ext1 = regexp_ext.rstrip("*").rstrip("-") 
+  if args.verbose:
+    print "regexp_ext1 from get_ref_seqs_position(): %s" % (regexp_ext1)
 
   m = re.search(regexp_ext1, align_seq)
   aligned_primer  = m.group(0)
@@ -454,7 +231,7 @@ def parse_arguments():
   parser.add_argument('-f'     , dest = "f_primer_seq", help = 'forward primer')
   parser.add_argument('-r'     , dest = "r_primer_seq", help = 'reverse primer')
   parser.add_argument('-seq'   , dest = "primer_seq", help = 'primer with unknown direction')
-  parser.add_argument('-v'     , action='store_true', help = 'verbose')
+  parser.add_argument('-v'     , '--verbose', action='store_true', help = 'VERBOSITY')
 
   args = parser.parse_args()
   return args
@@ -466,9 +243,6 @@ def parse_arguments():
 #######################################
 
 def form_seq_regexp():
-  # if (args.f_primer_seq and args.r_primer_seq):
-  #   return convert_regexp(args.f_primer_seq) + ".*" + convert_regexp(args.r_primer_seq)
-    # regexp1 = args.f_primer_seq.*args.r_primer_seq - add middle part (.* after transformation is done)
   if (args.primer_seq):
     return convert_regexp(args.primer_seq)  
   elif (args.f_primer_seq):
@@ -489,7 +263,8 @@ def get_counts(get_counts_sql):
 if __name__ == '__main__':
 
   select_ref_seqs = refssu_name_res = ""
-  print parse_arguments()
+  if args.verbose:
+    print parse_arguments()
   args = parse_arguments()
   
   both = False
@@ -498,11 +273,13 @@ if __name__ == '__main__':
     both         = True
     search_in_db = args.f_primer_seq  + ".*" + args.r_primer_seq
     
-  print "search_in_db = %s" % (search_in_db)
+  if args.verbose:
+    print "In main, search_in_db = %s" % (search_in_db)
 
   regexp_ext = form_seq_regexp()
-  print "regexp_ext   = %s" % (regexp_ext)
-  print "both = %s" % (both)
+  if args.verbose:
+    print "In main, regexp_ext   = %s" % (regexp_ext)
+    print "both = %s" % (both)
   
   # domain = "Bacter"
   domain = args.domain
@@ -515,7 +292,8 @@ if __name__ == '__main__':
   shared.my_conn.cursor.execute (select_ref_seqs)    
   res = shared.my_conn.cursor.fetchall ()
   
-  # print "regexp_ext = %s" % (regexp_ext)
+  if args.verbose:
+    print "In main, regexp_ext = %s" % (regexp_ext)
   # CCAGCAGC[CT]GCGGTAA.
   
   align_seq = res[0][2]
