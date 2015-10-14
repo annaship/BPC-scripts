@@ -7,7 +7,8 @@ from argparse import RawTextHelpFormatter
 import socket
 
 # todo:
-# *) add possibility work without groups in .my.cnf
+# done) add possibility work without groups in .my.cnf
+# test with 0 found. If first query return 0 - exit
 #########################################
 #
 # findprimers: finds primer locations in RefSSU
@@ -95,7 +96,7 @@ class Findprimer:
       WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
         LIMIT 1""" % (self.refssu_name, self.ref_table, self.align_table, self.refID_field, self.domain, self.search_in_db)
     
-    self.print_v("self.select_ref_seqs from get_sql_queries(): %s" % (self.select_ref_seqs))
+    # self.print_v("self.select_ref_seqs from get_sql_queries(): %s" % (self.select_ref_seqs))
 
     self.get_counts_sql = """SELECT count(refssuid_id)
     FROM %s AS r
@@ -103,7 +104,7 @@ class Findprimer:
       JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
         WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (self.ref_table, self.domain, self.search_in_db)
 
-    self.print_v("self.get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql))
+    # self.print_v("self.get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql))
       
   # 
   # if (domain eq "all")
@@ -259,6 +260,7 @@ class Findprimer:
       return self.convert_regexp(args.r_primer_seq)  
 
   def get_counts(self):
+    self.print_v("self.get_counts_sql from get_counts(): %s" % (self.get_counts_sql))
     print "Counting, please wait..."
     shared.my_conn.cursor.execute (self.get_counts_sql)
     res = shared.my_conn.cursor.fetchall ()
@@ -274,19 +276,28 @@ class Findprimer:
     self.print_v("self.both = %s" % (self.both))
     
   def get_info_from_db(self):
+    self.print_v("self.select_ref_seqs from get_info_from_db(): %s" % (self.select_ref_seqs))  
     shared.my_conn.cursor.execute (self.select_ref_seqs)    
     info_from_db   = shared.my_conn.cursor.fetchall ()
     self.print_v("From get_info_from_db, info_from_db: ")
     # self.print_v(info_from_db)
+    
+    try:
+      self.align_seq = info_from_db[0][1]
+      self.print_v("From get_info_from_db, self.align_seq: ")
+      # self.print_v(self.align_seq)
+    
+      self.refssu_name_res = info_from_db[0][0]
+      self.print_v("From get_info_from_db, self.refssu_name_res: ")
+      self.print_v(self.refssu_name_res)
+    except IndexError:
+        print "Couldn't find %s in db. Try reverse compliment." % (self.search_in_db)
+        sys.exit(0)        
+    except:                       # catch everything
+        print "Unexpected:"         # handle unexpected exceptions
+        print sys.exc_info()[0]     # info about curr exception (type,value,traceback)
+        raise                       # re-throw caught exception   
 
-    self.align_seq = info_from_db[0][1]
-    self.print_v("From get_info_from_db, self.align_seq: ")
-    # self.print_v(self.align_seq)
-    
-    self.refssu_name_res = info_from_db[0][0]
-    self.print_v("From get_info_from_db, self.refssu_name_res: ")
-    self.print_v(self.refssu_name_res)
-    
     
   def get_mysql_connection(self):
     findprimers.print_v("socket.gethostname():")
