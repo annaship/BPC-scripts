@@ -8,6 +8,7 @@ from argparse import RawTextHelpFormatter
 # todo:
 # *) add verbose to print outs
 # *) remove -* at the end (see Euk example! python findprimers119.py -domain "Eukar" -f "CCAGCA[CG]C[CT]GCGGTAATTCC" -r "[CT][CT][AG]ATCAAGAACGAAAGT")
+# *) add possibility work without groups in .my.cnf
 #########################################
 #
 # findprimers: finds primer locations in RefSSU
@@ -57,15 +58,25 @@ class Findprimer:
   def __init__(self):
   
     #Runtime variables
-    self.refID_field   = "refssu_name_id"
-    self.refssu_name   = "CONCAT_WS('_', accession_id, start, stop)"
-    self.ref_table     = "refssu_119_ok"
-    self.align_table   = "refssu_119_align"
-    self.d_from_letter = {}
-    self.d_to_letter   = {}
+    self.refID_field     = "refssu_name_id"
+    self.refssu_name     = "CONCAT_WS('_', accession_id, start, stop)"
+    self.ref_table       = "refssu_119_ok"
+    self.align_table     = "refssu_119_align"
+    self.domain          = ""
+    self.d_from_letter   = {}
+    self.d_to_letter     = {}
     self.select_ref_seqs = ""
-    self.get_counts_sql = ""
+    self.get_counts_sql  = ""
+    self.both            = False
+    self.search_in_db    = ""
+    self.regexp_ext      = ""
+    self.align_seq       = ""
+    self.refssu_name_res = ""
     # primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
+
+  def print_v(self, message):
+    if args.verbose:
+      print message
 
   # todo:
   # *) ref_table, align_table - add to arguments with default values
@@ -77,26 +88,25 @@ class Findprimer:
   # regexp1 = "CCAGCAGC[CT]GCGGTAA."
   # domain = "Bacter"
 
-  def get_sql_queries(self, regexp1, domain):
-    self.select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
+  def get_sql_queries(self):
+    # r.sequence as unalignseq, 
+    self.select_ref_seqs = """SELECT %s, a.sequence as alignseq 
       FROM %s as r
       JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
       JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
       JOIN %s as a using(%s) 
       WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
-        LIMIT 1""" % (self.refssu_name, self.ref_table, self.align_table, self.refID_field, domain, regexp1)
+        LIMIT 1""" % (self.refssu_name, self.ref_table, self.align_table, self.refID_field, self.domain, self.search_in_db)
     
-    if args.verbose:
-      print "select_ref_seqs from get_sql_queries(): %s" % (select_ref_seqs)
+    self.print_v("self.select_ref_seqs from get_sql_queries(): %s" % (self.select_ref_seqs))
 
     self.get_counts_sql = """SELECT count(refssuid_id)
     FROM %s AS r
       JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
       JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
-        WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (self.ref_table, domain, regexp1)
+        WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (self.ref_table, self.domain, self.search_in_db)
 
-    if args.verbose:
-      print "get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql)
+    self.print_v("self.get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql))
       
   # 
   # if (domain eq "all")
@@ -129,14 +139,11 @@ class Findprimer:
   def test_mysql_conn(self):
     query_1 = """show tables;		
   """
-    if args.verbose:
-      print "from test_mysql_conn"
-      print query_1
+    self.print_v("from test_mysql_conn = %s" % (query_1))
     shared.my_conn.cursor.execute (self.query_1)
     res_names = shared.my_conn.cursor.fetchall ()
-    if args.verbose:
-      print "from test_mysql_conn"
-      print res_names[-1]
+    self.print_v("from test_mysql_conn")
+    self.print_v(res_names[-1])
   
   def make_dicts(self):
     self.d_from_letter = {
@@ -153,45 +160,35 @@ class Findprimer:
     '.':'[ACGT]'
     }
 
-    if args.verbose:
-      print "From make_dicts(), switching keys and values in d_from_letter."
+    self.print_v("From make_dicts(), switching keys and values in d_from_letter.")
     self.d_to_letter = {y:x for x,y in self.d_from_letter.items()}
-    if args.verbose:
-      print "From make_dicts(), d_to_letter = "
-      print self.d_to_letter
+    self.print_v("From make_dicts(), d_to_letter = ")
+    self.print_v(self.d_to_letter)
   
   def convert_regexp(self, regexp):
     self.make_dicts()
   # http://stackoverflow.com/questions/2400504/easiest-way-to-replace-a-string-using-a-dictionary-of-replacements
-    if args.verbose:
-      print "From convert_regexp, self.d_to_letter:"
-      print self.d_to_letter
-      print "From convert_regexp, convert each regexp to one letter"
+    self.print_v("From convert_regexp(), self.d_to_letter:")
+    self.print_v(self.d_to_letter)
+    self.print_v("From convert_regexp(), convert each regexp to one letter")
     regexp_rep1 = reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
-    if args.verbose:
-      print "From convert_regexp(), all changes = %s" % (regexp_rep1)
-      print "Add possible align signs after each nucleotide."
+    self.print_v("From convert_regexp(), was: %s\n,         with all changes: %s" % (regexp, regexp_rep1))
+    self.print_v("Add possible align signs after each nucleotide.")
     regexp_ch = [ch + "-*" for ch in regexp_rep1]
-    if args.verbose:
-      print "Convert one letter back to regexp where needed."
+    self.print_v("Convert one letter back to regexp where needed.")
     return reduce(lambda x, y: x.replace(y, self.d_from_letter[y]), self.d_from_letter, ''.join(regexp_ch))
   
     # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
   
-  def get_ref_seqs_position(self, align_seq, regexp_ext):  
+  def get_ref_seqs_position(self):  
     import re
   
-    if args.verbose:
-      print "From get_ref_seqs_position(), removes fuzzy matching from the rigt side, otherwise it gets '-' at the end of the result."
-    regexp_ext1 = regexp_ext.rstrip("*").rstrip("-") 
-    if args.verbose:
-      print "regexp_ext1 from get_ref_seqs_position(): %s" % (regexp_ext1)
+    self.print_v("From get_ref_seqs_position() self.search_in_db: %s" % (self.search_in_db))
 
-    m = re.search(regexp_ext1, align_seq)
+    m = re.search(self.search_in_db, self.align_seq)
     aligned_primer  = m.group(0)
     align_start_pos = m.start() + 1
     align_end_pos   = m.end()
-
 
     return  "aligned_primer = %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
     # C-*C-*A-*G-*C-*A-*G-*C-*[CT]-*G-*C-*G-*G-*T-*A-*A-*.
@@ -257,71 +254,73 @@ class Findprimer:
     if (args.primer_seq):
       return self.convert_regexp(args.primer_seq)  
     elif (args.f_primer_seq):
-      return self.convert_regexp(args.f_primer_seq)  
+     return self.convert_regexp(args.f_primer_seq)  
     elif (args.r_primer_seq):
       return self.convert_regexp(args.r_primer_seq)  
-  # todo: DRY
 
   def get_counts(self):
+    print "Counting, please wait..."
     shared.my_conn.cursor.execute (self.get_counts_sql)
     res = shared.my_conn.cursor.fetchall ()
-    print "%s is found in %s sequences." % (search_in_db, res[0][0])
+    print "%s is found in %s sequences." % (self.search_in_db, res[0][0])
     # ((35200L,),)
+    
+  def form_search_in_db(self):
+    if (args.f_primer_seq and args.r_primer_seq):
+      self.both = True
+      self.search_in_db = args.f_primer_seq  + ".*" + args.r_primer_seq
 
+    self.print_v("From form_search_in_db(), removes fuzzy matching from the right side, otherwise it gets '-' at the end of the result.")
+    self.search_in_db = self.search_in_db.rstrip("*").rstrip("-") 
+
+    self.print_v("From form_search_in_db, self.search_in_db = %s" % (self.search_in_db))
+    self.print_v("self.both = %s" % (self.both))
+    
+  def get_info_from_db(self):
+    # test_mysql_conn()
+    shared.my_conn.cursor.execute (self.select_ref_seqs)    
+    info_from_db   = shared.my_conn.cursor.fetchall ()
+    self.print_v("From get_info_from_db, info_from_db: ")
+    # self.print_v(info_from_db)
+
+    self.align_seq = info_from_db[0][1]
+    self.print_v("From get_info_from_db, self.align_seq: ")
+    # self.print_v(self.align_seq)
+    
+    self.refssu_name_res = info_from_db[0][0]
+    self.print_v("From get_info_from_db, self.refssu_name_res: ")
+    self.print_v(self.refssu_name_res)
+    
 # ===
 # time findprimers119 -domain Bacteria -r CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
 
 if __name__ == '__main__':
   findprimers = Findprimer()
-
-  select_ref_seqs = refssu_name_res = ""
   args = findprimers.parse_arguments()
-  if args.verbose:
-    print findprimers.parse_arguments()
-  
-  both = False
-  search_in_db = findprimers.form_seq_regexp()
-  if (args.f_primer_seq and args.r_primer_seq):
-    both         = True
-    search_in_db = args.f_primer_seq  + ".*" + args.r_primer_seq
-    
-  if args.verbose:
-    print "In main, search_in_db = %s" % (search_in_db)
-
-  regexp_ext = findprimers.form_seq_regexp()
-  if args.verbose:
-    print "In main, regexp_ext   = %s" % (regexp_ext)
-    print "both = %s" % (both)
-  
-  # domain = "Bacter"
-  domain = args.domain
-
-  findprimers.get_sql_queries(search_in_db, domain)
+  findprimers.print_v(args)
   
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+
+  # domain = "Bacter"
+  findprimers.domain = args.domain
+  findprimers.search_in_db = findprimers.form_seq_regexp()
+  findprimers.print_v("From __main__, findprimers.search_in_db = %s" % (findprimers.search_in_db))
+  findprimers.form_search_in_db()
+  findprimers.get_sql_queries()
+  findprimers.get_info_from_db()
   
-  # test_mysql_conn()
-  shared.my_conn.cursor.execute (findprimers.select_ref_seqs)    
-  res = shared.my_conn.cursor.fetchall ()
-  
-  if args.verbose:
-    print "In main, regexp_ext = %s" % (regexp_ext)
-  # CCAGCAGC[CT]GCGGTAA.
-  
-  align_seq = res[0][2]
-  if (both):
-    f_primer = findprimers.get_ref_seqs_position(align_seq, findprimers.convert_regexp(args.f_primer_seq))
-    r_primer = findprimers.get_ref_seqs_position(align_seq, findprimers.convert_regexp(args.r_primer_seq))
-    print """Both primers are in the same sequence:\n
+  if (findprimers.both):
+    f_primer = findprimers.get_ref_seqs_position(self.align_seq, findprimers.convert_regexp(args.f_primer_seq))
+    r_primer = findprimers.get_ref_seqs_position(self.align_seq, findprimers.convert_regexp(args.r_primer_seq))
+    print """From __main__. Both primers are in the same sequence:\n
 F primer: %s\n
 R primer: %s
     """ % (f_primer, r_primer)
   else:
-    print findprimers.get_ref_seqs_position(align_seq, regexp_ext)
+    print findprimers.get_ref_seqs_position()
   
-  refssu_name_res = res[0][0]
-  print "refssu_name_res = %s" % (refssu_name_res)
+  print "findprimers.refssu_name_res = %s" % (findprimers.refssu_name_res)
   
   if args.cnt:
-    findprimers.get_counts(findprimers.get_counts_sql)
+    findprimers.get_counts()
   
