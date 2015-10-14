@@ -78,7 +78,7 @@ class Findprimer:
   # domain = "Bacter"
 
   def get_sql_queries(self, regexp1, domain):
-    findprimers.select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
+    self.select_ref_seqs = """SELECT %s, r.sequence as unalignseq, a.sequence as alignseq 
       FROM %s as r
       JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
       JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
@@ -89,14 +89,14 @@ class Findprimer:
     if args.verbose:
       print "select_ref_seqs from get_sql_queries(): %s" % (select_ref_seqs)
 
-    findprimers.get_counts_sql = """SELECT count(refssuid_id)
+    self.get_counts_sql = """SELECT count(refssuid_id)
     FROM %s AS r
       JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
       JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
         WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (self.ref_table, domain, regexp1)
 
     if args.verbose:
-      print "get_counts_sql from get_sql_queries(): %s" % (findprimers.get_counts_sql)
+      print "get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql)
       
   # 
   # if (domain eq "all")
@@ -132,14 +132,14 @@ class Findprimer:
     if args.verbose:
       print "from test_mysql_conn"
       print query_1
-    shared.my_conn.cursor.execute (findprimers.query_1)
+    shared.my_conn.cursor.execute (self.query_1)
     res_names = shared.my_conn.cursor.fetchall ()
     if args.verbose:
       print "from test_mysql_conn"
       print res_names[-1]
   
   def make_dicts(self):
-    findprimers.d_from_letter = {
+    self.d_from_letter = {
     'R':'[AG]',
     'Y':'[CT]',
     'S':'[CG]',
@@ -155,26 +155,26 @@ class Findprimer:
 
     if args.verbose:
       print "From make_dicts(), switching keys and values in d_from_letter."
-    findprimers.d_to_letter = {y:x for x,y in findprimers.d_from_letter.items()}
+    self.d_to_letter = {y:x for x,y in self.d_from_letter.items()}
     if args.verbose:
       print "From make_dicts(), d_to_letter = "
-      print findprimers.d_to_letter
+      print self.d_to_letter
   
   def convert_regexp(self, regexp):
-    findprimers.make_dicts()
+    self.make_dicts()
   # http://stackoverflow.com/questions/2400504/easiest-way-to-replace-a-string-using-a-dictionary-of-replacements
     if args.verbose:
-      print "From convert_regexp, findprimers.d_to_letter:"
-      print findprimers.d_to_letter
+      print "From convert_regexp, self.d_to_letter:"
+      print self.d_to_letter
       print "From convert_regexp, convert each regexp to one letter"
-    regexp_rep1 = reduce(lambda x, y: x.replace(y, findprimers.d_to_letter[y]), findprimers.d_to_letter, regexp)
+    regexp_rep1 = reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
     if args.verbose:
       print "From convert_regexp(), all changes = %s" % (regexp_rep1)
       print "Add possible align signs after each nucleotide."
     regexp_ch = [ch + "-*" for ch in regexp_rep1]
     if args.verbose:
       print "Convert one letter back to regexp where needed."
-    return reduce(lambda x, y: x.replace(y, findprimers.d_from_letter[y]), findprimers.d_from_letter, ''.join(regexp_ch))
+    return reduce(lambda x, y: x.replace(y, self.d_from_letter[y]), self.d_from_letter, ''.join(regexp_ch))
   
     # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
   
@@ -255,15 +255,15 @@ class Findprimer:
 
   def form_seq_regexp(self):
     if (args.primer_seq):
-      return findprimers.convert_regexp(args.primer_seq)  
+      return self.convert_regexp(args.primer_seq)  
     elif (args.f_primer_seq):
-      return findprimers.convert_regexp(args.f_primer_seq)  
+      return self.convert_regexp(args.f_primer_seq)  
     elif (args.r_primer_seq):
-      return findprimers.convert_regexp(args.r_primer_seq)  
+      return self.convert_regexp(args.r_primer_seq)  
   # todo: DRY
 
   def get_counts(self):
-    shared.my_conn.cursor.execute (findprimers.get_counts_sql)
+    shared.my_conn.cursor.execute (self.get_counts_sql)
     res = shared.my_conn.cursor.fetchall ()
     print "%s is found in %s sequences." % (search_in_db, res[0][0])
     # ((35200L,),)
