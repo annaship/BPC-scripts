@@ -6,8 +6,6 @@ import shared #use shared to call connection from outside of the module
 from argparse import RawTextHelpFormatter
 
 # todo:
-# *) add verbose to print outs
-# *) remove -* at the end (see Euk example! python findprimers119.py -domain "Eukar" -f "CCAGCA[CG]C[CT]GCGGTAATTCC" -r "[CT][CT][AG]ATCAAGAACGAAAGT")
 # *) add possibility work without groups in .my.cnf
 #########################################
 #
@@ -45,7 +43,8 @@ from argparse import RawTextHelpFormatter
 #
 # Programming Notes:
 # Rewritten in python Oct 13 2015. Anna Shipunova (ashipunova@mbl.edu)
-# Search for primers in db, then for both or one in alingned result (convert primer_seq to "-*" first)
+# Search for primers in db, then for both or one in an alingned result (convert primer_seq to "-*" first)
+# See https://github.com/annaship/BPC-scripts
 
 class Findprimer:
   
@@ -60,8 +59,8 @@ class Findprimer:
     #Runtime variables
     self.refID_field     = "refssu_name_id"
     self.refssu_name     = "CONCAT_WS('_', accession_id, start, stop)"
-    self.ref_table       = "refssu_119_ok"
-    self.align_table     = "refssu_119_align"
+    self.ref_table       = ""
+    self.align_table     = ""
     self.domain          = ""
     self.d_from_letter   = {}
     self.d_to_letter     = {}
@@ -72,7 +71,6 @@ class Findprimer:
     self.regexp_ext      = ""
     self.align_seq       = ""
     self.refssu_name_res = ""
-    # primerSeq = f_primerSeq = r_primerSeq = domain = version = ""
 
   def print_v(self, message):
     if args.verbose:
@@ -234,14 +232,14 @@ class Findprimer:
 
     parser = argparse.ArgumentParser(usage = "%s" % usage, description = "%s" % description, formatter_class=RawTextHelpFormatter)
   
-    parser.add_argument('-domain', dest = "domain", help = 'superkingdom (in short form: Archae, Bacter, Eukar)')
-    parser.add_argument('-ref'   , dest = "ref_table", help = 'reference table (default: refssu)')
-    parser.add_argument('-align' , dest = "align_table", help = 'align table (default: refssu_align)')
-    parser.add_argument('-cnt'   , action="count", default=0, help = 'count amount of sequences where primer was found (useful if found in both directions)')
+    parser.add_argument('-domain', dest = "domain"      , help = 'superkingdom (in short form: Archae, Bacter, Eukar)')
+    parser.add_argument('-ref'   , dest = "ref_table"   , default = "refssu_119_ok", help = 'reference table (default: refssu)')
+    parser.add_argument('-align' , dest = "align_table" , default = "refssu_119_align", help = 'align table (default: refssu_align)')
+    parser.add_argument('-cnt'   , action="count"       , default=0, help = 'count amount of sequences where primer was found (useful if found in both directions)')
     parser.add_argument('-f'     , dest = "f_primer_seq", help = 'forward primer')
     parser.add_argument('-r'     , dest = "r_primer_seq", help = 'reverse primer')
-    parser.add_argument('-seq'   , dest = "primer_seq", help = 'primer with unknown direction')
-    parser.add_argument('-v'     , '--verbose', action='store_true', help = 'VERBOSITY')
+    parser.add_argument('-seq'   , dest = "primer_seq"  , help = 'primer with unknown direction')
+    parser.add_argument('-v'     , '--verbose'          , action='store_true', help = 'VERBOSITY')
 
     args = parser.parse_args()
     return args
@@ -298,10 +296,13 @@ if __name__ == '__main__':
   args = findprimers.parse_arguments()
   findprimers.print_v(args)
   
-  shared.my_conn = util.MyConnection(read_default_group="clientenv454")
-
   # domain = "Bacter"
-  findprimers.domain = args.domain
+  findprimers.domain      = args.domain
+  findprimers.ref_table   = args.ref_table
+  findprimers.align_table = args.align_table
+  
+  shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+  
   findprimers.search_in_db = findprimers.form_seq_regexp()
   findprimers.print_v("From __main__, findprimers.search_in_db = %s" % (findprimers.search_in_db))
   findprimers.form_search_in_db()
