@@ -175,7 +175,9 @@ class Findprimer:
     self.print_v("From sort_ambiguity_characters_sub, re.sub(r'\[[^[]+\]', my_replace, regexp) = %s" % re.sub(r'\[[^[]+\]', self.my_sorted_replace, regexp))
     return re.sub(r'\[[^[]+\]', self.my_sorted_replace, regexp)
     
-  # def convert_regexp_to_one_letter(regexp):
+  def convert_regexp_to_one_letter(self, regexp):
+    self.print_v("From convert_regexp(), convert each regexp to one letter")
+    return reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
     
   
   def convert_regexp(self, regexp):
@@ -185,8 +187,7 @@ class Findprimer:
     self.print_v(self.d_to_letter)
 
     regexp = self.sort_ambiguity_characters_sub(regexp)
-    self.print_v("From convert_regexp(), convert each regexp to one letter")
-    regexp_rep1 = reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
+    regexp_rep1 = self.convert_regexp_to_one_letter(regexp)
     self.print_v("From convert_regexp(), was: %s\n,         with all changes: %s" % (regexp, regexp_rep1))
     self.print_v("Add possible align signs after each nucleotide.")
     regexp_ch = [ch + "-*" for ch in regexp_rep1]
