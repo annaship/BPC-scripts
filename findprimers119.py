@@ -183,20 +183,24 @@ class Findprimer:
     self.print_v("Add possible align signs after each nucleotide.")
     return [ch + "-*" for ch in regexp]
     
-  
+  def convert_ambiguity_characters_back_to_regexp(self, regexp):
+    self.print_v("Convert one letter back to regexp where needed.")
+    return reduce(lambda x, y: x.replace(y, self.d_from_letter[y]), self.d_from_letter, ''.join(regexp))
+
   def convert_regexp(self, regexp):
     self.make_dicts()
   # http://stackoverflow.com/questions/2400504/easiest-way-to-replace-a-string-using-a-dictionary-of-replacements
     self.print_v("From convert_regexp(), self.d_to_letter:")
     self.print_v(self.d_to_letter)
 
-    regexp = self.sort_ambiguity_characters_sub(regexp)
+    regexp      = self.sort_ambiguity_characters_sub(regexp)
     regexp_rep1 = self.convert_regexp_to_one_letter(regexp)
+    
     self.print_v("From convert_regexp(), was: %s\n,         with all changes: %s" % (regexp, regexp_rep1))
     
-    regexp_ch = self.add_align_signs_after_each_nucleotide(regexp_rep1)
-    self.print_v("Convert one letter back to regexp where needed.")
-    return reduce(lambda x, y: x.replace(y, self.d_from_letter[y]), self.d_from_letter, ''.join(regexp_ch))
+    regexp_ch   = self.add_align_signs_after_each_nucleotide(regexp_rep1)
+    
+    return self.convert_ambiguity_characters_back_to_regexp(regexp_ch)
   
     # C-*C-*A-*G-*C-*A-*G-*C-*[-*C-*T-*]-*G-*C-*G-*G-*T-*A-*A-*.-*
   
