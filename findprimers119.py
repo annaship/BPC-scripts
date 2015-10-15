@@ -7,6 +7,7 @@ import shared #use shared to call connection from outside of the module
 from argparse import RawTextHelpFormatter
 import socket
 import re
+import traceback
 
 # todo:
 # done) add possibility work without groups in .my.cnf
@@ -211,11 +212,18 @@ class Findprimer:
     self.print_v("From get_ref_seqs_position() primer_seq: %s" % (primer_seq))
 
     m = re.search(primer_seq, self.align_seq)
-    aligned_primer  = m.group(0)
-    align_start_pos = m.start() + 1
-    align_end_pos   = m.end()
+    try: 
+      aligned_primer  = m.group(0)
+      align_start_pos = m.start() + 1
+      align_end_pos   = m.end()
 
-    return  "aligned_primer = %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
+      return  "aligned_primer = %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
+      
+    except Exception, err:
+      print("Couldn't find %s in db. Try reverse compliment." % (self.search_in_db))
+      traceback.print_exc(file=sys.stdout)
+      sys.exit(0)
+    
     # C-*C-*A-*G-*C-*A-*G-*C-*[CT]-*G-*C-*G-*G-*T-*A-*A-*.
     # aligned_primer  = C-CA--G-C---A--G-C--CG---C-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GG--TA-AT
     # align_start_pos = 13127
