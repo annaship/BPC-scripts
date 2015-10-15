@@ -318,6 +318,8 @@ class Findprimer:
       self.print_v(self.refssu_name_res)
     except IndexError:
         print("Couldn't find %s in db. Try reverse compliment." % (self.search_in_db))
+        traceback.print_exc(file=sys.stdout)
+        
         sys.exit(0)        
     except:                       # catch everything
         print("Unexpected:")         # handle unexpected exceptions
