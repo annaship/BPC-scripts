@@ -179,6 +179,10 @@ class Findprimer:
     self.print_v("From convert_regexp(), convert each regexp to one letter")
     return reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
     
+  def add_align_signs_after_each_nucleotide(self, regexp):
+    self.print_v("Add possible align signs after each nucleotide.")
+    return [ch + "-*" for ch in regexp]
+    
   
   def convert_regexp(self, regexp):
     self.make_dicts()
@@ -189,8 +193,8 @@ class Findprimer:
     regexp = self.sort_ambiguity_characters_sub(regexp)
     regexp_rep1 = self.convert_regexp_to_one_letter(regexp)
     self.print_v("From convert_regexp(), was: %s\n,         with all changes: %s" % (regexp, regexp_rep1))
-    self.print_v("Add possible align signs after each nucleotide.")
-    regexp_ch = [ch + "-*" for ch in regexp_rep1]
+    
+    regexp_ch = self.add_align_signs_after_each_nucleotide(regexp_rep1)
     self.print_v("Convert one letter back to regexp where needed.")
     return reduce(lambda x, y: x.replace(y, self.d_from_letter[y]), self.d_from_letter, ''.join(regexp_ch))
   
