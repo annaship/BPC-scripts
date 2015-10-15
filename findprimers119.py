@@ -10,7 +10,10 @@ import re
 
 # todo:
 # done) add possibility work without groups in .my.cnf
-# test with 0 found. If first query return 0 - exit
+# done) test with 0 found. If first query return 0 - exit
+# done) test with not converted seq GWGGTRCATGGCYGYCG
+# *) add "no domain" possibility
+
 #########################################
 #
 # findprimers: finds primer locations in RefSSU
@@ -128,11 +131,6 @@ class Findprimer:
   #     WHERE taxonolike \"domain%\" and deleted=0 and r.sequence REGEXP 'regexp1'
   #     LIMIT 1"
   # }
-  # #######################################
-  # #
-  # # Find a valid sequence to search through, for each silva alignment version
-  # #
-  # #######################################
 
   # ===
 
@@ -189,6 +187,7 @@ class Findprimer:
 
   def convert_regexp(self, regexp):
     self.make_dicts()
+    
   # http://stackoverflow.com/questions/2400504/easiest-way-to-replace-a-string-using-a-dictionary-of-replacements
     self.print_v("From convert_regexp(), self.d_to_letter:")
     self.print_v(self.d_to_letter)
@@ -269,12 +268,6 @@ class Findprimer:
 
     args = parser.parse_args()
     return args
-
-  #######################################
-  #
-  # Test for commandline arguments
-  #
-  #######################################
 
   def form_seq_regexp(self):
     if (args.primer_seq):
