@@ -329,7 +329,7 @@ class Findprimer:
     findprimers.print_v(socket.gethostname())
     my_hostname = socket.gethostname()
     if my_hostname.endswith(".local"):
-      shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+      shared.my_conn = util.MyConnection(host="newbpcdb2", db="env454", read_default_group="clientservers")
     else:
       shared.my_conn = util.MyConnection(host="newbpcdb2", db="env454")
     # findprimers.test_mysql_conn()

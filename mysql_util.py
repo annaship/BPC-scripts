@@ -13,11 +13,11 @@ class MyConnection:
   shared.my_conn = util.MyConnection(read_default_group="clientenv454")
   shared.my_conn = util.MyConnection(read_default_group="clientvampsdev")
   
-  to use on local and on a server:
+  to use on local with the server password and on a server:
   import socket
   my_hostname = socket.gethostname()
   if my_hostname.endswith(".local"):
-    shared.my_conn = util.MyConnection(read_default_group="clientenv454")
+    shared.my_conn = util.MyConnection(host="newbpcdb2", db="env454", read_default_group="clientenv454")
   else:
     shared.my_conn = util.MyConnection(host="newbpcdb2", db="env454")
   
@@ -31,15 +31,15 @@ class MyConnection:
               
       try:
           print "=" * 40
-          print "group = " + str(read_default_group)
+          print "host = " + str(host) + ", db = "  + str(db) + ", group = " + str(read_default_group)
           print "=" * 40
 
-          self.conn   = MySQLdb.connect(read_default_group=read_default_group, read_default_file="~/.my.cnf")
+          self.conn   = MySQLdb.connect(host=host, db=db, read_default_group=read_default_group, read_default_file="~/.my.cnf")
           self.cursor = self.conn.cursor()
                  
       except MySQLdb.OperationalError, e:
         print "=" * 40
-        print "No read_default_group, use host and db. (MySQLdb.OperationalError)"
+        # print "No read_default_group, use host and db. (MySQLdb.OperationalError)"
         print "host = " + str(host) + ", db = "  + str(db)
         print "=" * 40
         
