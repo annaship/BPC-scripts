@@ -1,10 +1,12 @@
 #! python
 
+from __future__ import print_function
 import sys
 import mysql_util as util
 import shared #use shared to call connection from outside of the module
 from argparse import RawTextHelpFormatter
 import socket
+import re
 
 # todo:
 # done) add possibility work without groups in .my.cnf
@@ -76,7 +78,7 @@ class Findprimer:
 
   def print_v(self, message):
     if args.verbose:
-      print message
+      print(message)
 
   #######################################
   #
@@ -137,11 +139,11 @@ class Findprimer:
   def test_mysql_conn(self):
     query_1 = """show tables;		
   """
-    print "from test_mysql_conn = %s" % (query_1)
+    print("from test_mysql_conn = %s" % (query_1))
     shared.my_conn.cursor.execute (query_1)
     res_names = shared.my_conn.cursor.fetchall ()
-    print "from test_mysql_conn"
-    print res_names[-1]
+    print("from test_mysql_conn")
+    print(res_names[-1])
     sys.exit(0)
   
   def make_dicts(self):
@@ -164,11 +166,25 @@ class Findprimer:
     self.print_v("From make_dicts(), d_to_letter = ")
     self.print_v(self.d_to_letter)
   
+  def my_sorted_replace(self, match):
+    match = match.group()
+    return "[" + ''.join(sorted(list(match[1:-1]))) + "]"
+  
+  def sort_ambiguity_characters_sub(self, regexp):
+    self.print_v("From sort_ambiguity_characters_sub, regexp = %s" % regexp)
+    self.print_v("From sort_ambiguity_characters_sub, re.sub(r'\[[^[]+\]', my_replace, regexp) = %s" % re.sub(r'\[[^[]+\]', self.my_sorted_replace, regexp))
+    return re.sub(r'\[[^[]+\]', self.my_sorted_replace, regexp)
+    
+  # def convert_regexp_to_one_letter(regexp):
+    
+  
   def convert_regexp(self, regexp):
     self.make_dicts()
   # http://stackoverflow.com/questions/2400504/easiest-way-to-replace-a-string-using-a-dictionary-of-replacements
     self.print_v("From convert_regexp(), self.d_to_letter:")
     self.print_v(self.d_to_letter)
+
+    regexp = self.sort_ambiguity_characters_sub(regexp)
     self.print_v("From convert_regexp(), convert each regexp to one letter")
     regexp_rep1 = reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
     self.print_v("From convert_regexp(), was: %s\n,         with all changes: %s" % (regexp, regexp_rep1))
@@ -261,10 +277,10 @@ class Findprimer:
 
   def get_counts(self):
     self.print_v("self.get_counts_sql from get_counts(): %s" % (self.get_counts_sql))
-    print "Counting, please wait..."
+    print("Counting, please wait...")
     shared.my_conn.cursor.execute (self.get_counts_sql)
     res = shared.my_conn.cursor.fetchall ()
-    print "%s is found in %s sequences." % (self.search_in_db, res[0][0])
+    print("%s is found in %s sequences." % (self.search_in_db, res[0][0]))
     # ((35200L,),)
     
   def form_search_in_db(self):
@@ -291,11 +307,11 @@ class Findprimer:
       self.print_v("From get_info_from_db, self.refssu_name_res: ")
       self.print_v(self.refssu_name_res)
     except IndexError:
-        print "Couldn't find %s in db. Try reverse compliment." % (self.search_in_db)
+        print("Couldn't find %s in db. Try reverse compliment." % (self.search_in_db))
         sys.exit(0)        
     except:                       # catch everything
-        print "Unexpected:"         # handle unexpected exceptions
-        print sys.exc_info()[0]     # info about curr exception (type,value,traceback)
+        print("Unexpected:")         # handle unexpected exceptions
+        print(sys.exc_info()[0])     # info about curr exception (type,value,traceback)
         raise                       # re-throw caught exception   
 
     
@@ -334,14 +350,14 @@ if __name__ == '__main__':
   if (findprimers.both):
     f_primer = findprimers.get_ref_seqs_position(findprimers.convert_regexp(args.f_primer_seq))
     r_primer = findprimers.get_ref_seqs_position(findprimers.convert_regexp(args.r_primer_seq))
-    print """From __main__. Both primers are in the same sequence:\n
+    print("""From __main__. Both primers are in the same sequence:\n
 F primer: %s\n
 R primer: %s
-    """ % (f_primer, r_primer)
+    """ % (f_primer, r_primer))
   else:
-    print findprimers.get_ref_seqs_position(findprimers.search_in_db)
+    print(findprimers.get_ref_seqs_position(findprimers.search_in_db))
   
-  print "findprimers.refssu_name_res = %s" % (findprimers.refssu_name_res)
+  print("findprimers.refssu_name_res = %s" % (findprimers.refssu_name_res))
   
   if args.cnt:
     findprimers.get_counts()
