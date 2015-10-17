@@ -157,7 +157,7 @@ class Findprimer:
     'D':'[AGT]',
     'H':'[ACT]',
     'V':'[ACG]',
-    '.':'[ACGT]'
+    '.':'[ACGT-]'
     }
 
     self.print_v("From make_dicts(), switching keys and values in d_from_letter.")
