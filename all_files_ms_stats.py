@@ -82,24 +82,29 @@ for f in files:
         except LookupError:
           pass
 
+def get_percents(cnt_perc):
+  return "{0:.2f}".format(cnt_perc * 100 / float(Number_of_pairs_analyzed))
+
 print "="*50    
 print current_dir
 
-print('Number_of_pairs_analyzed (in all files) = %s') % Number_of_pairs_analyzed        
-print('Prefix_failed_in_read_1 (in all files) = %s') % Prefix_failed_in_read_1        
-print('Prefix_failed_in_read_2 (in all files) = %s') % Prefix_failed_in_read_2        
-print('Prefix_failed_in_both (in all files) = %s') % Prefix_failed_in_both        
-print('Passed_prefix_total (in all files) = %s') % Passed_prefix_total        
-print('Failed_prefix_total (in all files) = %s') % Failed_prefix_total        
-print('Merged_total (in all files) = %s') % Merged_total        
-print('Complete_overlap_forced_total (in all files) = %s') % Complete_overlap_forced_total        
-print('Merge_failed_total (in all files) = %s') % Merge_failed_total        
-print('Merge_discarded_due_to_P (in all files) = %s') % Merge_discarded_due_to_P        
-print('Merge_discarded_due_to_Ns (in all files) = %s') % Merge_discarded_due_to_Ns        
-print('Merge_discarded_due_to_Q30 (in all files) = %s') % Merge_discarded_due_to_Q30        
-print('Pairs_discarded_due_to_min_expected_overlap (in all files) = %s') % Pairs_discarded_due_to_min_expected_overlap        
-print('Num_mismatches_found_in_merged_reads (in all files) = %s') % Num_mismatches_found_in_merged_reads        
-print('Mismatches_recovered_from_read_1 (in all files) = %s') % Mismatches_recovered_from_read_1        
-print('Mismatches_recovered_from_read_2 (in all files) = %s') % Mismatches_recovered_from_read_2        
-print('Mismatches_replaced_with_N (in all files) = %s') % Mismatches_replaced_with_N        
+print('Number_of_pairs_analyzed (in all files)              = %s') % Number_of_pairs_analyzed        
+print('Prefix_failed_in_read_1 (in all files)               = %s (%s%% from Number_of_pairs_analyzed)') % (Prefix_failed_in_read_1, get_percents(Prefix_failed_in_read_1))     
+print('Prefix_failed_in_read_2 (in all files)               = %s (%s%% from Number_of_pairs_analyzed)') % (Prefix_failed_in_read_2, get_percents(Prefix_failed_in_read_2))     
+print('Prefix_failed_in_both (in all files)                 = %s (%s%% from Number_of_pairs_analyzed)') % (Prefix_failed_in_both, get_percents(Prefix_failed_in_both))        
+print('Passed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (Passed_prefix_total, get_percents(Passed_prefix_total))        
+print('Failed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (Failed_prefix_total, get_percents(Failed_prefix_total))        
+print('Merged_total (in all files)                          = %s (%s%% from Number_of_pairs_analyzed)') % (Merged_total, get_percents(Merged_total))        
+print('Complete_overlap_forced_total (in all files)         = %s (%s%% from Number_of_pairs_analyzed)') % (Complete_overlap_forced_total, get_percents(Complete_overlap_forced_total))        
+print('Merge_failed_total (in all files)                    = %s (%s%% from Number_of_pairs_analyzed)') % (Merge_failed_total, get_percents(Merge_failed_total))        
+print('From iu-merge-pairs readme: P value is the ratio of the number of mismatches and the length of the overlap.\n\tMerged sequences can be discarded based on this ratio. The default is 0.3.')
+print('Merge_discarded_due_to_P (in all files)              = %s (%s%% from Number_of_pairs_analyzed)') % (Merge_discarded_due_to_P, get_percents(Merge_discarded_due_to_P))    
+                                                            
+print('Merge_discarded_due_to_Ns (in all files)             = %s (%s%% from Number_of_pairs_analyzed)') % (Merge_discarded_due_to_Ns, get_percents(Merge_discarded_due_to_Ns))        
+print('Merge_discarded_due_to_Q30 (in all files)            = %s (%s%% from Number_of_pairs_analyzed)') % (Merge_discarded_due_to_Q30, get_percents(Merge_discarded_due_to_Q30))        
+print('Pairs_discarded_due_to_min_expected_overlap (in all files) = %s') % (Pairs_discarded_due_to_min_expected_overlap)        
+print('Num_mismatches_found_in_merged_reads (in all files)  = %s') % (Num_mismatches_found_in_merged_reads)        
+print('Mismatches_recovered_from_read_1 (in all files)      = %s') % (Mismatches_recovered_from_read_1)        
+print('Mismatches_recovered_from_read_2 (in all files)      = %s') % (Mismatches_recovered_from_read_2)        
+print('Mismatches_replaced_with_N (in all files)            = %s') % (Mismatches_replaced_with_N)        
 
