@@ -488,7 +488,10 @@ END_MESSAGE
     my $i = 1;
     
     if ($verbose) {print "Keep all files here, not on temp\n"; print LOG "Keep all files here, not on temp\n"; $tmpDir = "";}
+    $tmpDir = "";
   
+    print LOG "\$tmpDir = $tmpDir\n";
+    
     foreach my $l (@lines)
     {
         # calcnodes returns a series of lines describing each set, parse the set and use for the qsub
