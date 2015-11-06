@@ -148,6 +148,12 @@ if (! $ARGV[0] )
 } 
 my $clustergast_cmd = join(" ", $0, @ARGV);
 
+if ($verbose)
+{
+  print "AAA \$ARGV: ";
+  print $ARGV;
+  print "\n";
+}
 while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 {
 	if ($ARGV[0] =~ /-h/) {
@@ -338,6 +344,7 @@ if ($vRegion =~ /v[0-9]v[0-9]/i)
 }
 
 # if (! $refhvr_udb) { $refhvr_udb = $refhvr_udb_dir . "ref" . $vRegion53; }
+if ($verbose) {print "HHH \$refhvr_udb = $refhvr_udb\n";}
 if (! $refhvr_udb) { $refhvr_udb = "ref" . $vRegion53; }
 
 # todo: change "blast fasta" in verbose to blast udb?
@@ -520,7 +527,10 @@ END_MESSAGE
         if ($verbose) {print "$fastasampler_cmd\n";}
         # my $refhvr_udb_name = $refhvr_udb . ".udb";
         my $refhvr_udb_name = $refhvr_udb . ".fa";
+        if ($verbose) {print "\$$refhvr_udb = $refhvr_udb\n";}
         my $refhvr_udb_full_name = $refhvr_udb_dir . $refhvr_udb_name;
+        if ($verbose) {print "\$refhvr_udb_full_name = $refhvr_udb_full_name\n";}
+        
         
         if ($ignoreterm == 1) {$gapopen = "0E -gapext 0E"}  
         
