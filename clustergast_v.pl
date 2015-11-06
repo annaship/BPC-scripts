@@ -546,8 +546,8 @@ END_MESSAGE
         if ($verbose) {print "$usearch_cmd\n";}
     
         # sort the results for valid hits, saving only the ids and pct identity
-        my $tophit_cmp = "clustergast_tophit";
-        if ($ignoreterm == 1) {$tophit_cmp = "clustergast_tophit -ignore_terminal_gaps";}  
+        my $tophit_cmp = "clustergast_tophit_v.pl";
+        if ($ignoreterm == 1) {$tophit_cmp = "clustergast_tophit_v.pl -ignore_terminal_gaps";}  
         
         if ($verbose) {print "vRegion = $vRegion\n";}
         
