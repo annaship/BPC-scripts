@@ -185,7 +185,7 @@ while (my $line = <IN>)
     
     # Assume data are in order of read id and descending pct_id
     # If the first line of this read_id, or if the pct_id is the same or better, print
-    if ( ($read_id ne $read_id) || ( ($read_id eq $last_id) && ($pi >= $last_pi) ) ) 
+    if ( ($read_id ne $last_id) || ( ($read_id eq $last_id) && ($pi >= $last_pi) ) ) 
     {
         
         print LOG "CCC: from ( (\$read_id ne \$read_id) || ( (\$read_id eq \$last_id) && (\$pi >= \$last_pi) ) )\n";
