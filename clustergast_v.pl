@@ -75,6 +75,7 @@ my $usage = "
              -pctid       minimum percent identity of the read to a reference to be considered a hit [default: 0.70]
              -ignoreterm  ignore terminal gaps when checking for large indels [default: don't ignore] (http://www.drive5.com/usearch/manual/aln_params.html)
              -strand      plus or both [default: plus]
+             -refhvr_db_dir alternative directory with refhvr fasta and tax files (use '/' ate the end)
    steps:  db2fasta, unique, usearch
 
 \n";
@@ -127,6 +128,7 @@ my $ignoreterm    = 0;
 my $gapopen       = "6I/1E";
 my $strand        = "plus";
 
+
 ## todo: uncommented!
 my $sqlimport_cmd = "/usr/local/mysql/bin/mysqlimport";
 # my $sqlimport_cmd = "";
@@ -169,6 +171,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-refdb") {
 		shift @ARGV;
 		$refhvr_udb = shift @ARGV;
+	} elsif ($ARGV[0] eq "-refhvr_db_dir") {
+		shift @ARGV;
+		$refhvr_udb_dir = shift @ARGV;
 	} elsif ($ARGV[0] eq "-reg") {
 		shift @ARGV;
 		$vRegion = shift @ARGV;
