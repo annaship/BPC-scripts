@@ -38,31 +38,31 @@ def write_file(outputfile):
   f = open(outputfile, 'w')
   return f
 
-def print_stats(sequence, v9_cut):
+def print_stats(sequence, refhvr_cut):
   print "Full length sequence:  %s" % len(sequence)
   print "Forward primer starts: %s" % re.search('TTGTACACACCGCCC', sequence).start()
   print "Reverse primer starts: %s" % re.search('GTAGGTGAACCTGC.GAAGG', sequence).start()
-  print "v9 length:             %s" % len(v9_cut)
+  print "refhvr cut length:     %s" % len(refhvr_cut)
 
 def get_region(sequence):
   hvrsequence_119_1 = re.sub('^.+TTGTACACACCGCCC', '', sequence)
   
-  v9_cut = re.sub('GTAGGTGAACCTGC.GAAGG.+', '', hvrsequence_119_1)
+  refhvr_cut = re.sub('GTAGGTGAACCTGC.GAAGG.+', '', hvrsequence_119_1)
     
-  return v9_cut
+  return refhvr_cut
 
 def process(line, verbose):
-    # print "process line"
-    # print line
     refssu_name_id    = line.split("\t")[0]
     clean_taxonomy_id = line.split("\t")[1]
     sequence          = line.split("\t")[2]
          
-    v9_cut = get_region(sequence)
-    print "v9_cut = %s" % v9_cut
+    refhvr_cut = get_region(sequence)
+    print "refhvr_cut = %s" % refhvr_cut
 
     if (verbose):
-      print_stats(sequence, v9_cut)
+      print_stats(sequence, refhvr_cut)
+    
+    return refhvr_cut
     
     # print "refssu_name_id = %s, clean_taxonomy_id = %s, hvrsequence_119 = %s\n===" % (refssu_name_id, clean_taxonomy_id, sequence)
 
@@ -79,9 +79,14 @@ if __name__ == "__main__":
 
     open_outputfile = write_file(outputfile)   
 
-
     for line in inputfile_content:
-      process(line.strip(), verbose)
+      refhvr_cut = process(line.strip(), verbose)
+      open_outputfile.write(refhvr_cut)
+      open_outputfile.write("\n")
+      
+    open_outputfile.close()
+
+      
 
 #     line      = line.strip()
 #     
