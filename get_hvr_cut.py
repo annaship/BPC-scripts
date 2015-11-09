@@ -31,8 +31,12 @@ def main(argv):
 
 
 def read_file(inputfile):
-  f = open(inputfile, 'r')
-  return f.read()
+  with open (inputfile, "r") as myfile:
+    return myfile.readlines()
+
+def write_file(outputfile):
+  f = open(outputfile, 'w')
+  return f
 
 
 def get_region(sequence):
@@ -47,32 +51,35 @@ def get_region(sequence):
   return v9_cut
 
 def process(line):
-    # print line
-    refssu_name_id    = line.split("\t")[0]
-    clean_taxonomy_id = line.split("\t")[1]
-    sequence          = line.split("\t")[2]
-    
-    v9_cut = get_region(sequence)
-    print "v9_cut = %s" % v9_cut
-
-
-    print "refssu_name_id = %s, clean_taxonomy_id = %s, hvrsequence_119 = %s\n===" % (refssu_name_id, clean_taxonomy_id, sequence)
+    print line
+    # refssu_name_id    = line.split("\t")[0]
+    # clean_taxonomy_id = line.split("\t")[1]
+    # sequence          = line.split("\t")[2]
+    # 
+    # v9_cut = get_region(sequence)
+    # print "v9_cut = %s" % v9_cut
+    # 
+    # 
+    # print "refssu_name_id = %s, clean_taxonomy_id = %s, hvrsequence_119 = %s\n===" % (refssu_name_id, clean_taxonomy_id, sequence)
 
     
 # 467540	2	ACCTGAGTGCTATTGGGTTTGCTAAAGACATGCAAGTGGAATGTCTCTTCGGAGGCATCGCGAAAGGCTCAGTAACACGTCGCCAATCTGCCCTGTGGACGGGAATAACCTCGGGAAACTGAGACTAATCCCCGATAAGTATGGACTCCTGGAAAGGGCCAATATTTAATGGTCTTCGGATCGCCACAGGATGAGGCCGCGGCCGATTAGCTAGTAAGTGATGTAACGGATCACTTAGGCATTGATCGGTAGGGGCTATGAGAGTAGGAGCCCCGAGAAGGACACTTAGACACTGGTCCTAGCACTACGGTGTGCAGCAGTCGGGAATCGTGCCCAATGCGCGAAAGCGTGAGGCCGCGAACCCAAGTGCTAGGGTTACCCCCTAGCTGTGATGGAGTGTTTAAAGCTCTAACAGCAAGCAGAGGGCAAGGGTGGTGCCAGCCGCCGCGGTAAAACCAGCTCTGCGAGTGCTCAGGACGATTATTGGGCTTAAAGCATCCGTAGCCGGGTAAGTAGGTCCCTGATCAAATCTGCAAGCTTAACTTGTAGGCTGTCAAGGATACCACTAACCTAGGGAATAGGAGAGGTGAACGGTACTGCGAGAGAAGCGGTGAAATGCGTTGATTCTCGCAGGACCCACAGTGGCGAAGGCGGTTCACTGGAATATCTCCGACGGTGATGGATGAAAGCCAGGGGAGCGAAAGGGATTAGAGACCCCTGTAGTCCTGGCCGTAAACGATGAGGATTAGGTGTTGGTTATGGCTAAAGGGCCTGATCAGTGCCAAAGGGAAACTATTAAATCCTCCGCCTGGGGAGTACGGTCGCAAGGCTGAAACTTAAATGAATTGACGGGAAAGCGCCACAAGGCACGGGATGTGTGGTTTAATTCGACTCAACGCGAGGAAACTCACCTGGGGCGACTGTTAAATGTGAGTCAGGCTGAAGACCTTACTCGAATAAAACAGAGAGGTAGTGCATGGCCGTCTCAAGCTCGTGCCGTGAGGTGTGCTCTTAAGTGAGTAAACGAGCGAGACCCGCGTCCCTATTTGCTAAGAGCAAGCTTCGGCTTGGCTGAGGACAATAGGGAGATCGCTATCGATGAAGATAGATGAAAGGGCGGGCCACGGCAGGTCAGTATGCTCCTAATCCCCAGGGCCACACACGCATCACAATGAGTAGGACAATGAGAGGCGACCCCGAAAGGGGAAGCGGACCCCCAAACCTGCTCGCAGTAGGGATCGAGGTCTGTAACCGACCTCGTGAACATGGAGCGCCTAGTATCCGTGTGTCATCATCGCACGGAGAATACGTCCCCGCTTTTTGTACACACCGCCCGTCGTTGCAACGAAGTGAGGTTCGGTTGAGGTTGGGCTGTTACAGCTTATTCGAAATTGGGCTTCGCGACGATGCAA
 
 if __name__ == "__main__":
-   (inputfile, outputfile, verbous) = main(sys.argv[1:])
-   print 'Input file is "%s"' % inputfile
-   print 'Output file is "%s"' % outputfile
-   
-   inputfile_conternt = read_file(inputfile)
-   print "inputfile_conternt = %s" % inputfile_conternt
-   
+    (inputfile, outputfile, verbous) = main(sys.argv[1:])
+    print 'Input file is "%s"' % inputfile
+    print 'Output file is "%s"' % outputfile
 
-# for line in fileinput.input():
-#     read_file()
-#     process(line)
+    inputfile_content = read_file(inputfile)
+    print "inputfile_conternt = %s" % inputfile_content
+
+    open_outputfile = write_file(outputfile)   
+
+
+    for line in inputfile_content:
+      print "line"
+      print line
+        # process(line.strip())
 
 #     line      = line.strip()
 #     
