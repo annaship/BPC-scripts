@@ -72,11 +72,13 @@ def get_region(sequence):
     if (refhvr_cut_t[1] > 0):
       refhvr_cut = refhvr_cut_t[0]
     else:
-      print "Can't find reverse primer %s in %s" % (r_primer, sequence)
+      if (verbose):
+        print "Can't find reverse primer %s in %s" % (r_primer, sequence)
       refhvr_cut = ""
     
   else:
-    print "Can't find forward primer %s in %s" % (f_primer, sequence)
+    if (verbose):
+      print "Can't find forward primer %s in %s" % (f_primer, sequence)
     refhvr_cut = ""
     
   return refhvr_cut
