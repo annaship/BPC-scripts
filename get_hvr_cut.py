@@ -1,5 +1,16 @@
 import fileinput
 import re
+import sys
+def get_region(sequence):
+  hvrsequence_119_1 = re.sub('^.+TTGTACACACCGCCC', '', sequence)
+  
+  print "Full length sequence: %s" % len(sequence)
+  print "Forward primer starts: %s" % re.search('TTGTACACACCGCCC', sequence).start()
+  print "Reverse primer starts: %s" % re.search('GTAGGTGAACCTGC.GAAGG', sequence).start()
+  v9_cut = re.sub('GTAGGTGAACCTGC.GAAGG.+', '', hvrsequence_119_1)
+  print "v9 length: %s" % len(v9_cut)
+  
+  return v9_cut
 
 def process(line):
     # print line
@@ -7,21 +18,39 @@ def process(line):
     clean_taxonomy_id = line.split("\t")[1]
     sequence          = line.split("\t")[2]
     
-  
-    searchObj = re.search('TTGTACACACCGCCC', sequence)
-    print "re.search('TTGTACACACCGCCC', hvrsequence_119) = "
-    if searchObj:
-       print "searchObj.group() : ", searchObj.group()
-    else:
-       print "Nothing found!!"
-       
-    hvrsequence_119_1 = re.sub('^.+TTGTACACACCGCCC', '', sequence)
-    print "hvrsequence_119_1 = %s" % (hvrsequence_119_1)
-    
+    v9_cut = get_region(sequence)
+    print "v9_cut = %s" % v9_cut
+#   
+#     searchObj = re.search('TTGTACACACCGCCC', sequence)
+#     print "re.search('TTGTACACACCGCCC', sequence) = "
+#     if searchObj:
+#        print "searchObj.group() : ", searchObj.group()
+#     else:
+#         print "forward primer not found!!"
+#        
+#     hvrsequence_119_1 = re.sub('^.+TTGTACACACCGCCC', '', sequence)
+#     start1 = re.search('TTGTACACACCGCCC', sequence).start()
+#     print "hvrsequence_119_1 = %s, start = %s\n---" % (hvrsequence_119_1, start1)
+# 
+# # ===
+# 
+#     searchObj2 = re.search('GTAGGTGAACCTGC.GAAG', hvrsequence_119_1)
+#     print "re.search('GTAGGTGAACCTGC.GAAGG', hvrsequence_119_1) = "
+#     if searchObj2:
+#        print "searchObj2.group() : ", searchObj2.group()
+#     else:
+#        print "reverse primer not found!!"
+# 
+#     hvrsequence_119_2 = re.sub('GTAGGTGAACCTGC.GAAGG.+', '', hvrsequence_119_1)
+#     print "hvrsequence_119_2 = %s" % (hvrsequence_119_2)
+# 
+#     start2 = re.search('GTAGGTGAACCTGC.GAAGG', sequence).start()
+#     len_cut = len(hvrsequence_119_2)
+#     print "re.search('GTAGGTGAACCTGC.GAAGG', sequence).start() = %s, len_cut = %s" % (start2, len_cut)
     
     # f_primer = find_primer(hvrsequence_119, "TTGTACACACCGCCC")
-    print "refssu_name_id = %s, clean_taxonomy_id = %s, hvrsequence_119 = %s" % (refssu_name_id, clean_taxonomy_id, sequence)
-    
+    print "refssu_name_id = %s, clean_taxonomy_id = %s, hvrsequence_119 = %s\n===" % (refssu_name_id, clean_taxonomy_id, sequence)
+    # 
 # def find_primer(hvrsequence_119, primer):
 #     matchObj = re.match( r'primer', hvrsequence_119)
 #     print "matchObj = %s" % matchObj
