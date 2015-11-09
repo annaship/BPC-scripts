@@ -3,7 +3,7 @@ import re
 import sys, getopt
 
 def usage():
-  print 'test.py -i <inputfile> -o <outputfile> [-v]'  
+  print 'test.py -i <inputfile> [-o <outputfile> (default "out_region.tsv") -v]'  
 
 def main(argv):
     inputfile  = ''
@@ -51,18 +51,19 @@ def get_region(sequence):
     
   return refhvr_cut
 
-def process(line, verbose):
+def make_output_line(line, refhvr_cut):
     refssu_name_id    = line.split("\t")[0]
     clean_taxonomy_id = line.split("\t")[1]
-    sequence          = line.split("\t")[2]
-         
+    return refssu_name_id + "\t" + clean_taxonomy_id + "\t" + refhvr_cut
+
+def process(line, verbose):
+    sequence   = line.split("\t")[2]       
     refhvr_cut = get_region(sequence)
-    print "refhvr_cut = %s" % refhvr_cut
 
     if (verbose):
       print_stats(sequence, refhvr_cut)
     
-    return refhvr_cut
+    return make_output_line(line, refhvr_cut)
     
     # print "refssu_name_id = %s, clean_taxonomy_id = %s, hvrsequence_119 = %s\n===" % (refssu_name_id, clean_taxonomy_id, sequence)
 
