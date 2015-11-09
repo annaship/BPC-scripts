@@ -39,17 +39,48 @@ def open_file_to_write(outputfile):
   return f
 
 def print_stats(sequence, refhvr_cut):
-  print "Full length sequence:  %s" % len(sequence)
-  print "Forward primer starts: %s" % re.search('TTGTACACACCGCCC', sequence).start()
-  print "Reverse primer starts: %s" % re.search('GTAGGTGAACCTGC.GAAGG', sequence).start()
-  print "refhvr cut length:     %s" % len(refhvr_cut)
+    f_primer = "TTGTACACACCGCCC"
+    r_primer = "GTAGGTGAACCTGC.GAAGG"
+  
+    print "Full length sequence:  %s" % len(sequence)
+    try:
+      print "Forward primer starts: %s" % re.search(f_primer, sequence).start()
+    except AttributeError:
+      print "Can't find forward primer %s in %s" % (f_primer, sequence)
+      pass
+    try:  
+      print "Reverse primer starts: %s" % re.search(r_primer, sequence).start()
+    except AttributeError:
+      print "Can't find reverse primer %s in %s" % (r_primer, sequence)
+      pass
+    
+    print "refhvr_cut = %s" % refhvr_cut
+    print "refhvr cut length:     %s\n=====\n" % len(refhvr_cut)
+    
 
 def get_region(sequence):
-  hvrsequence_119_1 = re.sub('^.+TTGTACACACCGCCC', '', sequence)
+  f_primer = "TTGTACACACCGCCC"
+  r_primer = "GTAGGTGAACCTGC.GAAGG"
+  refhvr_cut_t = ()
+  refhvr_cut = ""
   
-  refhvr_cut = re.sub('GTAGGTGAACCTGC.GAAGG.+', '', hvrsequence_119_1)
+  hvrsequence_119_1_t = re.subn('^.+TTGTACACACCGCCC', '', sequence)
+  # print hvrsequence_119_1_t
+  if (hvrsequence_119_1_t[1] > 0):
+    refhvr_cut_t = re.subn('GTAGGTGAACCTGC.GAAGG.+', '', hvrsequence_119_1_t[0])
+    # print refhvr_cut_t
+    if (refhvr_cut_t[1] > 0):
+      refhvr_cut = refhvr_cut_t[0]
+    else:
+      print "Can't find reverse primer %s in %s" % (r_primer, sequence)
+      refhvr_cut = ""
+    
+  else:
+    print "Can't find forward primer %s in %s" % (f_primer, sequence)
+    refhvr_cut = ""
     
   return refhvr_cut
+    
 
 def make_output_line(line, refhvr_cut):
     refssu_name_id    = line.split("\t")[0]
@@ -57,6 +88,7 @@ def make_output_line(line, refhvr_cut):
     return refssu_name_id + "\t" + clean_taxonomy_id + "\t" + refhvr_cut
 
 def process(line, verbose):
+    refhvr_cut = ""
     sequence   = line.split("\t")[2]       
     refhvr_cut = get_region(sequence)
 
@@ -80,7 +112,8 @@ if __name__ == "__main__":
 
     for line in inputfile_content:
       refhvr_cut = process(line.strip(), verbose)
-      open_outputfile.write(refhvr_cut)
-      open_outputfile.write("\n")
+      if (len(refhvr_cut) > 50):
+        open_outputfile.write(refhvr_cut)
+        open_outputfile.write("\n")
       
     open_outputfile.close()
