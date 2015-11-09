@@ -1,6 +1,35 @@
 import fileinput
 import re
-import sys
+import sys, getopt
+
+
+def main(argv):
+    inputfile  = ''
+    outputfile = 'out_region.tsv'
+    try:
+      opts, args = getopt.getopt(argv, "hvi:o:", ["ifile=","ofile="])
+      # print "opts = %s, args = %s" % (opts, args)
+    except getopt.GetoptError:
+      print 'test.py -i <inputfile> -o <outputfile> [-v]'
+      sys.exit(2)
+      
+    for opt, arg in opts:
+       if opt == '-h':
+          print 'test.py -i <inputfile> -o <outputfile>'
+          sys.exit()
+       elif opt in ("-i", "--ifile"):
+          inputfile = arg
+       elif opt in ("-o", "--ofile"):
+          outputfile = arg
+    print 'Input file is "%s"' % inputfile
+    print 'Output file is "%s"' % outputfile
+
+
+def read_file():
+  f = open('workfile', 'r')
+  f.read()
+
+
 def get_region(sequence):
   hvrsequence_119_1 = re.sub('^.+TTGTACACACCGCCC', '', sequence)
   
@@ -20,46 +49,19 @@ def process(line):
     
     v9_cut = get_region(sequence)
     print "v9_cut = %s" % v9_cut
-#   
-#     searchObj = re.search('TTGTACACACCGCCC', sequence)
-#     print "re.search('TTGTACACACCGCCC', sequence) = "
-#     if searchObj:
-#        print "searchObj.group() : ", searchObj.group()
-#     else:
-#         print "forward primer not found!!"
-#        
-#     hvrsequence_119_1 = re.sub('^.+TTGTACACACCGCCC', '', sequence)
-#     start1 = re.search('TTGTACACACCGCCC', sequence).start()
-#     print "hvrsequence_119_1 = %s, start = %s\n---" % (hvrsequence_119_1, start1)
-# 
-# # ===
-# 
-#     searchObj2 = re.search('GTAGGTGAACCTGC.GAAG', hvrsequence_119_1)
-#     print "re.search('GTAGGTGAACCTGC.GAAGG', hvrsequence_119_1) = "
-#     if searchObj2:
-#        print "searchObj2.group() : ", searchObj2.group()
-#     else:
-#        print "reverse primer not found!!"
-# 
-#     hvrsequence_119_2 = re.sub('GTAGGTGAACCTGC.GAAGG.+', '', hvrsequence_119_1)
-#     print "hvrsequence_119_2 = %s" % (hvrsequence_119_2)
-# 
-#     start2 = re.search('GTAGGTGAACCTGC.GAAGG', sequence).start()
-#     len_cut = len(hvrsequence_119_2)
-#     print "re.search('GTAGGTGAACCTGC.GAAGG', sequence).start() = %s, len_cut = %s" % (start2, len_cut)
-    
-    # f_primer = find_primer(hvrsequence_119, "TTGTACACACCGCCC")
+
+
     print "refssu_name_id = %s, clean_taxonomy_id = %s, hvrsequence_119 = %s\n===" % (refssu_name_id, clean_taxonomy_id, sequence)
-    # 
-# def find_primer(hvrsequence_119, primer):
-#     matchObj = re.match( r'primer', hvrsequence_119)
-#     print "matchObj = %s" % matchObj
 
     
 # 467540	2	ACCTGAGTGCTATTGGGTTTGCTAAAGACATGCAAGTGGAATGTCTCTTCGGAGGCATCGCGAAAGGCTCAGTAACACGTCGCCAATCTGCCCTGTGGACGGGAATAACCTCGGGAAACTGAGACTAATCCCCGATAAGTATGGACTCCTGGAAAGGGCCAATATTTAATGGTCTTCGGATCGCCACAGGATGAGGCCGCGGCCGATTAGCTAGTAAGTGATGTAACGGATCACTTAGGCATTGATCGGTAGGGGCTATGAGAGTAGGAGCCCCGAGAAGGACACTTAGACACTGGTCCTAGCACTACGGTGTGCAGCAGTCGGGAATCGTGCCCAATGCGCGAAAGCGTGAGGCCGCGAACCCAAGTGCTAGGGTTACCCCCTAGCTGTGATGGAGTGTTTAAAGCTCTAACAGCAAGCAGAGGGCAAGGGTGGTGCCAGCCGCCGCGGTAAAACCAGCTCTGCGAGTGCTCAGGACGATTATTGGGCTTAAAGCATCCGTAGCCGGGTAAGTAGGTCCCTGATCAAATCTGCAAGCTTAACTTGTAGGCTGTCAAGGATACCACTAACCTAGGGAATAGGAGAGGTGAACGGTACTGCGAGAGAAGCGGTGAAATGCGTTGATTCTCGCAGGACCCACAGTGGCGAAGGCGGTTCACTGGAATATCTCCGACGGTGATGGATGAAAGCCAGGGGAGCGAAAGGGATTAGAGACCCCTGTAGTCCTGGCCGTAAACGATGAGGATTAGGTGTTGGTTATGGCTAAAGGGCCTGATCAGTGCCAAAGGGAAACTATTAAATCCTCCGCCTGGGGAGTACGGTCGCAAGGCTGAAACTTAAATGAATTGACGGGAAAGCGCCACAAGGCACGGGATGTGTGGTTTAATTCGACTCAACGCGAGGAAACTCACCTGGGGCGACTGTTAAATGTGAGTCAGGCTGAAGACCTTACTCGAATAAAACAGAGAGGTAGTGCATGGCCGTCTCAAGCTCGTGCCGTGAGGTGTGCTCTTAAGTGAGTAAACGAGCGAGACCCGCGTCCCTATTTGCTAAGAGCAAGCTTCGGCTTGGCTGAGGACAATAGGGAGATCGCTATCGATGAAGATAGATGAAAGGGCGGGCCACGGCAGGTCAGTATGCTCCTAATCCCCAGGGCCACACACGCATCACAATGAGTAGGACAATGAGAGGCGACCCCGAAAGGGGAAGCGGACCCCCAAACCTGCTCGCAGTAGGGATCGAGGTCTGTAACCGACCTCGTGAACATGGAGCGCCTAGTATCCGTGTGTCATCATCGCACGGAGAATACGTCCCCGCTTTTTGTACACACCGCCCGTCGTTGCAACGAAGTGAGGTTCGGTTGAGGTTGGGCTGTTACAGCTTATTCGAAATTGGGCTTCGCGACGATGCAA
 
-for line in fileinput.input():
-    process(line)
+if __name__ == "__main__":
+   main(sys.argv[1:])
+
+# for line in fileinput.input():
+#     read_file()
+#     process(line)
 
 #     line      = line.strip()
 #     
