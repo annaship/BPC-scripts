@@ -30,9 +30,9 @@ def main(argv):
       return (inputfile, outputfile, verbous)
 
 
-def read_file():
-  f = open('workfile', 'r')
-  f.read()
+def read_file(inputfile):
+  f = open(inputfile, 'r')
+  return f.read()
 
 
 def get_region(sequence):
@@ -65,6 +65,9 @@ if __name__ == "__main__":
    (inputfile, outputfile, verbous) = main(sys.argv[1:])
    print 'Input file is "%s"' % inputfile
    print 'Output file is "%s"' % outputfile
+   
+   inputfile_conternt = read_file(inputfile)
+   print "inputfile_conternt = %s" % inputfile_conternt
    
 
 # for line in fileinput.input():
