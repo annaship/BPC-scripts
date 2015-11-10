@@ -3,15 +3,20 @@ import re
 import sys, getopt
 
 def usage():
-  print 'test.py -i <inputfile> [-o <outputfile> (default "out_region.tsv") -v]'  
+  print '''test.py -i <inputfile> [-o <outputfile> -v -l]
+           -i <inputfile>
+           -o <outputfile> (default "out_region.tsv)"
+           -v verbose
+           -l refhvr_cut length (default = 50)'''  
 
 def main(argv):
     inputfile  = ''
     outputfile = 'out_region.tsv'
     verbose    = False
+    min_refhvr_cut_len = 50
     
     try:
-      opts, args = getopt.getopt(argv, "hvi:o:", ["ifile=","ofile="])
+      opts, args = getopt.getopt(argv, "hvli:o:", ["ifile=", "ofile="])
       # print "opts = %s, args = %s" % (opts, args)
     except getopt.GetoptError:
       sys.exit(2)
@@ -19,6 +24,8 @@ def main(argv):
     for opt, arg in opts:
       if opt == "-v":
         verbose = True
+      elif opt == '-l':
+        min_refhvr_cut_len = 0
       elif opt == '-h':
         usage()
         sys.exit()
@@ -27,7 +34,8 @@ def main(argv):
       elif opt in ("-o", "--ofile"):
         outputfile = arg
               
-    return (inputfile, outputfile, verbose)
+    print "min_refhvr_cut_len = %s" % min_refhvr_cut_len
+    return (inputfile, outputfile, verbose, min_refhvr_cut_len)
 
 
 def read_file(inputfile):
@@ -105,7 +113,7 @@ def process(line, verbose):
 # 467540	2	ACCTGAGTGCTATTGGGTTTGCTAAAGACATGCAAGTGGAATGTCTCTTCGGAGGCATCGCGAAAGGCTCAGTAACACGTCGCCAATCTGCCCTGTGGACGGGAATAACCTCGGGAAACTGAGACTAATCCCCGATAAGTATGGACTCCTGGAAAGGGCCAATATTTAATGGTCTTCGGATCGCCACAGGATGAGGCCGCGGCCGATTAGCTAGTAAGTGATGTAACGGATCACTTAGGCATTGATCGGTAGGGGCTATGAGAGTAGGAGCCCCGAGAAGGACACTTAGACACTGGTCCTAGCACTACGGTGTGCAGCAGTCGGGAATCGTGCCCAATGCGCGAAAGCGTGAGGCCGCGAACCCAAGTGCTAGGGTTACCCCCTAGCTGTGATGGAGTGTTTAAAGCTCTAACAGCAAGCAGAGGGCAAGGGTGGTGCCAGCCGCCGCGGTAAAACCAGCTCTGCGAGTGCTCAGGACGATTATTGGGCTTAAAGCATCCGTAGCCGGGTAAGTAGGTCCCTGATCAAATCTGCAAGCTTAACTTGTAGGCTGTCAAGGATACCACTAACCTAGGGAATAGGAGAGGTGAACGGTACTGCGAGAGAAGCGGTGAAATGCGTTGATTCTCGCAGGACCCACAGTGGCGAAGGCGGTTCACTGGAATATCTCCGACGGTGATGGATGAAAGCCAGGGGAGCGAAAGGGATTAGAGACCCCTGTAGTCCTGGCCGTAAACGATGAGGATTAGGTGTTGGTTATGGCTAAAGGGCCTGATCAGTGCCAAAGGGAAACTATTAAATCCTCCGCCTGGGGAGTACGGTCGCAAGGCTGAAACTTAAATGAATTGACGGGAAAGCGCCACAAGGCACGGGATGTGTGGTTTAATTCGACTCAACGCGAGGAAACTCACCTGGGGCGACTGTTAAATGTGAGTCAGGCTGAAGACCTTACTCGAATAAAACAGAGAGGTAGTGCATGGCCGTCTCAAGCTCGTGCCGTGAGGTGTGCTCTTAAGTGAGTAAACGAGCGAGACCCGCGTCCCTATTTGCTAAGAGCAAGCTTCGGCTTGGCTGAGGACAATAGGGAGATCGCTATCGATGAAGATAGATGAAAGGGCGGGCCACGGCAGGTCAGTATGCTCCTAATCCCCAGGGCCACACACGCATCACAATGAGTAGGACAATGAGAGGCGACCCCGAAAGGGGAAGCGGACCCCCAAACCTGCTCGCAGTAGGGATCGAGGTCTGTAACCGACCTCGTGAACATGGAGCGCCTAGTATCCGTGTGTCATCATCGCACGGAGAATACGTCCCCGCTTTTTGTACACACCGCCCGTCGTTGCAACGAAGTGAGGTTCGGTTGAGGTTGGGCTGTTACAGCTTATTCGAAATTGGGCTTCGCGACGATGCAA
 
 if __name__ == "__main__":
-    (inputfile, outputfile, verbose) = main(sys.argv[1:])
+    (inputfile, outputfile, verbose, min_refhvr_cut_len) = main(sys.argv[1:])
     print 'Input file  is "%s"' % inputfile
     print 'Output file is "%s"' % outputfile
 
@@ -114,7 +122,7 @@ if __name__ == "__main__":
 
     for line in inputfile_content:
       refhvr_cut = process(line.strip(), verbose)
-      if (len(refhvr_cut) > 50):
+      if (len(refhvr_cut) > int(min_refhvr_cut_len)):
         open_outputfile.write(refhvr_cut)
         open_outputfile.write("\n")
       
