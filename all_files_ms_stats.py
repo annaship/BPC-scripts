@@ -1,6 +1,11 @@
 #! /bioware/python-2.7.5/bin/python
 
-import os
+import os, sys
+
+verbose = False
+for arg in sys.argv:
+  if arg == "-v":
+    verbose = True
 count_all_reads = 0
 count_good_reads = 0
 
@@ -31,7 +36,8 @@ Mismatches_replaced_with_N = 0
 for f in files:
   if f.endswith("_STATS"):
     file = open(f)
-    print f
+    if (verbose):
+      print f
     while 1:
         line = file.readline()
 
@@ -40,12 +46,15 @@ for f in files:
         try:
           num = 0
           line = line.strip()
-          print(line)
+          if (verbose):
+            print(line)
           num = line.split()[-1]
-          print(num)
+          if (verbose):
+            print(num)
           if line.startswith("Number of pairs analyzed"):
               Number_of_pairs_analyzed += int(num)
-              print('URA: Number_of_pairs_analyzed + %s') % Number_of_pairs_analyzed        
+              if (verbose):
+                print('Total: Number_of_pairs_analyzed + %s') % Number_of_pairs_analyzed        
           elif line.startswith("Prefix failed in read 1"):
               Prefix_failed_in_read_1 += int(num)
           elif line.startswith("Prefix failed in read 2"):
