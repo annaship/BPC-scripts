@@ -1,6 +1,12 @@
 #! /bioware/python-2.7.5/bin/python
 
-import os
+import os, sys
+
+verbose = False
+for arg in sys.argv:
+  if arg == "-v":
+    verbose = True
+
 count_all_reads = 0
 count_good_reads = 0
 
@@ -43,7 +49,8 @@ FAILED_RP = 0
 for f in files:
   if f.endswith("STATS.txt"):
     file = open(f)
-    print f
+    if (verbose):
+      print f
     while 1:
         line = file.readline()
 
@@ -52,13 +59,16 @@ for f in files:
         try:
           num = 0
           line = line.strip()
-          print(line)
+          if (verbose):
+            print(line)
           num = line.split(":")[-1].split(" ")[1]
-          print(num)
+          if (verbose):
+            print(num)
           
           if line.startswith("number of pairs"):
               number_of_pairs += int(num)
-              print('URA: number_of_pairs + %s') % number_of_pairs
+              if (verbose):
+                print('Total: number_of_pairs + %s') % number_of_pairs
 
           elif line.startswith("total pairs passed"):
               total_pairs_passed += int(num)
@@ -90,22 +100,26 @@ for f in files:
         except LookupError:
           pass
 
+def get_percents(cnt_perc):
+  return "{0:.2f}".format(cnt_perc * 100 / float(number_of_pairs))
+
+
 print "="*50
 print current_dir
 
 print('number_of_pairs in all files = %s') % number_of_pairs
-print('total_pairs_passed in all files = %s') % total_pairs_passed
-print('perfect_pairs_with_Ns in all files = %s') % perfect_pairs_with_Ns
-print('recovered_ambiguous_bases1 in all files = %s') % recovered_ambiguous_bases1
-print('recovered_ambiguous_bases2 in all files = %s') % recovered_ambiguous_bases2
-print('total_pairs_failed in all files = %s') % total_pairs_failed
-print('FP_failed_in_both_pairs in all files = %s') % FP_failed_in_both_pairs
-print('FP_failed_only_in_pair_1 in all files = %s') % FP_failed_only_in_pair_1
-print('FP_failed_only_in_pair_2 in all files = %s') % FP_failed_only_in_pair_2
-print('RP_failed_in_both_pairs in all files = %s') % RP_failed_in_both_pairs
-print('RP_failed_only_in_pair_1 in all files = %s') % RP_failed_only_in_pair_1
-print('RP_failed_only_in_pair_2 in all files = %s') % RP_failed_only_in_pair_2
-print('FAILED_FP in all files = %s') % FAILED_FP
-print('FAILED_RP in all files = %s') % FAILED_RP
+print('total_pairs_passed in all files = %s         (%s%% from Number_of_pairs_analyzed)') % (total_pairs_passed, get_percents(total_pairs_passed))
+print('perfect_pairs_with_Ns in all files = %s      (%s%% from Number_of_pairs_analyzed)') % (perfect_pairs_with_Ns, get_percents(perfect_pairs_with_Ns))
+print('recovered_ambiguous_bases1 in all files = %s (%s%% from Number_of_pairs_analyzed)') % (recovered_ambiguous_bases1, get_percents(recovered_ambiguous_bases1))
+print('recovered_ambiguous_bases2 in all files = %s (%s%% from Number_of_pairs_analyzed)') % (recovered_ambiguous_bases2, get_percents(recovered_ambiguous_bases2))
+print('total_pairs_failed in all files = %s         (%s%% from Number_of_pairs_analyzed)') % (total_pairs_failed, get_percents(total_pairs_failed))
+print('FP_failed_in_both_pairs in all files = %s    (%s%% from Number_of_pairs_analyzed)') % (FP_failed_in_both_pairs, get_percents(FP_failed_in_both_pairs))
+print('FP_failed_only_in_pair_1 in all files = %s   (%s%% from Number_of_pairs_analyzed)') % (FP_failed_only_in_pair_1, get_percents(FP_failed_only_in_pair_1))
+print('FP_failed_only_in_pair_2 in all files = %s   (%s%% from Number_of_pairs_analyzed)') % (FP_failed_only_in_pair_2, get_percents(FP_failed_only_in_pair_2))
+print('RP_failed_in_both_pairs in all files = %s    (%s%% from Number_of_pairs_analyzed)') % (RP_failed_in_both_pairs, get_percents(RP_failed_in_both_pairs))
+print('RP_failed_only_in_pair_1 in all files = %s   (%s%% from Number_of_pairs_analyzed)') % (RP_failed_only_in_pair_1, get_percents(RP_failed_only_in_pair_1))
+print('RP_failed_only_in_pair_2 in all files = %s   (%s%% from Number_of_pairs_analyzed)') % (RP_failed_only_in_pair_2, get_percents(RP_failed_only_in_pair_2))
+print('FAILED_FP in all files = %s                  (%s%% from Number_of_pairs_analyzed)') % (FAILED_FP, get_percents(FAILED_FP))
+print('FAILED_RP in all files = %s                  (%s%% from Number_of_pairs_analyzed)') % (FAILED_RP, get_percents(FAILED_RP))
 
 
