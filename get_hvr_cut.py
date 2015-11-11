@@ -7,7 +7,7 @@ def usage():
            -i <inputfile>
            -o <outputfile> (default "out_region.tsv)"
            -v verbose
-           -l refhvr_cut length (default = 50)
+           -l <refhvr_cut length> (default = 50)
            -f <f_primer> (default "TTGTACACACCGCCC" v9 1389F)
            -r <r_primer> (default "GTAGGTGAACCTGC.GAAGG" v9 1510R)
            '''  
@@ -19,19 +19,17 @@ def main(argv):
     verbose    = False
     min_refhvr_cut_len = 50
     f_primer   = "TTGTACACACCGCCC"
-    r_primer   = "GTAGGTGAACCTGC.GAAGG"
+    r_primer   = "GTAGGTGAACCTGC.GAAGG"    
     
     try:
-      opts, args = getopt.getopt(argv, "hvli:o:f:r:", ["ifile=", "ofile=", "f_primer=", "r_primer="])
-      # print "opts = %s, args = %s" % (opts, args)
+      opts, args = getopt.getopt(argv, "hvi:o:f:r:l:", ["ifile=", "ofile=", "f_primer=", "r_primer=", "len="])
+      print "opts = %s, args = %s" % (opts, args)
     except getopt.GetoptError:
       sys.exit(2)
       
     for opt, arg in opts:
       if opt == "-v":
         verbose = True
-      elif opt == '-l':
-        min_refhvr_cut_len = 0
       elif opt == '-h':
         usage()
         sys.exit()
@@ -43,8 +41,10 @@ def main(argv):
         f_primer = arg
       elif opt in ("-r", "--r_primer"):
         r_primer = arg
+      elif opt in ("-l", "--len"):
+        min_refhvr_cut_len = arg
               
-    print "min_refhvr_cut_len = %s" % min_refhvr_cut_len
+    # print "min_refhvr_cut_len = %s" % min_refhvr_cut_len
     return (inputfile, outputfile, verbose, min_refhvr_cut_len, f_primer, r_primer)
 
 
@@ -127,6 +127,7 @@ if __name__ == "__main__":
     print 'Output file is "%s"' % outputfile
     print 'Forward primer is "%s"' % f_primer
     print 'Reverse primer is "%s"' % r_primer
+    print 'Minimum cut length is "%s"' % min_refhvr_cut_len
 
     inputfile_content = read_file(inputfile)
     open_outputfile   = open_file_to_write(outputfile)   
