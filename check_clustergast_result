@@ -157,7 +157,7 @@ my $distinct_read_id_from_txt = `cat $dirname/gast_$run_region_name.*.txt | cut 
 print "read_ids in txt: $distinct_read_id_from_txt";
 print "read_ids in gast: $distinct_read_id_from_table\n";
 
-if (($distinct_read_id_from_table = $distinct_read_id_from_txt) && $distinct_read_id_from_table != 0)
+if (($distinct_read_id_from_table == $distinct_read_id_from_txt) && $distinct_read_id_from_table != 0)
 {
   print "\n===== Everything is fine, one can run gast_cleanup now! =====\n\n";
 }
