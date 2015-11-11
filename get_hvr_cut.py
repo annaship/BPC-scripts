@@ -85,7 +85,7 @@ def get_region(sequence, f_primer, r_primer):
   # print hvrsequence_119_1_t
   if (hvrsequence_119_1_t[1] > 0):
     refhvr_cut_t = re.subn(re_r_primer, '', hvrsequence_119_1_t[0])
-    print refhvr_cut_t
+    # print refhvr_cut_t
     if (refhvr_cut_t[1] > 0):
       refhvr_cut = refhvr_cut_t[0]
     else:
