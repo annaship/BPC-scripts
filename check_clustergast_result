@@ -1,0 +1,186 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# check_clustergust_result: checking if all read_ids from .txt are in gast_run_region table
+#
+# Author: Anna Shipunova, ashipunova@mbl.edu
+#
+# Date: 2011-09-21
+#
+# Keywords : if you want seqinfoname to find this, remove the space before the colon 
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Conjbpcdb;
+use File::Temp qw/ tempfile /;
+use Cwd;
+require 'pipeline_subs.pl';
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $scriptHelp = "
+  check_clustergust_result: checking if all read_ids from .txt are in gast_run_region table
+\n";
+
+my $usage = "
+  Usage: check_clustergust_result -r run -reg vregion [-dir gast_directory]
+      ex:  check_clustergust_result -r 20110728 -reg v6v4 -dir '/xraid2-2/g454/gast'
+
+ Options:  
+           -r    run date
+           -reg  is the variable region it was mapped to
+           -dir  gast directory, optional, defalt: '/xraid2-2/g454/gast'
+\n";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+my $verbose = 1;
+
+#Runtime variables
+my $run;
+my $db_name             = "env454";
+my $db_host             = "newbpcdb2";
+# my $log_filename        = "gast_cleanup.log";
+my $vregion             = "";
+# my $outGastTable        = "gast";
+# my $outGastConcatTable  = "gast_concat";
+# my $inGastTable         = "";
+# my $names_filename      = "";
+# my $ignore              = "";
+# my $insert              = "INSERT";  #as opposed to REPLACE
+# my $tmpDir              = "/usr/local/tmp/";
+# my $do_explode          = 1;
+# my $do_copy             = 1;
+# my $do_nonhits          = 1;
+my $sqlImportCmd				= "/usr/local/mysql/bin/mysqlimport";
+my $gast_txt_dir        = '/xraid2-2/g454/gast';
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) 
+{
+	print $scriptHelp;
+	print $usage;
+	exit -1;
+} 
+my $gast_cleanup_cmd = join(" ", $0, @ARGV);
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+	if ($ARGV[0] =~ /-h/) {
+		print $scriptHelp;
+		print $usage;
+		exit 0;
+	} elsif ($ARGV[0] eq "-r" ) {
+		shift @ARGV;
+		$run = shift @ARGV;
+	} elsif ($ARGV[0] eq "-reg") {
+		shift @ARGV;
+		$vregion = shift @ARGV;
+	} elsif ($ARGV[0] eq "-v") {
+		$verbose = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-dir") {
+		shift @ARGV;
+    $gast_txt_dir = shift @ARGV;
+	} elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+        print "\nUnknown commandline flag \"$ARGV[0]\".\n";
+        print $usage;
+        exit -1;
+	}
+}
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+if (! $run) 
+{
+    print "run date required\n";
+    print "$usage\n";
+    exit;
+}
+
+if ( (! $run) && (! $vregion) )
+{
+	print "Incorrect number of arguments.\n";
+	print "$usage\n";
+	exit;
+} 
+
+my $run_region_name = $run . "_" . $vregion;
+
+my $inGastTable = "gast_" . $run_region_name;
+my $logDir = $run_region_name;
+chdir $logDir;  # go into the directory if it is there, otherwise don't worry about it
+
+my $dbh = &db_connect($db_host, $db_name);
+
+#######################################
+#
+# Check the clustergust result
+#
+#######################################
+
+my $distinct_read_id_from_table = &prep_exec_fetch_query($dbh, "SELECT COUNT(distinct read_id) FROM $inGastTable");
+# my $gast_txt_dir = "/xraid2-2/g454/gast";
+# print "gast_txt_dir = $gast_txt_dir\nrun_region_name = $run_region_name\n";
+my $dirname = "$gast_txt_dir/$run_region_name";
+# my $filename = "$dirname/gast_$run_region_name.*.txt";
+# 
+# check if file exists (may be that is the wrong path? Check gast_txt_dir)
+unless (-e $dirname) {
+  print "Directory $dirname Doesn't Exist!\n";
+  exit;
+} 
+
+my $distinct_read_id_from_txt = `cat $dirname/gast_$run_region_name.*.txt | cut -f1 | sort -u | wc -l`;
+print "read_ids in txt: $distinct_read_id_from_txt";
+print "read_ids in gast: $distinct_read_id_from_table\n";
+
+if (($distinct_read_id_from_table = $distinct_read_id_from_txt) && $distinct_read_id_from_table != 0)
+{
+  print "\n===== Everything is fine, one can run gast_cleanup now! =====\n\n";
+}
+else
+{
+  print "Something is wrong. Numbers are different between files and db.\n";
+  print $usage;
+}
+
+if ($distinct_read_id_from_table < $distinct_read_id_from_txt) 
+{
+  do{
+    print "BEFORE: distinct_read_id_from_table\t= $distinct_read_id_from_table\n";
+    print "BEFORE: distinct_read_id_from_txt\t= $distinct_read_id_from_txt\n";
+    my $import_command = "$sqlImportCmd -i -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h $db_host $db_name \$i";
+    my $sysErr = system("for i in gast_$run_region_name.*.txt; do $sqlImportCmd -i -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h $db_host $db_name \$i; done;");
+    if ($sysErr) {warn print "Unable to execute \"$import_command\".  Error:  $sysErr (" . (localtime) . ")\n";}
+    my $distinct_read_id_from_table = &prep_exec_fetch_query($dbh, "SELECT COUNT(distinct read_id) FROM $inGastTable");
+    print "AFTER: distinct_read_id_from_table\t= $distinct_read_id_from_table\n";
+    print "AFTER: distinct_read_id_from_txt\t= $distinct_read_id_from_txt\n";
+  }
+  until ($distinct_read_id_from_table < $distinct_read_id_from_txt)
+}
+
+
+# TODO: remove txt files
