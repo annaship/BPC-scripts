@@ -349,7 +349,7 @@ my $tagtax_table_id_name = $tagtax_table . "_id";
     `taxonomy_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
     `rank_id` tinyint(1) unsigned NOT NULL,
     UNIQUE KEY `read_id` (`read_id`),
-    FOREIGN KEY (`taxonomy_id`) REFERENCES `taxonomy` (`taxonomy_id`),
+    FOREIGN KEY (`taxonomy_id`) REFERENCES $taxonomy_table (`taxonomy_id`),
     FOREIGN KEY (`rank_id`) REFERENCES `rank` (`rank_id`)
   );"
 );
@@ -405,11 +405,11 @@ while(my ($id, $refhvr_id, $distance) = $selectGast_h->fetchrow())
 # load up the reference database
 #
 warn "Loading reference data from $ref_table ...\n";
-my $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join $taxonomy_tbl using(taxonomy_id)";
+my $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join $taxonomy_table using(taxonomy_id)";
 print LOG "1) selectRefs = $selectRefs\n";
 if ($ref_table eq "refssu")
 {
-  $selectRefs = "SELECT accession_id, $tax_field FROM $ref_table join taxonomy using(taxonomy_id)";
+  $selectRefs = "SELECT accession_id, $tax_field FROM $ref_table join $taxonomy_table using(taxonomy_id)";
 }
 print LOG "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
 
@@ -430,7 +430,7 @@ while(my ($refhvr_id, $tax) = $selectRefs_h->fetchrow())
 #
 #######################################
 
-my $taxonomy_id_h = &prep_query($dbh, "SELECT taxonomy_id FROM taxonomy WHERE taxonomy=?");
+my $taxonomy_id_h = &prep_query($dbh, "SELECT taxonomy_id FROM $taxonomy_table WHERE taxonomy=?");
 my $rank_id_h     = &prep_query($dbh, "SELECT rank_id FROM rank WHERE rank=?");
 my $minrank_id_h  = &prep_query($dbh, "SELECT rank_id FROM rank WHERE rank=?");
 
@@ -499,7 +499,7 @@ while (my $line = <NAMES>)
     $taxonomy_id_h->execute($taxon);
     $taxonomy_id = $taxonomy_id_h->fetchrow();
     unless ($taxonomy_id) { #if no such taxonomy, e.g. taxonomy string was truncated, then add it to the db and get an id
-      &prep_exec_query_w_arg($dbh, $taxon, "INSERT IGNORE INTO taxonomy (taxonomy) VALUES (?)");       
+      &prep_exec_query_w_arg($dbh, $taxon, "INSERT IGNORE INTO $taxonomy_table (taxonomy) VALUES (?)");       
       $taxonomy_id_h->execute($taxon);
       $taxonomy_id = $taxonomy_id_h->fetchrow();         
     }
