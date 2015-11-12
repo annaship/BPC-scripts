@@ -26,7 +26,7 @@ sub prep_query()
   my $dbh = shift;
   my $sql = shift || die("Please provide an sql statement");
   my $sql_prep = $dbh->prepare($sql) || die "Unable to prepare query: $sql\nError: " . $dbh->errstr . "\n";
-  print "YYY2: dbh = $dbh; sql = $sql; sql_prep = $sql_prep\n";
+  warn print LOG "YYY2: dbh = $dbh; sql = $sql; sql_prep = $sql_prep\n";
       
 }
 
@@ -127,7 +127,7 @@ sub insert_file_into_table()
   my $log_filename = $args{log_filename};
   
   my $sqlCmd       = "$sqlImportCmd -C -v -L $replace $columns -h $db_host $db_name $out_filename >> $log_filename";
-  print $sqlCmd;
+  warn print LOG "$sqlCmd\n";
   my $sqlErr       = system($sqlCmd);
   if ($sqlErr) { warn print LOG "Unable to execute MySQL statement: $sqlCmd.  Error:  $sqlErr (" . (localtime) . ")\n"; }
   return $sqlErr;

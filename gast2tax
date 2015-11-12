@@ -387,7 +387,7 @@ my %refhvr_taxa;
 warn "Loading GAST hits from $gast_table ...\n";
 my $selectGast = "SELECT $read_id_field, $refhvr_id_field, $distance_field FROM $gast_table";
 
-print $selectGast;
+print LOG "$selectGast\n";
 my $selectGast_h = $dbh->prepare($selectGast) or die "Unable to prepare statement: $selectGast. Error: " . $dbh->errstr . "\n";
 $selectGast_h->execute() || die "Unable to execute SQL statement. ($selectGast)  Error: " . $selectGast_h->errstr . "\n";
 while(my ($id, $refhvr_id, $distance) = $selectGast_h->fetchrow()) 
@@ -433,11 +433,11 @@ while(my ($refhvr_id, $tax) = $selectRefs_h->fetchrow())
 #######################################
 
 my $taxonomy_id_h = &prep_query($dbh, "SELECT taxonomy_id FROM $taxonomy_table WHERE taxonomy=?");
-print "\$taxonomy_id_h = $taxonomy_id_h\n";
+print LOG "\$taxonomy_id_h = \"SELECT taxonomy_id FROM $taxonomy_table WHERE taxonomy=?\"\n";
 my $rank_id_h     = &prep_query($dbh, "SELECT rank_id FROM rank WHERE rank=?");
-print "\$rank_id_h = $rank_id_h\n";
+print LOG  "\$rank_id_h = SELECT rank_id FROM rank WHERE rank=?\n";
 my $minrank_id_h  = &prep_query($dbh, "SELECT rank_id FROM rank WHERE rank=?");
-print "\$minrank_id_h = $minrank_id_h\n";
+print LOG  "\$minrank_id_h = SELECT rank_id FROM rank WHERE rank=?\n";
 
 #######################################
 #
@@ -504,7 +504,7 @@ while (my $line = <NAMES>)
     $taxonomy_id_h->execute($taxon);
     $taxonomy_id = $taxonomy_id_h->fetchrow();
     unless ($taxonomy_id) { #if no such taxonomy, e.g. taxonomy string was truncated, then add it to the db and get an id
-    print "INSERT IGNORE INTO $taxonomy_table (taxonomy) VALUES (?)";
+    print LOG "INSERT IGNORE INTO $taxonomy_table (taxonomy) VALUES (?)";
       &prep_exec_query_w_arg($dbh, $taxon, "INSERT IGNORE INTO $taxonomy_table (taxonomy) VALUES (?)");       
       $taxonomy_id_h->execute($taxon);
       $taxonomy_id = $taxonomy_id_h->fetchrow();         
