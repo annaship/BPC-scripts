@@ -154,8 +154,8 @@ unless (-e $dirname) {
 } 
 
 my $distinct_read_id_from_txt = `cat $dirname/gast_$run_region_name.*.txt | cut -f1 | sort -u | wc -l`;
-print "read_ids in txt: $distinct_read_id_from_txt";
-print "read_ids in gast: $distinct_read_id_from_table\n";
+print "read_ids in $dirname/gast_$run_region_name.*.txt: $distinct_read_id_from_txt";
+print "read_ids in $inGastTable: $distinct_read_id_from_table\n";
 
 if (($distinct_read_id_from_table == $distinct_read_id_from_txt) && $distinct_read_id_from_table != 0)
 {
