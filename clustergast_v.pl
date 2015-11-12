@@ -542,8 +542,10 @@ END_MESSAGE
         
         if ($ignoreterm == 1) {$gapopen = "0E -gapext 0E"}  
         
+        # clustergast.log:From clustergast: $usearch_cmd = vsearch -usearch_global 20071203_v3.unique.fa_688_100 -gapopen 0E -gapext 0E -uc_allhits -strand plus -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/refv3.fa -uc 20071203_v3.uc_688_100.txt -maxaccepts 15 -maxrejects 0 -id 0.7
+        
         my $usearch_cmd = $usearch_exe . " -usearch_global $tmp_fasta_filename -gapopen $gapopen -uc_allhits -strand $strand -db $refhvr_udb_full_name -uc $tmp_usearch_filename -maxaccepts $max_accepts -maxrejects $max_rejects -id $pctid_threshold";
-        print "URA clustergast: \$usearch_cmd = $usearch_cmd\n";
+        print "CCC clustergast: \$usearch_cmd = $usearch_cmd\n";
         print LOG "From clustergast: \$usearch_cmd = $usearch_cmd\n";
         $script_text .= "$usearch_cmd\n\n";
         if ($verbose) {print "$usearch_cmd\n";}
