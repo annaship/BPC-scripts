@@ -52,6 +52,7 @@ my $usage = "
            -no_copy      don't copy the results into the gast and gast_concat tables
            -no_explode   don't explode gast_rundate_source table
            -no_nonhits   don't insert non-hits into gast_rundate_source table
+           -t    tmp dir [default: /usr/local/tmp/]
 
 \n";
 
@@ -128,6 +129,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-ogc") {
 		shift @ARGV;
 		$outGastConcatTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-ogc") {
+		shift @ARGV;
+		$tmpDir = shift @ARGV;
 	} elsif ($ARGV[0] eq "-no_explode") {
 		shift @ARGV;
 		$do_explode = 0; 
