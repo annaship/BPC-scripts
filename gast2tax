@@ -468,15 +468,15 @@ while (my $line = <NAMES>)
   my $distance;
 
   # Create an array of taxonomy objects for all the associated refssu_ids.
-  print LOG "EEE1: \$id = $id; ".'$ref_hits{$id} = '."$ref_hits{$id}, ".'$ref_hits{$id}[0] = '."$ref_hits{$id}[0]\n";
+  # print LOG "EEE1: \$id = $id; ".'$ref_hits{$id} = '."$ref_hits{$id}, ".'$ref_hits{$id}[0] = '."$ref_hits{$id}[0]\n";
   if ( (exists $ref_hits{$id}) && ($ref_hits{$id}[0] ne 0) ) # 0 is a non-hit
   {
     foreach my $ref (@ { $ref_hits{$id} } )
     {
-      print LOG "EEE2: id = $id; ref = $ref\n";
+      # print LOG "EEE2: id = $id; ref = $ref\n";
       foreach my $tax (@ {$refhvr_taxa{$ref} } )
       {
-        print LOG  "EEE3: tax = $tax\n";
+        # print LOG  "EEE3: tax = $tax\n";
   	    push (@taxObjects, Taxonomy->new($tax));
       }
     }
@@ -490,9 +490,9 @@ while (my $line = <NAMES>)
     # }
     # Need to fix this issue in the Taxonomy module, rather than here.
     my $taxon = $taxReturn[0]->taxstring;
-    print LOG "EEE4: taxon = $taxon\n";
+    # print LOG "EEE4: taxon = $taxon\n";
     my $rank  = $taxReturn[0]->depth;
-    print LOG "EEE5: rank = $rank\n";
+    # print LOG "EEE5: rank = $rank\n";
     while ($taxon =~ /;Unassigned$/) {$taxon =~ s/;Unassigned$//;}
     if (! $taxon) {$taxon = "Unknown";}
 
