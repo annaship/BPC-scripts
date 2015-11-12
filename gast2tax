@@ -117,7 +117,7 @@ my $vRegion         = '';
 # my $tagtax_table    = "tagtax_temp";
 my $tagtax_table    = "tagtax";
 my $tax_assignment_table = "tax_assignment";
-my $taxonomy_table  = "taxonomy"
+my $taxonomy_table  = "taxonomy";
 my $ref_table       = '';
 my $noBlast         = "Unknown";
 my $noConsensus     = "Unknown";
@@ -407,11 +407,13 @@ while(my ($id, $refhvr_id, $distance) = $selectGast_h->fetchrow())
 warn "Loading reference data from $ref_table ...\n";
 my $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join $taxonomy_table using(taxonomy_id)";
 print LOG "1) selectRefs = $selectRefs\n";
+print "1) selectRefs = $selectRefs\n";
 if ($ref_table eq "refssu")
 {
   $selectRefs = "SELECT accession_id, $tax_field FROM $ref_table join $taxonomy_table using(taxonomy_id)";
 }
 print LOG "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
+print "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
 
 my $selectRefs_h = $dbh->prepare($selectRefs) or die "Unable to prepare statement: $selectRefs. Error: " . $dbh->errstr . "\n";
 $selectRefs_h->execute() || die "Unable to execute SQL statement. ($selectRefs)  Error: " . $selectRefs_h->errstr . "\n";
@@ -431,8 +433,11 @@ while(my ($refhvr_id, $tax) = $selectRefs_h->fetchrow())
 #######################################
 
 my $taxonomy_id_h = &prep_query($dbh, "SELECT taxonomy_id FROM $taxonomy_table WHERE taxonomy=?");
+print "\$taxonomy_id_h = $taxonomy_id_h\n";
 my $rank_id_h     = &prep_query($dbh, "SELECT rank_id FROM rank WHERE rank=?");
+print "\$rank_id_h = $rank_id_h\n";
 my $minrank_id_h  = &prep_query($dbh, "SELECT rank_id FROM rank WHERE rank=?");
+print "\$minrank_id_h = $minrank_id_h\n";
 
 #######################################
 #
@@ -499,6 +504,7 @@ while (my $line = <NAMES>)
     $taxonomy_id_h->execute($taxon);
     $taxonomy_id = $taxonomy_id_h->fetchrow();
     unless ($taxonomy_id) { #if no such taxonomy, e.g. taxonomy string was truncated, then add it to the db and get an id
+    print "INSERT IGNORE INTO $taxonomy_table (taxonomy) VALUES (?)";
       &prep_exec_query_w_arg($dbh, $taxon, "INSERT IGNORE INTO $taxonomy_table (taxonomy) VALUES (?)");       
       $taxonomy_id_h->execute($taxon);
       $taxonomy_id = $taxonomy_id_h->fetchrow();         
