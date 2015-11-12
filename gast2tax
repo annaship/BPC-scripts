@@ -321,6 +321,11 @@ if (! $ref_table)
     $ref_table = "refhvr_" . $vRegion53; 
 }
 
+if (! $ref_table)
+{
+  $ref_table = "refssu"
+}
+
 
 #######################################
 #
@@ -392,6 +397,13 @@ while(my ($id, $refhvr_id, $distance) = $selectGast_h->fetchrow())
 #
 warn "Loading reference data from $ref_table ...\n";
 my $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join taxonomy using(taxonomy_id)";
+print LOG "1) selectRefs = $selectRefs\n";
+if ($ref_table eq "refssu")
+{
+  $selectRefs = "SELECT accession_id, $tax_field FROM $ref_table join taxonomy using(taxonomy_id)";
+}
+print LOG "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
+
 my $selectRefs_h = $dbh->prepare($selectRefs) or die "Unable to prepare statement: $selectRefs. Error: " . $dbh->errstr . "\n";
 $selectRefs_h->execute() || die "Unable to execute SQL statement. ($selectRefs)  Error: " . $selectRefs_h->errstr . "\n";
 while(my ($refhvr_id, $tax) = $selectRefs_h->fetchrow()) 
