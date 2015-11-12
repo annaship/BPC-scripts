@@ -81,7 +81,7 @@ my $inGastTable					= "";
 my $names_filename			= "";
 my $ignore						  = "IGNORE";
 my $insert						  = "INSERT";  #as opposed to REPLACE
-my $tmpDir						  = "/usr/local/tmp/";
+my $tmp_dir						  = "/usr/local/tmp/";
 my $do_explode					= 1;
 my $do_copy						  = 1;
 my $do_nonhits					= 1;
@@ -112,51 +112,51 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 #		shift @ARGV;
 #		$v6refTable = shift @ARGV;
 	} elsif ($ARGV[0] eq "-r" ) {
-		shift @ARGV;
-		$run = shift @ARGV;
+  		shift @ARGV;
+  		$run = shift @ARGV;
 	} elsif ($ARGV[0] eq "-reg") {
-		shift @ARGV;
-		$vregion = shift @ARGV;
+  		shift @ARGV;
+  		$vregion = shift @ARGV;
 	} elsif ($ARGV[0] eq "-n") {
-		shift @ARGV;
-		$names_filename = shift @ARGV;
+  		shift @ARGV;
+  		$names_filename = shift @ARGV;
 	} elsif ($ARGV[0] eq "-ig") {
-		shift @ARGV;
-		$inGastTable = shift @ARGV;
+  		shift @ARGV;
+  		$inGastTable = shift @ARGV;
 	} elsif ($ARGV[0] eq "-og") {
-		shift @ARGV;
-		$outGastTable = shift @ARGV;
+  		shift @ARGV;
+  		$outGastTable = shift @ARGV;
 	} elsif ($ARGV[0] eq "-ogc") {
-		shift @ARGV;
-		$outGastConcatTable = shift @ARGV;
-	} elsif ($ARGV[0] eq "-ogc") {
-		shift @ARGV;
-		$tmpDir = shift @ARGV;
+  		shift @ARGV;
+  		$outGastConcatTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-t") {
+  		shift @ARGV;
+  		$tmp_dir = shift @ARGV;
 	} elsif ($ARGV[0] eq "-no_explode") {
-		shift @ARGV;
-		$do_explode = 0; 
+    	shift @ARGV;
+    	$do_explode = 0; 
 	} elsif ($ARGV[0] eq "-no_copy") {
-		shift @ARGV;
-		$do_copy = 0; 
+  		shift @ARGV;
+  		$do_copy = 0; 
 	} elsif ($ARGV[0] eq "-no_nonhits") {
-		shift @ARGV;
-		$do_nonhits = 0; 
+	    shift @ARGV;
+	    $do_nonhits = 0; 
 	} elsif ($ARGV[0] eq "-ignore") {
-        shift @ARGV;
-		$ignore = "IGNORE";
+      shift @ARGV;
+      $ignore = "IGNORE";
 	} elsif ($ARGV[0] eq "-replace") {
-        shift @ARGV;
-		$insert = "REPLACE";
+      shift @ARGV;
+      $insert = "REPLACE";
 	} elsif ($ARGV[0] eq "-d") {
-        shift @ARGV;
-		$db_name = shift @ARGV;
+      shift @ARGV;
+  		$db_name = shift @ARGV;
 	} elsif ($ARGV[0] eq "-v") {
-		$verbose = 1;
-		shift @ARGV;
+	    $verbose = 1;
+	    shift @ARGV;
 	} elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
-        print "\nUnknown commandline flag \"$ARGV[0]\".\n";
-        print $usage;
-        exit -1;
+      print "\nUnknown commandline flag \"$ARGV[0]\".\n";
+      print $usage;
+      exit -1;
 	}
 }
 
@@ -246,8 +246,8 @@ if ( ($do_explode) || ($do_nonhits) )
     #
     # Step through the gast records and insert the dupes
     #
-    my $out_filename = $tmpDir . $inGastTable . ".dupes";
-    my $out_filename_nonhits = $tmpDir . $inGastTable . ".nonhits";
+    my $out_filename = $tmp_dir . $inGastTable . ".dupes";
+    my $out_filename_nonhits = $tmp_dir . $inGastTable . ".nonhits";
     open(OUT, ">$out_filename") || die("Unable to write to output file: $out_filename.  Exiting.\n");
     if($verbose) {print LOG "Writing to temp file: $out_filename\n";}
 
