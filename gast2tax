@@ -95,8 +95,11 @@ my $usage = "
            -ref  alternative table with taxonomy references [e.g. refhvr_v6, refhvr_v9, refv6_gen2chip]
            -n    names file [default run_reg.names]
            -m    percent required for a majority consensus [default: 66]
-           -o    output taxonomy table, [default: tagtax]
+           -o    output taxonomy table [default: tagtax]
            -tf   alternative field name for reference taxonomy values [default: taxonomy]
+           -tax_assignment     tax_assignment table name [default: tax_assignment]
+           -taxonomy  taxonomy table name [default: taxonomy]
+           -tmp_dir tmp dir [defaul: /usr/local/tmp/]
 \n";
 
 #######################################
@@ -104,42 +107,40 @@ my $usage = "
 # Definition statements
 #
 #######################################
-my $db_host					= "newbpcdb2";
-my $db_name					= "env454";
+my $db_host         = "newbpcdb2";
+my $db_name         = "env454";
 my $dbh             = &db_connect($db_host, $db_name);
 my $tmp_dir         = "/usr/local/tmp/";
 my $gast_table;
-my $majority				= 66;
-my $vRegion					= '';
+my $majority        = 66;
+my $vRegion         = '';
 # my $tagtax_table    = "tagtax_temp";
-my $tagtax_table		= "tagtax";
+my $tagtax_table    = "tagtax";
 my $tax_assignment_table = "tax_assignment";
-my $ref_table				= '';
-my $noBlast					= "Unknown";
-my $noConsensus			= "Unknown";
-my $noRefTax				= "Unknown";
-my $tax_field				= "taxonomy";
-my $refssu_id_field	= 'refssu_id';
+my $taxonomy_table  = "taxonomy"
+my $ref_table       = '';
+my $noBlast         = "Unknown";
+my $noConsensus     = "Unknown";
+my $noRefTax        = "Unknown";
+my $tax_field       = "taxonomy";
+my $refssu_id_field = 'refssu_id';
 my $refhvr_id_field = 'refhvr_id';
-my $distance_field	= "distance";
-my $read_id_field		= "read_id";
-my $nodes						= 400;
-my $limit						= "";
-my $first_row				= 1;
-my $num_rows				= -1;  #if not reset, do all lines
-my $log_filename		= "gast2tax.log";
+my $distance_field  = "distance";
+my $read_id_field   = "read_id";
+my $nodes           = 400;
+my $limit           = "";
+my $first_row       = 1;
+my $num_rows        = -1;  #if not reset, do all lines
+my $log_filename    = "gast2tax.log";
 my $tagtax_tmp_filename;
 my $tax_assignment_tmp_filename;
-#my $print_to_file						= 0;
+#my $print_to_file            = 0;
 my $selectDistinct;
-#my $index					= '';
-my $replace					= "";
+#my $index          = '';
+my $replace         = "";
 my $taxonomy_id     = "";
 my $rank_id         = ""; 
 my $minrank_id      = "";
-
-
-
 
 
 # if gast distance >= $max_distance then assign to domain only.  Too far to trust
@@ -194,9 +195,15 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-refssu_id") {
 		shift @ARGV;
 		$refssu_id_field = shift @ARGV;
+	} elsif ($ARGV[0] eq "-taxonomy") {
+		shift @ARGV;
+		$taxonomy_table = shift @ARGV;
 	} elsif ($ARGV[0] eq "-o") {
 		shift @ARGV;
 		$tagtax_table = shift @ARGV;
+	} elsif ($ARGV[0] eq "-tax_assignment") {
+		shift @ARGV;
+		$tax_assignment_table = shift @ARGV;
 	} elsif ($ARGV[0] eq "-replace") {
         shift @ARGV;
 		$replace = "-r";
@@ -379,6 +386,8 @@ my %refhvr_taxa;
 #
 warn "Loading GAST hits from $gast_table ...\n";
 my $selectGast = "SELECT $read_id_field, $refhvr_id_field, $distance_field FROM $gast_table";
+
+print $selectGast;
 my $selectGast_h = $dbh->prepare($selectGast) or die "Unable to prepare statement: $selectGast. Error: " . $dbh->errstr . "\n";
 $selectGast_h->execute() || die "Unable to execute SQL statement. ($selectGast)  Error: " . $selectGast_h->errstr . "\n";
 while(my ($id, $refhvr_id, $distance) = $selectGast_h->fetchrow()) 
@@ -396,7 +405,7 @@ while(my ($id, $refhvr_id, $distance) = $selectGast_h->fetchrow())
 # load up the reference database
 #
 warn "Loading reference data from $ref_table ...\n";
-my $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join taxonomy using(taxonomy_id)";
+my $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join $taxonomy_tbl using(taxonomy_id)";
 print LOG "1) selectRefs = $selectRefs\n";
 if ($ref_table eq "refssu")
 {
