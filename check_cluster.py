@@ -43,8 +43,8 @@ class ClusterUtils:
             if (cluster_done):
                 break
       
-        elapsed = (time.time() - start)
-        print "Cluster is done with %s in: %s" % (job_name, elapsed)             
+        elapsed = self.timer(start, time.time())
+        print "Cluster is done with %s process in: %s" % (job_name, elapsed)             
         
     def get_time_now(self):
         """date and hour only!"""
@@ -57,11 +57,19 @@ class ClusterUtils:
 
     def is_local(self):
         print os.uname()[1]
-        dev_comps = ['ashipunova.mbl.edu', "as-macbook.home", "as-macbook.local", "Ashipunova.local", "Annas-MacBook-new.local"]
+        dev_comps = ['ashipunova.mbl.edu', "as-macbook.home", "as-macbook.local", "Ashipunova.local", "Annas-MacBook-new.local", "Annas-MacBook.local"]
         if os.uname()[1] in dev_comps:
             return True
         else:
             return False
+            
+    def timer(self, start, end):
+        hours, rem = divmod(end - start, 3600)
+        minutes, seconds = divmod(rem, 60)
+        return "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
+        
+
+    
 
 if __name__=='__main__':
     myutil = ClusterUtils()
