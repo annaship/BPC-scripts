@@ -8,13 +8,16 @@ def same_n(num0, num1):
     is_same = True
     return is_same
     
-def compare_res():
-  total_trimseq = int(next(in_file))
-  
-  if same_n(num, total_trimseq):
-    all_ok = True
+def compare_res(num0, num1):
+  if same_n(num0, num1):
+    return True
   else:
-    all_ok = False
+    return False
+    
+  # print line.rstrip()
+  # print "num = %s" % num
+  # print "total_trimseq = %s" % total_trimseq
+  # print all_ok
   
     
 with open(filename) as in_file:
@@ -32,39 +35,18 @@ with open(filename) as in_file:
       
     elif line.startswith("total_trimseq"):
       total_trimseq = int(next(in_file))
-      
-      if same_n(num, total_trimseq):
-        all_ok = True
-      else:
-        all_ok = False
-        # print "For %s numbers are equal is %s" % (line.rstrip(), all_ok)
-        
-      # print line.rstrip()
-      # print "num = %s" % num
-      # print "total_trimseq = %s" % total_trimseq
-      # print all_ok
 
-    elif line.startswith("total_gast_200"):
-      total_gast_200 = int(next(in_file))
-      
-      if same_n(total_trimseq, total_gast_200):
-        all_ok = True
-      else:
-        all_ok = False
-        print "For %s numbers are equal is %s" % (line.rstrip(), all_ok)
-      # print line.rstrip()
-      # print "total_trimseq = %s" % total_trimseq
-      # print "total_gast_200 = %s" % total_gast_200
-      
-      # print all_ok
-        
+    elif line.startswith("total_gast_200"):      
+      print "For %s numbers are equal is %s" % (line.rstrip(), compare_res(total_trimseq, int(next(in_file))))
+
     elif line.startswith("total_gast_trimseq"):
+      # compare_res(total_gast_trimseq, total_gast_200)
       total_gast_trimseq = int(next(in_file))
-      if same_n(total_gast_200, total_gast_trimseq):
-        all_ok = True
-      else:
-        all_ok = False
-        print "For %s numbers are equal is %s" % (line.rstrip(), all_ok)
+      # if same_n(total_gast_200, total_gast_trimseq):
+      #   all_ok = True
+      # else:
+      #   all_ok = False
+      #   print "For %s numbers are equal is %s" % (line.rstrip(), all_ok)
       # print line.rstrip()
       # print "total_gast_trimseq = %s" % total_gast_trimseq
       # print "total_gast_200 = %s" % total_gast_200
