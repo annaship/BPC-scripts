@@ -266,6 +266,12 @@ if ( ($do_explode) || ($do_nonhits) )
 
         if ($do_explode) 
         {
+
+#           print out hash of arrays
+          # foreach my $name ( keys %copies ) {
+          #     print "$name: @{ $copies{$name} }\n"
+          # }
+          
             if (! exists $copies{$read})  
             {
                 warn "No names record for read_id $read.  Skipping\n"; 

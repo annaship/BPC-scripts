@@ -409,15 +409,31 @@ while(my ($id, $refhvr_id, $distance) = $selectGast_h->fetchrow())
 # load up the reference database
 #
 warn "Loading reference data from $ref_table ...\n";
-my $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join $taxonomy_table using(taxonomy_id)";
-print LOG "1) selectRefs = $selectRefs\n";
-print "1) selectRefs = $selectRefs\n";
+my $selectRefs = "";
 if ($ref_table eq "refssu")
 {
   $selectRefs = "SELECT accession_id, $tax_field FROM $ref_table join $taxonomy_table using(taxonomy_id)";
+  print LOG "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
+  print "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
 }
-print LOG "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
-print "2) ref_table = $ref_table; selectRefs = $selectRefs\n";
+elsif ($ref_table eq "refssu_119_ok")
+{
+  $selectRefs = "SELECT refssu_name, taxonomy
+       FROM refssu_119_ok
+       JOIN refssu_name_119 USING(refssu_name_id)
+       JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id)
+       JOIN taxonomy_119 ON (taxonomy_id = clean_taxonomy_id)
+       WHERE deleted=0
+  ";
+  print LOG "3) ref_table = $ref_table; selectRefs = $selectRefs\n";
+  print "3) ref_table = $ref_table; selectRefs = $selectRefs\n";
+}
+else
+{
+  $selectRefs = "SELECT $refhvr_id_field, $tax_field FROM $ref_table join $taxonomy_table using(taxonomy_id)";
+  print LOG "1) selectRefs = $selectRefs\n";
+  print "1) selectRefs = $selectRefs\n";
+}
 
 my $selectRefs_h = $dbh->prepare($selectRefs) or die "Unable to prepare statement: $selectRefs. Error: " . $dbh->errstr . "\n";
 $selectRefs_h->execute() || die "Unable to execute SQL statement. ($selectRefs)  Error: " . $selectRefs_h->errstr . "\n";
