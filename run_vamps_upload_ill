@@ -62,3 +62,4 @@ grep -in --color "ERROR" vamps_upload.log
 # grep -in --color "failed" vamps_upload.log
 echo "=========================="
 echo "Manually: Repeat any mysqlimport failed lines if any. Take care of foreign key errors."
+echo "NO! rename norm tansfer tables not done. Do that and run_vamps_upload_transfer after. Check. Then run_vamps_upload_ill, check. Then run_vamps_upload_ill_add"
