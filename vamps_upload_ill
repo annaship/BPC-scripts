@@ -758,48 +758,6 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       $from_here += $chunk_size_seqs;
     }
 
-    # sub insert_chunk()
-    # {
-    #   my $insert_select_chunck_seq = "INSERT INTO vamps_sequences_transfer_temp (sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, seq_count, distance, rep_id, dataset_count)
-    #           SELECT sequence_comp, project, dataset, taxonomy, refhvr_ids, rank, sum(seq_count) AS seq_count,
-    #                 gast_distance AS distance, sequence_pdr_info_ill_id AS rep_id, dataset_count
-    #                 FROM sequence_ill
-    #                 JOIN sequence_pdr_info_ill USING(sequence_ill_id)
-    #                 JOIN run_info_ill USING(run_info_ill_id)
-    #                 JOIN sequence_uniq_info_ill USING(sequence_ill_id)
-    #                 JOIN taxonomy USING(taxonomy_id)
-    #                 JOIN rank USING(rank_id)
-    #                 JOIN vamps_projects_datasets USING(project_id, dataset_id)
-    #                 JOIN (
-    #                     SELECT sequence_pdr_info_ill_id FROM sequence_pdr_info_ill 
-    #                       JOIN run_info_ill USING(run_info_ill_id)
-    #                       JOIN (
-    #                         SELECT DISTINCT project_id FROM vamps_projects_datasets ORDER BY project_id
-    #                         LIMIT $from_here, $chunk_size_seqs
-    #                         ) AS t USING(project_id)          
-    #                     ) AS t USING(sequence_pdr_info_ill_id)              
-    #               GROUP BY sequence_ill_id, project_id, dataset_id
-    #   ";
-    #   &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-    #   my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
-    #   # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
-    # }
-    
-    # q 6-3a)
-    # 3) update vamps_sequences_transfer table on env454 - add frequencies
-    # my $UPDATE_temp_seq = 
-    # "UPDATE vamps_sequences_transfer_temp
-    # SET frequency = vamps_sequences_transfer_temp.seq_count / dataset_count
-    # ";
-
-    # JOIN vamps_projects_datasets USING(project, dataset)
-          
-    # &print_query_out("q 6-3a) UPDATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
-    # my $start_time = time;
-    # ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
-    # my $end_time   = time;
-    # print "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
-    # print LOG "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
 
     # q 6-3b)
     # 3) alter vamps_sequences_transfer table on env454 - add keys; used for taxonomy, see next section
