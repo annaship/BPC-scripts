@@ -20,7 +20,7 @@
   INFILE=`sed -n "${SGE_TASK_ID}p" $LISTFILE`
   # file_list=(TAGCTT_NNNNGTATC_1.ini... CGATGT_NNNNCTAGC_1.ini)
   
-  echo "file name is $INFILE" &> clust_gast_ill.log
+  echo "file name is $INFILE"
   
   # i=$(expr $SGE_TASK_ID - 1)
 #   echo "i = $i"
@@ -32,4 +32,4 @@
   # echo "clust_gast_ill ${file_list[$i]}"
   # clust_gast_ill ${file_list[$i]}
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out ${PWD}/$INFILE.gast" &>> clust_gast_ill.log
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out ${PWD}/$INFILE.gast"
