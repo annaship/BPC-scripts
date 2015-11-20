@@ -4,13 +4,11 @@ gunzip *MERGED-MAX-MISMATCH-3.unique.nonchimeric.fa.gz
 ls *MERGED-MAX-MISMATCH-3.unique.nonchimeric.fa >nonchimeric_files.list
 FILE_NUMBER=`wc -l < nonchimeric_files.list`
 echo "total files = $FILE_NUMBER"
-DIRECTORY_NAME="DIRECTORY_NAME"
-# basename `pwd`
+DIRECTORY_NAME=`pwd | sed 's,^/xraid2-2/g454/run_new_pipeline/illumina/\(.*\)/\(lane_1_[^/]*\)/.*,\1_\2,g'`
 echo "DIRECTORY_NAME = $DIRECTORY_NAME"
 NAME_PAT="*.unique.nonchimeric.fa"
 UDB_NAME="refv4v5"
 ITS_OPTION=""
-
 
 cat >clust_gast_ill_$DIRECTORY_NAME.sh <<InputComesFromHERE
 #!/bin/bash
