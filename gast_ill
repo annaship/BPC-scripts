@@ -86,6 +86,7 @@ my $usage = "
            -nodup  instead of uniquing sequences with mothur just make a copy of existing file with .unique.fa
            -full   input data will be compared against full length 16S reference sequences [default: not full length]
            -threads number of threads to use, zero for all cores (0) [default: 4]
+           -uc      uclust_filename [default: 'input fasta file'.uc]
 
       Optional database output
            -host   mysql server host name
@@ -125,6 +126,7 @@ my $min_pctid   = 0.80;
 my $max_accepts = 15;
 my $max_rejects = 0;
 my $threads     = 4;
+my $uclust_filename = "";
 
 # Parse USearch output file variables
 my $max_gap = 10;
@@ -182,6 +184,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-maj") {
 		shift @ARGV;
 		$majority = shift @ARGV;
+	} elsif ($ARGV[0] eq "-uc") {
+		shift @ARGV;
+		$uclust_filename = shift @ARGV;    
 	} elsif ($ARGV[0] eq "-full") {
 		shift @ARGV;
 		$use_full_length = 1;
@@ -289,7 +294,11 @@ $file_prefix =~ s/(^.*)\..*$/$1/;
 $file_suffix =~ s/^.*\.//;
 my $uniques_filename = $file_prefix . ".unique." . $file_suffix;
 my $names_filename = $file_prefix . ".names";
-my $uclust_filename = $uniques_filename . ".uc";
+
+if (! $uclust_filename) 
+{
+  $uclust_filename = $uniques_filename . ".uc";
+}
 
 #######################################
 #

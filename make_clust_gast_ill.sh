@@ -34,11 +34,16 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
 #$ -t 1-$FILE_NUMBER
 # Now the script will iterate $FILE_NUMBER times.
 
+  . /xraid/bioware/Modules/etc/profile.modules
+  module load bioware
+
   LISTFILE=./nonchimeric_files.list
   INFILE=\`sed -n "\${SGE_TASK_ID}p" \$LISTFILE\`
   echo "file name is \$INFILE"
 
   echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/gast_silva119/\$INFILE.gast -uc $DIRECTORY_NAME/gast_silva119/\$INFILE.uc"
+
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/gast_silva119/\$INFILE.gast -uc $DIRECTORY_NAME/gast_silva119/\$INFILE.uc
 
 InputComesFromHERE
 
