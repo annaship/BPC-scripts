@@ -36,8 +36,8 @@ my $usage = <<ENDOFUSAGE;
     -m email_address   sends an email when the job is completed
     -log log_file      sends standard out of the job to log_file
     -q	queue_name     submits the job to run on a specific queue.
-    -inherit           Inherits the environment variables from the current environment
-                       This allows you to set up a custom environment using 'module 
+    -noinherit         Prohibits inheriting the environment variables from the current environment.
+                       Inheritance allows you to set up a custom environment using 'module 
                        load' and 'module unload' commands, and submitted jobs will 
                        inherit those variables. For more information, see the "-V" 
                        argument in submit(1) (aka man qsub) 
@@ -45,6 +45,10 @@ my $usage = <<ENDOFUSAGE;
                        environment).
      -p                Parallel environment to use, defaults to "allslots" if -n 
                        specified
+     
+     Unusual Options:
+     -d                Run in "debug" mode, don't clean up generated files after the run.
+     -nosub            Generate but don't actually submit anything.
 
     ex:  clusterize -m me\@mbl.edu -log align.log align2first -a -s -n 5.75,2.75 in.fa out.fa                        
        
@@ -71,9 +75,10 @@ my $logFile = "clusterize.log";
 my $pe      = "allslots"; # the parallel environment.
 my $queue = ""; # if the user wants the job to run on a specific queue.
 my $email;
-my $inherit = 0; # flags whether job should inherit all env vars from qsub (see man qsub "-V" argument)
-my $nosub = 0; # specifies whether or not we should submit the job to sge, handy for testing.
+my $noinherit = 0; # corresponds to -noinherit; see usage statement for description
+my $nosub = 0; # corresponds to -nosub; see usage statement for description
 my $slots = 0; # default number of slots to use
+my $debug = 0; # corresponds to -d; See usage statement for description.
 
 #######################################
 #
@@ -100,14 +105,22 @@ while ( ( scalar @ARGV > 0 ) && ( $ARGV[0] =~ /^-/ ) )
   shift @ARGV;
   $email = shift @ARGV;
  }
- elsif ( $ARGV[0] eq "-inherit") {
+ elsif ( $ARGV[0] eq "-noinherit") {
 	shift @ARGV;
-  $inherit = 1;
+  $noinherit = 1;
+ }
+ elsif ( $ARGV[0] eq "-inherit") {
+  print_deprecated_pe_warning($ARGV[0]);
+  shift @ARGV;
  }
  elsif ( $ARGV[0] eq "-nosub") {
   shift @ARGV;
   $nosub = 1;
  }
+ elsif ( $ARGV[0] eq "-d") {
+  shift @ARGV;
+  $debug = 1;
+ } 
  elsif ( $ARGV[0] eq "-q") {
   shift @ARGV;
   $queue = "-q " . shift @ARGV;
@@ -212,8 +225,9 @@ print $script_fh '#!/bin/bash
 #$ -e ' . $logFile . '
 #$ -N ' . $name . '
 #$ -cwd
-#$ -V
 ';
+# DON'T ADD -V HERE AS A HANDY DEFAULT. THERE IS AN OPTION FOR IT AND
+# A CONDITIONAL BLOCK THAT HANDLES THE OPTION.
 
 # Configure for Parallel Environment and Slots...
 if ($slots ne 0) {
@@ -228,14 +242,17 @@ if ($email) {
  print $script_fh "#\$ -M $email\n";
 }
 
-if ( ! $inherit) {
+if (! $noinherit) {
  print $script_fh "#\$ -V\n";
 }
 
 print $script_fh "hostname;\n";
 print $script_fh $command . "\n";
 print $script_fh "chmod 666 $logFile\n";
-print $script_fh "/bin/rm -f $scriptFilename\n";
+if (! $debug) {
+	print $script_fh "/bin/rm -f $scriptFilename\n";
+
+}
 
 #######################################
 #
@@ -255,13 +272,12 @@ if ($nosub)
 ############################# Subroutine definitions ############################# 
 ##################################################################################
 sub print_deprecated_pe_warning {
- my ($ARG) = $_;
+ my($ARG) = @_;
  print <<EOF
   
-   WARNING: You have specified a deprecated method for specifying
-   the parallel execution environment: \"$ARG\". Please be sure to use the current
-   arguments for specifying the parallel environment.
-   
+   WARNING: You have specified a deprecated argument \"$ARG\". 
+   Please check the usage statement and update your arguments as necessary.
+ 
 EOF
 }
 ###################################################################################
