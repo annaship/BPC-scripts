@@ -1,0 +1,314 @@
+#!/usr/bin/env perl
+#
+# clusterize: submit the arguments as a job to the cluster
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Wed Nov 29 09:24:42 EST 2006
+#
+# Keywords: cluster
+#
+# Assumptions:
+#
+# Revisions:
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use File::Temp qw/ tempfile /;
+use File::Basename;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $scriptHelp = "
+ clusterize - submits the commandline arguments as a job to the cluster.
+              You must be logged onto the cluster for this to work.
+\n";
+
+my $usage = <<ENDOFUSAGE;  
+  
+  Usage:  clusterize program_name program_args...
+  Options:  
+    -m email_address   sends an email when the job is completed
+    -log log_file      sends standard out of the job to log_file
+    -q	queue_name     submits the job to run on a specific queue.
+    -noinherit         Prohibits inheriting the environment variables from the current environment.
+                       Inheritance allows you to set up a custom environment using 'module 
+                       load' and 'module unload' commands, and submitted jobs will 
+                       inherit those variables. For more information, see the "-V" 
+                       argument in submit(1) (aka man qsub) 
+     -n                Number of queue slots to use (required if specifying a parallel 
+                       environment).
+     -p                Parallel environment to use, defaults to "allslots" if -n 
+                       specified
+     
+     Unusual Options:
+     -d                Run in "debug" mode, don't clean up generated files after the run.
+     -nosub            Generate but don't actually submit anything.
+
+    ex:  clusterize -m me\@mbl.edu -log align.log align2first -a -s -n 5.75,2.75 in.fa out.fa                        
+       
+	NOTE:  if you are clusterizing a command with quoted parameters, escape them with the "\\" key.
+	e.g., clusterize db2fasta -o EFS20090608_old.fa -sql \\"select read_id, sequence from trimseq_test 
+	as t where run=20090625 and project=\\'BPC_RARE_Bv6\\' and dataset=\\'EFS20090608\\' and 
+	deleted=0\\"
+	
+	if you are clusterizing within a shell-script, you may need to escape other characters too.
+	clusterize mothur \\"\\#unique.seqs\\(fasta=JPA20090608_old.fa\\)\\"
+	
+	if you are using clusterize with a command that sends data to stdout (uses ">"),
+	you will need to wrap the command in quotes to be sure the ">" is passed not interpreted.
+	clusterize "distmatrix2col oldfile.dist > newfile.dist"
+      
+ENDOFUSAGE
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+my $logFile = "clusterize.log";
+my $pe      = "allslots"; # the parallel environment.
+my $queue = ""; # if the user wants the job to run on a specific queue.
+my $email;
+my $noinherit = 0; # corresponds to -noinherit; see usage statement for description
+my $nosub = 0; # corresponds to -nosub; see usage statement for description
+my $slots = 0; # default number of slots to use
+my $debug = 0; # corresponds to -d; See usage statement for description.
+my $input_files_list = "test.temp";
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if ( !$ARGV[0] ) {
+ print $scriptHelp;
+ print $usage;
+ exit -1;
+}
+
+# to carry STDOUT, command must be in quotes,
+# if the command has spaces split it up
+if ( (scalar @ARGV == 1) && ($ARGV[0] =~ /\s+/) )
+{
+	 @ARGV = split(/\s+/, $ARGV[0]);
+}
+
+while ( ( scalar @ARGV > 0 ) && ( $ARGV[0] =~ /^-/ ) )
+{
+ if ( $ARGV[0] eq "-m" ) {
+  shift @ARGV;
+  $email = shift @ARGV;
+ }
+ elsif ( $ARGV[0] eq "-noinherit") {
+	shift @ARGV;
+  $noinherit = 1;
+ }
+ elsif ( $ARGV[0] eq "-inherit") {
+  print_deprecated_pe_warning($ARGV[0]);
+  shift @ARGV;
+ }
+ elsif ( $ARGV[0] eq "-nosub") {
+  shift @ARGV;
+  $nosub = 1;
+ }
+ elsif ( $ARGV[0] eq "-d") {
+  shift @ARGV;
+  $debug = 1;
+ } 
+ elsif ( $ARGV[0] eq "-q") {
+  shift @ARGV;
+  $queue = "-q " . shift @ARGV;
+ }
+ elsif ( $ARGV[0] eq "-pe" ) {
+  shift @ARGV;
+  $pe = shift @ARGV;
+ }
+ elsif ( $ARGV[0] eq "-pe3" ) { # Retain for backward compatibility 20090122 RMF
+  print_deprecated_pe_warning( $ARGV[0] )
+    ;                           # Retain for backward compatibility 20090122 RMF
+  shift @ARGV;                  # Retain for backward compatibility 20090122 RMF
+  $pe = 2;                      # Retain for backward compatibility 20090122 RMF
+ }
+ elsif ( $ARGV[0] eq "-pe5" ) { # Retain for backward compatibility 20090122 RMF
+  print_deprecated_pe_warning( $ARGV[0] )
+    ;                           # Retain for backward compatibility 20090122 RMF
+  shift @ARGV;                  # Retain for backward compatibility 20090122 RMF
+  $pe = 4;                      # Retain for backward compatibility 20090122 RMF
+ }
+ elsif ( $ARGV[0] eq "-log" ) {
+  shift @ARGV;
+  $logFile = shift @ARGV;
+ }
+ elsif ( $ARGV[0] eq "-f" ) {
+  shift @ARGV;
+  $input_files_list = shift @ARGV;
+ }
+ elsif ( $ARGV[0] eq "-n" ) {
+  shift @ARGV;
+  $slots = shift @ARGV;
+ }
+ elsif ( $ARGV[0] eq "-?" ) {
+  print $scriptHelp;
+  print $usage;
+  exit -1;
+ }
+ elsif ( $ARGV[0] eq "-help" ) {
+  print $scriptHelp;
+  print $usage;
+  exit -1;
+ }
+ elsif ( $ARGV[0] eq "--help" ) {
+  print $scriptHelp;
+  print $usage;
+  exit -1;
+ }
+ else {
+    print "Error: Unknown argument: $ARGV[0]\n\n";
+    exit -1;
+  }
+}
+
+print "ARGS: input_files_list = $input_files_list\n";
+
+# Rewrap commandline arguments in quotes, otherwise they get lost 
+# between using the clusterize command and the command submitted to 
+# the cluster
+my $command = "";
+foreach my $a (@ARGV)
+{
+    # if it has a space in the argument, add quotes around it.
+    if ($a =~ /\s+/)
+    {
+        $command .= " \"$a\"";
+    } else {
+        $command .= " $a";
+    }
+}
+#print "$command\n";
+
+# for the -N option in the qsub script
+my $name = $ARGV[0];
+$name =~ s/^.*\///;  #take off the path if it exists
+$name =~ s/^\s+//;   #remove any leading white space
+$name =~ s/\s+.*$//; # take only the first word
+
+#######################################
+#
+# Create the script file
+#
+#######################################
+my $dir = `pwd`;
+chomp $dir;
+my ( $script_fh, $scriptFilename ) = tempfile( SUFFIX => '.sh', DIR => $dir );
+
+if ($logFile eq "clusterize.log") {
+	my ($base, $dir, $ext) = fileparse($scriptFilename, qr/\.[^.]*/);
+	$logFile = "clusterize-" . $base . ".log";
+}
+
+#######################################
+#
+# Create the submit script
+#
+#######################################
+
+print "input_files_list = $input_files_list\n";
+
+my $FILE_NUMBER = &get_file_nambers($input_files_list);
+print "FILE_NUMBER = $FILE_NUMBER\n\n";
+
+# -j y:  whether or not the standard error is merged into standard out
+# -N: name of the job
+# -o: path for stdout
+# -e: path for stderr
+# -cwd: execute from current working directory
+# -pe: waits for an empty node and takes all 4 "slots" at once.
+
+print $script_fh '#!/bin/bash
+#$ -cwd
+#$ -S /bin/bash
+#$ -N ' . $name . '
+# Giving the name of the output log file
+#$ -o ' . $logFile . '
+# Combining output/error messages into one file
+#$ -j y
+#$ -t 1-' . $FILE_NUMBER . '
+# Now the script will iterate ' . $FILE_NUMBER . ' times.
+';
+
+# DON'T ADD -V HERE AS A HANDY DEFAULT. THERE IS AN OPTION FOR IT AND
+# A CONDITIONAL BLOCK THAT HANDLES THE OPTION.
+
+# Configure for Parallel Environment and Slots...
+if ($slots ne 0) {
+	# They have requested a number of slots to use
+	# We must also use a PE...
+	print $script_fh "#\$ -pe $pe $slots\n"; 
+}
+
+# Configure for email at completion or termination
+if ($email) {
+ print $script_fh "# Send mail at job end; -m eas sends on end, abort, suspend.\n";
+ print $script_fh "#\$ -m aes\n";
+ print $script_fh "# Send mail to these users\n";
+ print $script_fh "#\$ -M $email\n";
+}
+
+if (! $noinherit) {
+ print $script_fh "#\$ -V\n";
+}
+
+print $script_fh 'LISTFILE=' . $input_files_list . '
+INFILE=\`sed -n "\${SGE_TASK_ID}p" \$LISTFILE\`\n';
+
+print $script_fh "hostname;\n";
+print $script_fh $command . "\n";
+print $script_fh "chmod 666 $logFile\n";
+if (! $debug) {
+  # print $script_fh "/bin/rm -f $scriptFilename\n";
+
+}
+
+#######################################
+#
+# Submit the script
+#
+#######################################
+if ($nosub) 
+{
+    system("echo $scriptFilename; echo");
+    system("cat $scriptFilename");
+} else {
+    system("echo $scriptFilename >> $logFile");
+    system("qsub $queue $scriptFilename");
+}
+
+##################################################################################
+############################# Subroutine definitions ############################# 
+##################################################################################
+sub print_deprecated_pe_warning {
+ my($ARG) = @_;
+ print <<EOF
+  
+   WARNING: You have specified a deprecated argument \"$ARG\". 
+   Please check the usage statement and update your arguments as necessary.
+ 
+EOF
+}
+###################################################################################
+
+sub get_file_nambers()
+{
+  my $input_files_list = shift || die("Please provide a name of an input_files_list file");
+  open FILE, $input_files_list;
+  @_=<FILE>; 
+  my $file_number = $.;
+  print "\$file_number from get_file_nambers = $file_number\n";
+  return $file_number;
+}
