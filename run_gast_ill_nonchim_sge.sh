@@ -111,11 +111,13 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
 
   /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
-
+  
+  chmod 666 clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
+  
 InputComesFromHERE
 
 echo "Running clust_gast_ill_$RUN_LANE.sh"
 qsub clust_gast_ill_$RUN_LANE.sh
 
-sleep 30
-chmod a+r clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
+# sleep 30
+# chmod a+r clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
