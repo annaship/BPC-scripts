@@ -79,7 +79,7 @@ my $noinherit = 0; # corresponds to -noinherit; see usage statement for descript
 my $nosub = 0; # corresponds to -nosub; see usage statement for description
 my $slots = 0; # default number of slots to use
 my $debug = 0; # corresponds to -d; See usage statement for description.
-my $input_files_list = "test.temp";
+my $input_files_list;
 #######################################
 #
 # Test for commandline arguments
@@ -91,6 +91,19 @@ if ( !$ARGV[0] ) {
  print $usage;
  exit -1;
 }
+
+my $total = $#ARGV + 1;
+
+print '$total = $#ARGV + 1 = ';
+print "$total\n";
+
+my $counter = 1;
+foreach my $a(@ARGV) {
+	print "Arg # $counter : $a\n";
+	$counter++;
+}
+ 
+
 
 # to carry STDOUT, command must be in quotes,
 # if the command has spaces split it up
@@ -145,7 +158,7 @@ while ( ( scalar @ARGV > 0 ) && ( $ARGV[0] =~ /^-/ ) )
   shift @ARGV;
   $logFile = shift @ARGV;
  }
- elsif ( $ARGV[0] eq "-f" ) {
+ elsif ( $ARGV[0] eq "-input_files_list_name" ) {
   shift @ARGV;
   $input_files_list = shift @ARGV;
  }
@@ -174,7 +187,7 @@ while ( ( scalar @ARGV > 0 ) && ( $ARGV[0] =~ /^-/ ) )
   }
 }
 
-print "ARGS: input_files_list = $input_files_list\n";
+# print "ARGS: input_files_list = $input_files_list\n";
 
 # Rewrap commandline arguments in quotes, otherwise they get lost 
 # between using the clusterize command and the command submitted to 
@@ -207,6 +220,8 @@ my $dir = `pwd`;
 chomp $dir;
 my ( $script_fh, $scriptFilename ) = tempfile( SUFFIX => '.sh', DIR => $dir );
 
+print "logFile = $logFile\n";
+
 if ($logFile eq "clusterize.log") {
 	my ($base, $dir, $ext) = fileparse($scriptFilename, qr/\.[^.]*/);
 	$logFile = "clusterize-" . $base . ".log";
@@ -218,7 +233,7 @@ if ($logFile eq "clusterize.log") {
 #
 #######################################
 
-print "input_files_list = $input_files_list\n";
+print "Create the submit script: input_files_list = $input_files_list\n";
 
 my $FILE_NUMBER = &get_file_nambers($input_files_list);
 print "FILE_NUMBER = $FILE_NUMBER\n\n";
@@ -265,7 +280,7 @@ if (! $noinherit) {
 }
 
 print $script_fh 'LISTFILE=' . $input_files_list . '
-INFILE=\`sed -n "\${SGE_TASK_ID}p" \$LISTFILE\`\n';
+INFILE=`sed -n "${SGE_TASK_ID}p" $LISTFILE`\n';
 
 print $script_fh "hostname;\n";
 print $script_fh $command . "\n";
