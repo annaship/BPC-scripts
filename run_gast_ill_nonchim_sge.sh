@@ -6,13 +6,15 @@ USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output direct
 gast_dir="gast_silva119"
 # RUN_LANE="RUN_LANE"
 RUN_LANE=`pwd | sed 's,^/xraid2-2/g454/run_new_pipeline/illumina/\(.*\)/\(lane_1_[^/]*\)/.*,\1_\2,g'`
+threads="0"
 
-add_options='d:s:h'
+add_options='d:s:t:h'
 while getopts $add_options add_option
 do
     case $add_option in
         d  )    gast_dir=$OPTARG;;
         s  )    RUN_LANE=$OPTARG;;
+        t  )    threads=$OPTARG;;
         h  )    echo $USAGE; exit;;
         \? )    if (( (err & ERROPTS) != ERROPTS ))
                 then
@@ -34,7 +36,7 @@ PS3="$prompt "
 ITS_OPTION=""
 echo "gast_dir = $gast_dir"
 echo "RUN_LANE = $RUN_LANE"
-
+echo "threads = $threads"
 
 select opt in "${options[@]}"; do 
 
@@ -102,14 +104,18 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
 
   LISTFILE=./nonchimeric_files.list
   INFILE=\`sed -n "\${SGE_TASK_ID}p" \$LISTFILE\`
+  echo "====="
   echo "file name is \$INFILE"
+  echo
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc"
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
 
-  # /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
 
 InputComesFromHERE
 
-chmod a+x clust_gast_ill_$RUN_LANE.sh 
 echo "Running clust_gast_ill_$RUN_LANE.sh"
-qsub $DIRECTORY_NAME/$gast_dir/clust_gast_ill_$RUN_LANE.sh
+qsub clust_gast_ill_$RUN_LANE.sh
+
+sleep 30
+chmod a+r clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
