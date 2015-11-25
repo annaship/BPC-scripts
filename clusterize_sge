@@ -92,28 +92,37 @@ if ( !$ARGV[0] ) {
  exit -1;
 }
 
-my $total = $#ARGV + 1;
+# my $total = $#ARGV + 1;
+# 
+# print '$total = $#ARGV + 1 = ';
+# print "$total\n";
+# 
+# my $counter = 1;
+# foreach my $a(@ARGV) {
+#   print "Arg # $counter : $a\n";
+#   $counter++;
+# }
+#  
 
-print '$total = $#ARGV + 1 = ';
-print "$total\n";
+print "\$#ARGV = $#ARGV\n";
+print "\$ARGV[0] = $ARGV[0]\n";
 
-my $counter = 1;
-foreach my $a(@ARGV) {
-	print "Arg # $counter : $a\n";
-	$counter++;
-}
- 
+print $0;
 
+my $total_args = $#ARGV;
 
 # to carry STDOUT, command must be in quotes,
 # if the command has spaces split it up
-if ( (scalar @ARGV == 1) && ($ARGV[0] =~ /\s+/) )
+if ( ($total_args == 1) && ($ARGV[0] =~ /\s+/) )
 {
+  print "HERE\n";
 	 @ARGV = split(/\s+/, $ARGV[0]);
 }
 
-while ( ( scalar @ARGV > 0 ) && ( $ARGV[0] =~ /^-/ ) )
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/)) 
 {
+  print "IN\n";
+  
  if ( $ARGV[0] eq "-m" ) {
   shift @ARGV;
   $email = shift @ARGV;
@@ -157,10 +166,12 @@ while ( ( scalar @ARGV > 0 ) && ( $ARGV[0] =~ /^-/ ) )
  elsif ( $ARGV[0] eq "-log" ) {
   shift @ARGV;
   $logFile = shift @ARGV;
+  print "logFile ARG = $logFile\n";
  }
  elsif ( $ARGV[0] eq "-input_files_list_name" ) {
   shift @ARGV;
   $input_files_list = shift @ARGV;
+  print "input_files_list ARG = $input_files_list\n";
  }
  elsif ( $ARGV[0] eq "-n" ) {
   shift @ARGV;
