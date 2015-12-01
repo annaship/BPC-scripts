@@ -73,7 +73,7 @@ echo "NAME_PAT = $NAME_PAT"
 DIRECTORY_NAME=`pwd`
 
 mkdir $gast_dir
-ls *MERGED-MAX-MISMATCH-3.unique.nonchimeric.fa >$gast_dir/nonchimeric_files.list
+ls *$NAME_PAT >$gast_dir/nonchimeric_files.list
 
 cd $gast_dir
 
