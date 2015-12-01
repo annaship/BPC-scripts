@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory] [-r script name]"
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory] [-s script name]"
 
 # args
 gast_dir="gast_silva119"
