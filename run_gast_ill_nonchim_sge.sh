@@ -1,20 +1,32 @@
 #!/bin/bash
+# -vx
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory] [-s script name]"
+function verbose_log () {
+    if [[ $verbosity -eq 1 ]]; then
+        echo "$@"
+    fi
+}
+
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: gast_silva119)] [-s script name] [- path to gast ref files (default: gast_silva119)]"
 
 # args
+# DEFAULT
 gast_dir="gast_silva119"
 # RUN_LANE="RUN_LANE"
 RUN_LANE=`pwd | sed 's,^/xraid2-2/g454/run_new_pipeline/illumina/\(.*\)/\(lane_1_[^/]*\)/.*,\1_\2,g'`
 threads="0"
+gast_db_path="/xraid2-2/g454/blastdbs/gast_distributions"
+verbosity=0
 
-add_options='d:s:t:h'
+add_options='d:s:t:g:vh'
 while getopts $add_options add_option
 do
     case $add_option in
         d  )    gast_dir=$OPTARG;;
         s  )    RUN_LANE=$OPTARG;;
         t  )    threads=$OPTARG;;
+        g  )    gast_db_path=$OPTARG;;
+        v  )    verbosity=1;;
         h  )    echo $USAGE; exit;;
         \? )    if (( (err & ERROPTS) != ERROPTS ))
                 then
@@ -26,6 +38,8 @@ done
 
 shift $(($OPTIND - 1))
 
+printf "%s %d\n" "Verbosity level set to:" "$verbosity"
+
 title="Illumina gast. Run on grendel."
 prompt="Please select a file name pattern:"
 #options=("*.unique.nonchimeric.fa" "*.unique.nonchimeric.fa for Fungi (ITS1)" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaeae" "*MAX-MISMATCH-3.unique")
@@ -34,9 +48,16 @@ options=("*.unique.nonchimeric.fa v4v5" "*.unique.nonchimeric.fa Euk v4" "*.uniq
 echo "$title"
 PS3="$prompt "
 ITS_OPTION=""
-echo "gast_dir = $gast_dir"
-echo "RUN_LANE = $RUN_LANE"
-echo "threads = $threads"
+
+verbose_log "gast_dir = $gast_dir"
+verbose_log "RUN_LANE = $RUN_LANE"
+verbose_log "threads  = $threads"
+verbose_log "gast_db_path = $gast_db_path"
+
+# echo "gast_dir = $gast_dir"
+# echo "RUN_LANE = $RUN_LANE"
+# echo "threads  = $threads"
+# echo "gast_db_path = $gast_db_path"
 
 select opt in "${options[@]}"; do 
 
@@ -64,9 +85,9 @@ select opt in "${options[@]}"; do
 
 done
 
-echo "UDB_NAME = $UDB_NAME.udb"
-echo "ITS_OPTION = $ITS_OPTION"
-echo "NAME_PAT = $NAME_PAT"
+verbose_log "UDB_NAME = $UDB_NAME.udb"
+verbose_log "ITS_OPTION = $ITS_OPTION"
+verbose_log "NAME_PAT = $NAME_PAT"
 
 # gunzip first!
 # gunzip *MERGED-MAX-MISMATCH-3.unique.nonchimeric.fa.gz
@@ -108,9 +129,9 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   echo "file name is \$INFILE"
   echo
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$UDB_NAME.fa -rtax $gast_db_path/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
 
-  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.fa -rtax /workspace/ashipunova/silva/119/regast/gast_distributions_119/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$UDB_NAME.fa -rtax $gast_db_path/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
   
   chmod 666 clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
   
