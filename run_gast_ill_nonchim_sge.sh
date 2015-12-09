@@ -115,8 +115,8 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
 #$ -j y
 # Send mail to these users
 #$ -M ashipunova@mbl.edu
-# Send mail at job end; -m eas sends on end, abort, suspend.
-#$ -m eas
+# Send mail; -m as sends on abort, suspend.
+#$ -m as
 #$ -t 1-$FILE_NUMBER
 # Now the script will iterate $FILE_NUMBER times.
 
