@@ -42,8 +42,8 @@ printf "%s %d\n" "Verbosity level set to:" "$verbosity"
 
 title="Illumina gast. Run on grendel."
 prompt="Please select a file name pattern:"
-#options=("*.unique.nonchimeric.fa" "*.unique.nonchimeric.fa for Fungi (ITS1)" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaeae" "*MAX-MISMATCH-3.unique")
-options=("*.unique.nonchimeric.fa v4v5" "*.unique.nonchimeric.fa Euk v4" "*.unique.nonchimeric.fa Fungi ITS1" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaeae" "*MAX-MISMATCH-3.unique")
+#options=("*.unique.nonchimeric.fa" "*.unique.nonchimeric.fa for Fungi (ITS1)" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaea" "*MAX-MISMATCH-3.unique")
+options=("*.unique.nonchimeric.fa v4v5" "*.unique.nonchimeric.fa v4v5a for Archaea" "*.unique.nonchimeric.fa Euk v4" "*.unique.nonchimeric.fa Fungi ITS1" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaea" "*MAX-MISMATCH-3.unique")
 
 echo "$title"
 PS3="$prompt "
@@ -63,20 +63,22 @@ select opt in "${options[@]}"; do
 
     case "$REPLY" in
 
-#    "*.unique.nonchimeric.fa" )   NAME_PAT=$REPLY; UDB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
-    "*.unique.nonchimeric.fa v4v5" )   NAME_PAT="*.unique.nonchimeric.fa"; UDB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
-    "*.unique.nonchimeric.fa Euk v4" )   NAME_PAT="*.unique.nonchimeric.fa"; UDB_NAME=refv4e; echo "You picked option $REPLY"; break;;
-    "*.unique.nonchimeric.fa Fungi ITS1" )   NAME_PAT="*.unique.nonchimeric.fa"; UDB_NAME=refits1; ITS_OPTION=" -full "; echo "You picked option $REPLY"; break;;
-    "*-PERFECT_reads.fa.unique" ) NAME_PAT=$REPLY; UDB_NAME=refv6;   echo "You picked option $REPLY"; break;;
-    "*-PERFECT_reads.fa.unique for Archaeae" ) NAME_PAT="*-PERFECT_reads.fa.unique"; UDB_NAME=refv6a;   echo "You picked option $REPLY"; break;;
-    "*MAX-MISMATCH-3.unique" ) NAME_PAT=$REPLY; UDB_NAME=refv6long;   echo "You picked option $REPLY"; break;;
+#    "*.unique.nonchimeric.fa" )   NAME_PAT=$REPLY; REF_DB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
+    "*.unique.nonchimeric.fa v4v5" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
+    "*.unique.nonchimeric.fa v4v5a for Archaea" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5a; echo "You picked option $REPLY"; break;;
+    "*.unique.nonchimeric.fa Euk v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4e; echo "You picked option $REPLY"; break;;
+    "*.unique.nonchimeric.fa Fungi ITS1" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refits1; ITS_OPTION=" -full "; echo "You picked option $REPLY"; break;;
+    "*-PERFECT_reads.fa.unique" ) NAME_PAT=$REPLY; REF_DB_NAME=refv6;   echo "You picked option $REPLY"; break;;
+    "*-PERFECT_reads.fa.unique for Archaea" ) NAME_PAT="*-PERFECT_reads.fa.unique"; REF_DB_NAME=refv6a;   echo "You picked option $REPLY"; break;;
+    "*MAX-MISMATCH-3.unique" ) NAME_PAT=$REPLY; REF_DB_NAME=refv6long;   echo "You picked option $REPLY"; break;;
 
-    1 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refv4v5; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
-    2 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refv4e; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
-    3 ) NAME_PAT="*.unique.nonchimeric.fa";        UDB_NAME=refits1; ITS_OPTION=" -full "; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
-    4 ) NAME_PAT=${options[3]};                    UDB_NAME=refv6; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
-    5 ) NAME_PAT="*-PERFECT_reads.fa.unique";      UDB_NAME=refv6a; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
-    6 ) NAME_PAT=${options[5]};                    UDB_NAME=refv6long; echo "You picked option $REPLY, ref file $UDB_NAME"; break;;
+    1 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    2 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    3 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4e; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    4 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refits1; ITS_OPTION=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    5 ) NAME_PAT=${options[3]};                    REF_DB_NAME=refv6; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    6 ) NAME_PAT="*-PERFECT_reads.fa.unique";      REF_DB_NAME=refv6a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    7 ) NAME_PAT=${options[5]};                    REF_DB_NAME=refv6long; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
 
     # $(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;
     *) echo "Invalid option. Try another one."; continue;;
@@ -85,7 +87,7 @@ select opt in "${options[@]}"; do
 
 done
 
-verbose_log "UDB_NAME = $UDB_NAME.udb"
+verbose_log "REF_DB_NAME = $REF_DB_NAME.udb"
 verbose_log "ITS_OPTION = $ITS_OPTION"
 verbose_log "NAME_PAT = $NAME_PAT"
 
@@ -101,7 +103,7 @@ cd $gast_dir
 FILE_NUMBER=`wc -l < nonchimeric_files.list`
 echo "total files = $FILE_NUMBER"
 # NAME_PAT="*.unique.nonchimeric.fa"
-# UDB_NAME="refv4v5"
+# REF_DB_NAME="refv4v5"
 # ITS_OPTION=""
 
 cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
@@ -129,9 +131,9 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   echo "file name is \$INFILE"
   echo
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$UDB_NAME.fa -rtax $gast_db_path/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
 
-  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$UDB_NAME.fa -rtax $gast_db_path/$UDB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $ITS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
   
   chmod 666 clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
   
