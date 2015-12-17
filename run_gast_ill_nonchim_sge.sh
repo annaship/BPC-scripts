@@ -86,7 +86,7 @@ select opt in "${options[@]}"; do
 
 done
 
-verbose_log "REF_DB_NAME = $REF_DB_NAME.udb"
+verbose_log "REF_DB_NAME = $REF_DB_NAME.fa"
 verbose_log "FULL_OPTION = $FULL_OPTION"
 verbose_log "NAME_PAT = $NAME_PAT"
 
