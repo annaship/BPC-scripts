@@ -48,6 +48,8 @@ def count_ratio(ref_num, denovo_num):
 def get_fa_lines_count(file_name):
     # return fa.SequenceSource(file_name, lazy_init = False).total_seq
     try:
+        #print "\nTTT file_name: %s" % (file_name)
+      
         file_open = open(file_name)
         return len([l for l in file_open.readlines() if l.startswith('>')])
     except IOError, e:
@@ -84,13 +86,19 @@ def remove_size(str):
 def frequency_count(chimeric_file_name):
     frequencies = []
     try:
-	#print "HHH chimeric_file_name = %s" % chimeric_file_name
+        #print "HHH chimeric_file_name = %s" % chimeric_file_name
+        for line in open(chimeric_file_name).readlines():
+          if line.startswith('>'):
+            freq111 = line.split("|")[-1].rstrip().split(":")[-1]
+            if int(remove_size(freq111)) > 1000:
+              print "LLL line w freq: %s\n freq111 = %s" % (line, freq111)
+        
         [frequencies.append(line.split("|")[-1].rstrip().split(":")[-1]) for line in open(chimeric_file_name).readlines() if line.startswith('>')]
         freq_dict = uniq_count(frequencies)
         #print "FFF frequencies = %s" % frequencies
-	#for key, val in freq_dict.iteritems():
-	#	print "freq_dict.iteritems: key = %s, val = %s" % (key, val)
-        #        print "DDD freq_dict.iteritems: remove_size(key) = %s, val = %s" % (remove_size(key), val)
+        #for key, val in freq_dict.iteritems():
+            # print "freq_dict.iteritems: key = %s, val = %s" % (key, val)
+            #print "DDD freq_dict.iteritems: remove_size(key) = %s, val = %s" % (remove_size(key), val)
         sorted_freq = (sorted((int(remove_size(key)), val) for key, val in freq_dict.iteritems())) 
         return sorted_freq   
     except:
@@ -103,19 +111,19 @@ def print_put(file_basename, all_lines, ref_lines, denovo_lines, ratio, percent_
 
     print file_basename
     # print "all_lines_file_name = %s, ref_lines_file_name = %s, denovo_lines_file_name = %s" % (all_lines_file_name, ref_lines_file_name, denovo_lines_file_name)
-    print "all_lines = %s, Chimeric ref = %s, Chimeric denovo = %s" % (all_lines, ref_lines, denovo_lines)
+    print "all_lines = %s, ref_lines = %s, denovo_lines = %s" % (all_lines, ref_lines, denovo_lines)
     print "ratio = %s" % ratio 
-    print "percent ref = %s, percent denovo = %s" % (percent_ref, percent_denovo)
+    print "percent_ref = %s, percent_denovo = %s" % (percent_ref, percent_denovo)
 
     # --- print frequencies ----
     print "Frequencies for ref: "
-    print "%-10s:  %s" % ("Seq frequency", "Chimeras found")
+    print "%-10s:  %s" % ("Frequency", "Chimeras found")
 
     for tup in freq_ref:
         print "%-10s: %s" % (tup[0], tup[1])
 
     print "Frequencies for denovo: "
-    print "%-10s:  %s" % ("Seq frequency", "Chimeras found")
+    print "%-10s:  %s" % ("Frequency", "Chimeras found")
     # print freq_denovo
     for tup in freq_denovo:
         print "%-10s: %s" % (tup[0], tup[1])
@@ -145,6 +153,9 @@ for file_basename in filenames:
     freq_ref               = frequency_count(ref_lines_file_name)
     
     all_lines      = int(wccount(all_lines_file_name) or 0)
+    #print "\n AAA1 all_lines: %s" % (all_lines)
+    #print "\n all_lines_file_name: %s" % (all_lines_file_name)
+
     ref_lines      = int(get_fa_lines_count(ref_lines_file_name) or 0)
     denovo_lines   = int(get_fa_lines_count(denovo_lines_file_name) or 0)
     percent_ref    = percent_count(all_lines, ref_lines)
