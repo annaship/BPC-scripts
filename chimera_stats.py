@@ -87,11 +87,11 @@ def frequency_count(chimeric_file_name):
     frequencies = []
     try:
         #print "HHH chimeric_file_name = %s" % chimeric_file_name
-        for line in open(chimeric_file_name).readlines():
-          if line.startswith('>'):
-            freq111 = line.split("|")[-1].rstrip().split(":")[-1]
-            if int(remove_size(freq111)) > 1000:
-              print "LLL line w freq: %s\n freq111 = %s" % (line, freq111)
+        # for line in open(chimeric_file_name).readlines():
+        #   if line.startswith('>'):
+        #     freq111 = line.split("|")[-1].rstrip().split(":")[-1]
+        #     if int(remove_size(freq111)) > 1000:
+        #       print "LLL line w freq: %s\n freq111 = %s" % (line, freq111)
         
         [frequencies.append(line.split("|")[-1].rstrip().split(":")[-1]) for line in open(chimeric_file_name).readlines() if line.startswith('>')]
         freq_dict = uniq_count(frequencies)
