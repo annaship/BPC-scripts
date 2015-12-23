@@ -125,7 +125,7 @@ my $usearch_cmd = "vsearch";
 my $min_pctid   = 0.80;
 my $max_accepts = 15;
 my $max_rejects = 0;
-my $threads     = 4;
+my $threads     = 0;
 my $uclust_filename = "";
 
 # Parse USearch output file variables
@@ -275,7 +275,7 @@ if ( ($udb_filename) && (! -f $udb_filename) )
 # Create all the necessary file names
 #
 #######################################
-open(LOG, ">$log_filename") || die("Unable to write to output log file: $log_filename.  Exiting.\n");
+open(LOG, ">>$log_filename") || die("Unable to write to output log file: $log_filename.  Exiting.\n");
 print LOG "$self_cmd (" . (localtime) . ")\n";
 
 # if no outfilename, then writing to database, create tmp file to store the data
