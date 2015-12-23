@@ -7,13 +7,14 @@ function verbose_log () {
     fi
 }
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: gast_silva119)] [-s script name] [- path to gast ref files (default: gast_silva119)]"
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-h this statement]"
 
 # args
 # DEFAULT
-gast_dir="gast_silva119"
+gast_dir="../gast"
 # RUN_LANE="RUN_LANE"
-RUN_LANE=`pwd | sed 's,^/xraid2-2/g454/run_new_pipeline/illumina/\(.*\)/\(lane_1_[^/]*\)/.*,\1_\2,g'`
+RUN_LANE=`pwd | sed 's,^/xraid2-2/g454/run_new_pipeline/illumina/\(.*\)/\(lane_1_[^/]*\)/.*,\1_\2,g' | sed 's#/#_#g'`
+
 threads="0"
 gast_db_path="/xraid2-2/g454/blastdbs/gast_distributions"
 verbosity=0
