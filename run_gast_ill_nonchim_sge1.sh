@@ -7,7 +7,7 @@ function verbose_log () {
     fi
 }
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: gast_silva119)] [-s script name] [- path to gast ref files (default: gast_silva119)]"
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-h this statement]"
 
 # args
 # DEFAULT
@@ -48,7 +48,7 @@ echo "$title"
 PS3="$prompt "
 FULL_OPTION=""
 
-verbose_log "gast_dir = $gast_dir"
+verbose_log "gast_dir = ../$gast_dir"
 verbose_log "RUN_LANE = $RUN_LANE"
 verbose_log "threads  = $threads"
 verbose_log "gast_db_path = $gast_db_path"
