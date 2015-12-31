@@ -7,7 +7,7 @@ function verbose_log () {
     fi
 }
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-h this statement]"
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: analysis/gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-h this statement]"
 
 # args
 # DEFAULT
@@ -54,16 +54,10 @@ verbose_log "RUN_LANE = $RUN_LANE"
 verbose_log "threads  = $threads"
 verbose_log "gast_db_path = $gast_db_path"
 
-# echo "gast_dir = $gast_dir"
-# echo "RUN_LANE = $RUN_LANE"
-# echo "threads  = $threads"
-# echo "gast_db_path = $gast_db_path"
-
 select opt in "${options[@]}"; do 
 
     case "$REPLY" in
 
-#    "*.unique.nonchimeric.fa" )   NAME_PAT=$REPLY; REF_DB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa v4v5" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa v4v5a for Archaea" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5a; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa Euk v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4e; echo "You picked option $REPLY"; break;;
@@ -96,15 +90,12 @@ verbose_log "NAME_PAT = $NAME_PAT"
 DIRECTORY_NAME=`pwd`
 
 mkdir $gast_dir
-ls *$NAME_PAT >$gast_dir/nonchimeric_files.list
+ls *$NAME_PAT >$gast_dir/filenames.list
 
 cd $gast_dir
 
-FILE_NUMBER=`wc -l < nonchimeric_files.list`
+FILE_NUMBER=`wc -l < filenames.list`
 echo "total files = $FILE_NUMBER"
-# NAME_PAT="*.unique.nonchimeric.fa"
-# REF_DB_NAME="refv4v5"
-# FULL_OPTION=""
 
 cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
 #!/bin/bash
@@ -125,7 +116,7 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   . /xraid/bioware/Modules/etc/profile.modules
   module load bioware
 
-  LISTFILE=./nonchimeric_files.list
+  LISTFILE=./filenames.list
   INFILE=\`sed -n "\${SGE_TASK_ID}p" \$LISTFILE\`
   echo "====="
   echo "file name is \$INFILE"
@@ -141,6 +132,3 @@ InputComesFromHERE
 
 echo "Running clust_gast_ill_$RUN_LANE.sh"
 qsub clust_gast_ill_$RUN_LANE.sh
-
-# sleep 30
-# chmod a+r clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
