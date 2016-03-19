@@ -90,7 +90,7 @@ verbose_log "NAME_PAT = $NAME_PAT"
 DIRECTORY_NAME=`pwd`
 
 mkdir $gast_dir
-ls *$NAME_PAT >$gast_dir/filenames.list
+ls $NAME_PAT >$gast_dir/filenames.list
 
 cd $gast_dir
 
