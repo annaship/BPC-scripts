@@ -1,14 +1,8 @@
-import fileinput
-import re
 import sys, getopt
-import collections
 import IlluminaUtils.lib.fastalib as fastalib
 
-# class FastaFiles:
-
-
 def usage():
-  print '''test.py -i <inputfile>
+  print '''python demultiplex_qiita.py -i <inputfile>
            '''
 
 def get_args(argv):
@@ -16,7 +10,7 @@ def get_args(argv):
   
     try:
       opts, args = getopt.getopt(argv, "hi:", ["ifile="])
-      print "opts = %s, args = %s" % (opts, args)
+      # print "opts = %s, args = %s" % (opts, args)
     except getopt.GetoptError:
       sys.exit(2)
       
@@ -58,33 +52,14 @@ if __name__ == "__main__":
     inputfile_content = fastalib.ReadFasta(inputfile)
 
     out_files = open_out_sample_files(inputfile_content.ids)
-    # print out_files
     
     fa_dictionary = dict(zip(inputfile_content.ids, inputfile_content.sequences))
+    
     for id, seq in fa_dictionary.items():
       file_name = id.split("_")[0] + ".fa"
-      # fastalib.FastaOutput(file_name).write_id(id)
-      # fastalib.FastaOutput(file_name).write_seq(seq)
       write_id(out_files[file_name], id)
       write_seq(out_files[file_name], seq)
     
     close_sample_files(out_files)
-      # print fastalib.FastaOutput()
-    # print dictionary
-    # for out_file in out_files:
-    #   
-    # while inputfile_content.next()
-    # print inputfile_content.ids
-    # print inputfile_content.sequences
-
-    # inputfile_content = read_file(inputfile)
     
-    # open_outputfile   = open_file_to_write(outputfile)   
-    # 
-    # for line in inputfile_content:
-    #   refhvr_cut = process(line.strip(), verbose, f_primer, r_primer)
-    #   if (len(refhvr_cut) > int(min_refhvr_cut_len)):
-    #     open_outputfile.write(refhvr_cut)
-    #     open_outputfile.write("\n")
-    #   
-    # open_outputfile.close()
+    
