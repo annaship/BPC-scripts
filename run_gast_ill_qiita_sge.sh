@@ -7,20 +7,20 @@ function verbose_log () {
     fi
 }
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: analysis/gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-e processing filename extension] [-r reference database filename] [-f full sequence references (default: 0)] [-h this statement]"
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: analysis/gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-e processing filename extension] [-r reference database filename] [-f full sequence references (default: 0)] [-i use ignoregaps (default: yes = 1)] [-h this statement]"
 
 # args
-# DEFAULT
-gast_dir="../gast"
-# RUN_LANE="RUN_LANE"
-RUN_LANE=`pwd | sed 's,^/xraid2-2/g454/run_new_pipeline/illumina/\(.*\)/\(lane_1_[^/]*\)/.*,\1_\2,g' | sed 's#/#_#g'`
+# DEFAULTS
 
+gast_dir="../gast"
+RUN_LANE=`date`
 threads="0"
 gast_db_path="/xraid2-2/g454/blastdbs/gast_distributions"
 verbosity=0
 full_ref=0
+ignoregaps=1
 
-add_options='d:s:t:g:e:r:fvh'
+add_options='d:s:t:g:e:r:i:fvh'
 while getopts $add_options add_option
 do
     case $add_option in
@@ -31,6 +31,7 @@ do
         e  )    file_ext=$OPTARG;;
         r  )    ref_db=$OPTARG;;
         f  )    full_ref=1;;
+        i  )    ignoregaps=$OPTARG;;
         v  )    verbosity=1;;
         h  )    echo $USAGE; exit;;
         \? )    if (( (err & ERROPTS) != ERROPTS ))
@@ -50,7 +51,6 @@ title="Illumina gast. Run on grendel."
 # options=("*.unique.nonchimeric.fa v4v5" "*.unique.nonchimeric.fa v4v5a for Archaea" "*.unique.nonchimeric.fa Euk v4" "*.unique.nonchimeric.fa Fungi ITS1" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaea" "*MAX-MISMATCH-3.unique.nonchimeric.fa for Av6 mod (long)")
 
 echo "$title"
-PS3="$prompt "
 FULL_OPTION=""
 # NAME_PAT="*.unique.nonchimeric.fa";
 # REF_DB_NAME=refssu;
@@ -60,8 +60,10 @@ NAME_PAT=*$file_ext
 if [[ $full_ref -eq 1 ]]; then
     FULL_OPTION=" -full "
 fi
-# FULL_OPTION = $FULL_OPTION
 
+if [[ $ignoregaps -eq 1 ]]; then
+    IGNOREGAPS_OPTION=" -ignoregaps "
+fi
 
 verbose_log "gast_dir = $gast_dir"
 verbose_log "RUN_LANE = $RUN_LANE"
@@ -72,6 +74,7 @@ verbose_log "ref_db = $ref_db"
 
 verbose_log "REF_DB_NAME = $ref_db"
 verbose_log "FULL_OPTION = $FULL_OPTION"
+verbose_log "IGNOREGAPS_OPTION = $IGNOREGAPS_OPTION"
 verbose_log "NAME_PAT = $file_ext"
 
 # gunzip first!
@@ -111,9 +114,9 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   echo "file name is \$INFILE"
   echo
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION $IGNOREGAPS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
 
-  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION $IGNOREGAPS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
   
   chmod 666 clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
   
