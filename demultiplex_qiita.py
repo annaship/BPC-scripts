@@ -30,24 +30,17 @@ def get_args(argv):
     # print "min_refhvr_cut_len = %s" % min_refhvr_cut_len
     return (inputfile)
 
+def make_file_names(headlines_dict):
+  return [headline.split("_")[0] + ".fa" for headline in headlines_dict]
 
 def open_out_sample_files(inputfile_content_ids):
-    out_files = {}
-    for headline in inputfile_content_ids:      
-      file_name = headline.split("_")[0] + ".fa"
-      
-      out_files[file_name] = fastalib.FastaOutput(file_name)
-      
-    print out_files
-      # file_name_base = [i + "_R1" for i in self.runobj.samples.keys()] + [i + "_R2" for i in self.runobj.samples.keys()]
-      # for f_name in file_name_base:
-      #     output_file = os.path.join(self.out_file_path, f_name + ".fastq")
-      #     self.out_files[f_name] = fq.FastQOutput(output_file)
-      # self.out_files["unknown"] = fq.FastQOutput(os.path.join(self.out_file_path, "unknown" + ".fastq"))        
-  # 
-  # def close_dataset_files(self):
-  #     [o_file[1].close() for o_file in self.out_files.iteritems()] 
-  #     return
+    sample_names = make_file_names(inputfile_content_ids)
+    out_files = dict([(sample, fastalib.FastaOutput(sample)) for sample in sample_names])
+    return out_files
+
+def close_dataset_files():
+    [o_file[1].close() for o_file in self.out_files.items()] 
+    return
 
 
 # def make_sammple_dict():
