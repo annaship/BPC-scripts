@@ -27,7 +27,6 @@ class Demultiplex:
         elif opt in ("-i", "--ifile"):
           self.inputfile = arg
               
-      # print "min_refhvr_cut_len = %s" % min_refhvr_cut_len
       return (self.inputfile)
       
       
@@ -42,25 +41,20 @@ class Demultiplex:
   def demultiplex_input(self, inputfile):
     
     f_input  = fastalib.SequenceSource(inputfile)
-    
+    i = 0
     while f_input.next():
+      i += 1
       id = f_input.id
       
       f_out_name = id.split("_")[0] + ".fa"
       self.ids.add(f_out_name)
       
-      print "f_out_name = %s" % f_out_name
       f_output = open(f_out_name, 'a')
       self.write_id(f_output, id)
       self.write_seq(f_output, f_input.seq)
-      f_output.close()
-        
-    # print self.ids
-    
-  def close_sample_files(self):
-    [o_file[1].close() for o_file in self.ids] 
-    return    
-        
+      if (i % 1000 == 0 or i == 1):
+        sys.stderr.write('\r[demultiplex] Writing entryies into files: %s\n' % (i))
+        sys.stderr.flush()
 
 if __name__ == "__main__":
     
@@ -70,20 +64,3 @@ if __name__ == "__main__":
     print 'Input file is "%s"' % inputfile
     
     demult.demultiplex_input(inputfile)
-    
-    # demult.close_sample_files()
-    
-    # inputfile_content = fastalib.ReadFasta(inputfile)
-    #
-    # out_files = open_out_sample_files(inputfile_content.ids)
-    #
-    # fa_dictionary = dict(zip(inputfile_content.ids, inputfile_content.sequences))
-    #
-    # for id, seq in fa_dictionary.items():
-    #   file_name = id.split("_")[0] + ".fa"
-    #   write_id(out_files[file_name], id)
-    #   write_seq(out_files[file_name], seq)
-    #
-    # close_sample_files(out_files)
-    
-    
