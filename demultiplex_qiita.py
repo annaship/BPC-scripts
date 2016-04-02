@@ -38,12 +38,27 @@ class Demultiplex:
     output_file_obj.write('%s\n' % seq)
       
   def get_out_file_names(self):
+    print "get_out_file_names"
+    n = 0
     f_input  = fastalib.SequenceSource(inputfile)
     while f_input.next():
+      n+=1
+      if (n % 10000 == 0 or n == 1):
+        sys.stderr.write('\r[demultiplex] Reading FASTA into memory: %s\n' % (n))
+        sys.stderr.flush()
       f_out_name = self.make_file_name(f_input.id)
       self.out_file_names.add(f_out_name)
+  # real  0m4.446s
+  
+
+  # def get_out_file_names_readf(self):
+  #   print "get_out_file_names_readf"
+  #   inputfile_content   = fastalib.ReadFasta(inputfile)
+  #   self.out_file_names = [id.split("_")[0] + ".fa" for id in inputfile_content.ids]
+  # real  0m16.198s
     
   def open_out_sample_files(self):
+    print "open_out_sample_files"
     self.get_out_file_names()
     for sample in self.out_file_names:
       self.out_files[sample] = open(sample, "a")
@@ -56,7 +71,7 @@ class Demultiplex:
     return id.split("_")[0] + ".fa"
   
   def demultiplex_input(self, inputfile):
-    
+    print "demultiplex_input"
     f_input  = fastalib.SequenceSource(inputfile)
     i = 0
     while f_input.next():
