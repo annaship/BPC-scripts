@@ -43,7 +43,7 @@ class Demultiplex:
     f_input  = fastalib.SequenceSource(inputfile)
     while f_input.next():
       n+=1
-      if (n % 10000 == 0 or n == 1):
+      if (n % 100000 == 0 or n == 1):
         sys.stderr.write('\r[demultiplex] Reading FASTA into memory: %s\n' % (n))
         sys.stderr.flush()
       f_out_name = self.make_file_name(f_input.id)
@@ -82,7 +82,7 @@ class Demultiplex:
       f_output   = self.out_files[f_out_name]
       self.write_id(f_output, id)
       self.write_seq(f_output, f_input.seq)
-      if (i % 10000 == 0 or i == 1):
+      if (i % 100000 == 0 or i == 1):
         sys.stderr.write('\r[demultiplex] Writing entryies into files: %s\n' % (i))
         sys.stderr.flush()
 

@@ -124,6 +124,7 @@ my $usearch_cmd = "vsearch";
 my $min_pctid   = 0.80;
 my $max_accepts = 15;
 my $max_rejects = 0;
+my $strand      = "plus"
 my $threads     = 0;
 my $uclust_filename = "";
 
