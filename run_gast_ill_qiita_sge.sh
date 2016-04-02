@@ -7,20 +7,22 @@ function verbose_log () {
     fi
 }
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: analysis/gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-e processing filename extension] [-r reference database filename] [-f full sequence references (default: 0)] [-i use ignoregaps (default: yes = 1)] [-h this statement]"
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: analysis/gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-e processing filename extension] [-r reference database filename] [-p strand plus/both (default: plus)] [-f full sequence references (default: 0)] [-i use ignoregaps (default: yes = 1)] [-h this statement]"
 
 # args
 # DEFAULTS
 
 gast_dir="../gast"
-RUN_LANE=`date`
+# RUN_LANE=`date`
+RUN_LANE=`echo "$[ 1 + $[ RANDOM % 1000 ]]"`
 threads="0"
 gast_db_path="/xraid2-2/g454/blastdbs/gast_distributions"
 verbosity=0
 full_ref=0
 ignoregaps=1
+strand="plus"
 
-add_options='d:s:t:g:e:r:i:fvh'
+add_options='d:s:t:g:e:r:i:p:fvh'
 while getopts $add_options add_option
 do
     case $add_option in
@@ -30,6 +32,7 @@ do
         g  )    gast_db_path=$OPTARG;;
         e  )    file_ext=$OPTARG;;
         r  )    ref_db=$OPTARG;;
+        p  )    strand=$OPTARG;;
         f  )    full_ref=1;;
         i  )    ignoregaps=$OPTARG;;
         v  )    verbosity=1;;
@@ -71,6 +74,8 @@ verbose_log "threads  = $threads"
 verbose_log "gast_db_path = $gast_db_path"
 verbose_log "file_ext = $file_ext"
 verbose_log "ref_db = $ref_db"
+verbose_log "strand = strand"
+
 
 verbose_log "REF_DB_NAME = $ref_db"
 verbose_log "FULL_OPTION = $FULL_OPTION"
@@ -114,9 +119,9 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   echo "file name is \$INFILE"
   echo
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION $IGNOREGAPS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION $IGNOREGAPS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads -strand $strand"
 
-  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION $IGNOREGAPS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION $IGNOREGAPS_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads -strand $strand
   
   chmod 666 clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
   
