@@ -74,7 +74,7 @@ verbose_log "threads  = $threads"
 verbose_log "gast_db_path = $gast_db_path"
 verbose_log "file_ext = $file_ext"
 verbose_log "ref_db = $ref_db"
-verbose_log "strand = strand"
+verbose_log "strand = $strand"
 
 
 verbose_log "REF_DB_NAME = $ref_db"
