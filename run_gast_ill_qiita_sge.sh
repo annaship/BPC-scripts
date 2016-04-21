@@ -128,5 +128,5 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
 InputComesFromHERE
 
 echo "Running clust_gast_ill_$RUN_LANE.sh"
-qsub clust_gast_ill_$RUN_LANE.sh
+qsub -l nodes=1:ppn=all clust_gast_ill_$RUN_LANE.sh
 
