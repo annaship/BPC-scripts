@@ -62,8 +62,8 @@ select opt in "${options[@]}"; do
     "*.unique.nonchimeric.fa v4v5a for Archaea" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5a; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa Euk v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4e; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa Fungi ITS1" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refits1; FULL_OPTION=" -full "; echo "You picked option $REPLY"; break;;
-    "*-PERFECT_reads.fa.unique" ) NAME_PAT=$REPLY; REF_DB_NAME=refv6;   echo "You picked option $REPLY"; break;;
-    "*-PERFECT_reads.fa.unique for Archaea" ) NAME_PAT="*-PERFECT_reads.fa.unique"; REF_DB_NAME=refv6a;   echo "You picked option $REPLY"; break;;
+    "*.unique v6" ) NAME_PAT=$REPLY; REF_DB_NAME=refv6;   echo "You picked option $REPLY"; break;;
+    "*.unique v6 for Archaea" ) NAME_PAT="*-PERFECT_reads.fa.unique"; REF_DB_NAME=refv6a;   echo "You picked option $REPLY"; break;;
     "*MAX-MISMATCH-3.unique.nonchimeric.fa for Av6 mod (long)" ) NAME_PAT=$REPLY; REF_DB_NAME=refssu; FULL_OPTION=" -full ";  echo "You picked option $REPLY"; break;;
 
     1 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
