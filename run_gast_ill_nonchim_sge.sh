@@ -70,8 +70,8 @@ select opt in "${options[@]}"; do
     2 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     3 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4e; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     4 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refits1; FULL_OPTION=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
-    5 ) NAME_PAT="*-PERFECT_reads.fa.unique";                    REF_DB_NAME=refv6; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
-    6 ) NAME_PAT="*-PERFECT_reads.fa.unique";      REF_DB_NAME=refv6a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    5 ) NAME_PAT="*.unique";      REF_DB_NAME=refv6; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    6 ) NAME_PAT="*.unique";      REF_DB_NAME=refv6a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     7 ) NAME_PAT="*.unique.nonchimeric.fa";                    REF_DB_NAME=refssu; FULL_OPTION=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
 
     # $(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;
