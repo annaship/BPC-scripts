@@ -23,7 +23,7 @@ for (dirpath, dirname, filenames) in os.walk(current_dir):
     files.extend(filenames)
     break
 
-print 'From iu-merge-pairs readme: P value is the ratio of the number of mismatches and the length of the overlap.\n\tMerged sequences can be discarded based on this ratio. The default is 0.3.'
+print 'From iu-merge-pairs readme: P value is the ratio of the number of mismatches and the length of the overlap.\nMerged sequences can be discarded based on this ratio. The default is 0.3.'
 print "Number of pairs analyzed; Merged total"
     
 for f in sorted(files):
