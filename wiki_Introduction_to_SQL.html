@@ -1,0 +1,204 @@
+The new env454 schema has been streamlined because we have increasingly large amounts of data. The new schema takes less space, finds things faster and is easier to query using scripts. However, is more difficult for a human to read than one big Excel-like table.
+
+There are couple ways to deal with it. Know what the new schema is and use "JOIN" to get data from tables or use prepared "VIEW" tables.
+
+The latter is slower and less flexible.
+
+== VIEW tables ==
+
+This is how to look what's in a VIEW table (if you try to open it in your mysql visualization program it may be extremely slow): <br/>
+<span class="script_name">select * from per_pr_dataset_ill_view limit 20</span>
+
+You can work with a VIEW as with a regular table, for example use "WHERE":<br/>
+<span class="script_name">select read_id from trimseq_view where run = "20091018"</span>
+
+1. VIEWs for 454 data:
+* run_info_view
+* rawseq_view
+* trimming_view
+* trimseq_view
+* tagtax_trimseq_view
+* tagtax_view
+
+2. VIEWs for Illumina data:
+* run_info_ill_view
+* per_pr_dataset_ill_view
+* sequence_uniq_info_ill_view
+* taxonomy_per_project_dataset_ill_view
+* taxonomy_per_project_dataset_ill_full_view
+ 
+3. VIEWs for both:
+* projects_datasets_info_view
+* project_env_contact_view
+* run_primer_view
+* primer_suite_primer_view
+
+All "VIEWs" have "_view" in the name.
+
+For 454 data there is also a web interface to run some predefined queries: http://vampsdev.mbl.edu/db_gui
+
+We are going to add queries to the interface; please send queries you need frequently to [mailto:ashipunova@mbl.edu ashipunova@mbl.edu]
+
+== How to work with normalized tables ==
+
+"Normalized" means all repeated strings are in a separate table and can be referred to by id. For example, instead of keeping and duplicating project names in the "trimseq" table with all other information about each trimmed 454 sequence, project names are now in the "project" table (along with some relative information). In the "trimseq" table with each <i>read_id</i> you'll see a "<i>project_id</i>" which is a pointer to a row in the project table. These ids are numbers so it much less expensive to keep them and move along with queries.
+
+env454 is not fully normalized, but if you see a field with "<i>something_id</i>" name,  you probably will find a table named "something" with actual information in it. (The most notable exception is "<i>read_id</i>" which is not a reference id.)
+
+So in this case you want some information from the first table ("table_1") and the table "something" joined by the "<i>something_id</i>" field. <br/>
+<span class="script_name">SELECT * FROM table_1 join something USING(something_id)</span>
+
+This query will create (temporary) a new table with all rows from tables "table_1" and "something" where table_1.<i>something_id</i> = something.<i>something_id</i>
+
+As examples "something" might be <i>project</i>, <i>run</i> or <i>dataset</i>, and "<i>something_id</i>" would then be <i>project_id</i>, <i>run_id</i>, or <i>dataset_id</i>
+
+<b>table_1:</b>
+<table border="1">
+<tr><th>entry</th>      <th>project_id</th></tr>
+<tr><td>first_entry</td>   <td>1</td></tr>
+<tr><td>second_entry</td>  <td>3</td></tr>
+<tr><td>third_entry</td>   <td>1</td></tr>
+</table>
+
+<b>project:</b>
+<table border="1">
+<tr><th>project_id</th>   <th>project</th></tr>
+<tr><td>1</td>        <td>project_name1</td></tr>
+<tr><td>2</td>        <td>project_name2</td></tr>
+<tr><td>3</td>        <td>project_name3</td></tr>
+</table>
+
+<b>result temp table:</b>
+<table border="1">
+<tr><th>entry</th>         <th>project_id</th>   <th>project</th></tr>
+<tr><td>first_entry</td>   <td>1</td>            <td>project_name1</td></tr>
+<tr><td>second_entry</td>  <td>3</td>            <td>project_name3</td></tr>
+<tr><td>third_entry</td>   <td>1</td>            <td>project_name1</td></tr>
+</table>
+
+
+If you have another "_id" field in your "table_1" you can add more "JOINs" depending on what actual information you need. For example, there are following fields in the "trimseq" table:<br/>
+<i>trimseq_id</i>, <i>read_id</i>, <i>run_id</i>, <i>dataset_id</i>, <i>project_id</i>, <i>dna_region_id</i>, <i>trimsequence_id</i>.<br/>
+If you only want to know how many trimmed sequences (by read_ids) are in your run, you will join with the "run" table:<br/>
+<span class="script_name">SELECT count(read_id) FROM trimseq join run using(run_id) where run = "20091018"</span><br/>
+Here you don't need a project or dataset name, so your resulting table will be relatively small and fast to work with.
+
+If you got "Unknown column 'my_field' in 'field list'" kind of error and you think such field should be in the table you query, then the field name probably is "my_field_id" and you want to join with the "my_field" table. (Of course you always can say "<span class="script_name">show create table my_table</span>" to see what fields are actually in there.)
+
+Sequences are kept in compressed format, so use "<span class="script_name">uncompress(sequence_comp) as sequence</span>".
+
+If you don't know what tables you need to "join" you can use the information_schema. All information about tables and columns (and much more) is there. For example, if you want to know in which table is <i>taxonomy</i> you can ask:<br/>
+<span class="script_name">SELECT * FROM information_schema.columns WHERE column_name like "taxonomy%"</span> 
+
+<!-- There is also .mwb file with the env454 schema picture (link). -->
+
+Roche 454 and Illumina specific data are in different sets of tables. All Illumina-related tables have "_ill" in the name.
+
+== Tips to speed up queries ==
+
+* All "GROUP BY", "DISTINCT", "ORDER BY" and all functions slow down a query. <br/>
+* "LIMIT" and "WHERE" usually speed it up.<br/>
+* Try use a field name in count(), e.g., <span class="script_name">count(sequence_pdr_info_ill_id)</span> vs. <span class="script_name">count(*)</span>.<br/>
+* If you use "LIKE" put the wild card "%" at the end (<span class="script_name">"Bacteria%"</span>). Indexes will not used if "%" is in the beginning, or if you use "NOT IN", or if there is no index. 
+
+* To check the efficiency of your query, try to use "EXPLAIN" in front of it. It shows what indexes (= keys) MySQL is going to use and approximately how many rows it will take (without "LIMIT"). <br/>
+** If there are no keys, you might want to add a "WHERE" part or ask Anna to add an index if this query is frequent or too slow.
+** If in "EXPLAIN" you see "Using where" or "Using index" that means your query will select rows using an index which is fast, but if you see "Using temporary" or "Using filesort", then MySQL is going to write temporary files on disk, which is the slowest thing possible.
+
+== Some JOIN examples ==
+
+<b>For 454:</b>
+  SELECT
+  read_id, uncompress(sequence_comp) as sequence, count(*) FROM 
+  trimseq
+  JOIN trimsequence using(trimsequence_id)
+  JOIN tagtax using(read_id)
+  JOIN taxonomy using(taxonomy_id)
+  JOIN project using(project_id)
+  JOIN dataset using(dataset_id)
+  WHERE
+    project IN ("HMP_204_Bv4v5", "HMP_207_Bv6v4", "HMP_208_Bv4v5", "HMP_214_Bv4v5")
+  AND
+    dataset IN ("204_6_II_06Oct10_H", "204_7_GG_09Feb10_P", "207_6_GG_15DEC10", "207_8_GG_18AUG11", 
+      "208_8_GG_20Sep11", "208_9_GG_19Jan12_P", "214_7_II_06Oct11_H", "214_8_GG_09Feb12_P")
+  AND
+    taxonomy LIKE "Bacteria;Firmicutes;Clostridia;Clostridiales;Lachnospiraceae;%"
+  GROUP BY sequence
+
+<b>For Illumina:</b>
+
+1.
+  SELECT distinct
+  sequence_ill_id, uncompress(sequence_comp) as sequence, sum(seq_count) as seq_count, taxonomy
+  FROM 
+  run_info_ill
+  JOIN sequence_pdr_info_ill using(run_info_ill_id)
+  JOIN sequence_uniq_info_ill using(sequence_ill_id)
+  JOIN sequence_ill using (sequence_ill_id)
+  JOIN taxonomy using(taxonomy_id)
+  JOIN project using(project_id)
+  JOIN dataset using(dataset_id)
+  WHERE
+    project IN ("HMP_204_Bv4v5", "HMP_208_Bv4v5", "HMP_214_Bv4v5")
+  AND
+    dataset IN ("204_6_II_06Oct10_H", "204_7_GG_09Feb10_P", "207_6_GG_15DEC10", "207_8_GG_18AUG11", 
+      "208_8_GG_20Sep11", "208_9_GG_19Jan12_P", "214_7_II_06Oct11_H", "214_8_GG_09Feb12_P")
+  GROUP BY sequence
+
+2. 
+  SELECT concat_ws('_', dataset, sequence_ill_id) AS id, taxonomy, seq_count AS frequency, uncompress(sequence_comp) AS sequence 
+  FROM sequence_uniq_info_ill  
+    JOIN  taxonomy using(taxonomy_id) 
+    JOIN  sequence_pdr_info_ill using(sequence_ill_id) 
+    JOIN  run_info_ill using(run_info_ill_id) 
+    JOIN  project using(project_id) 
+    JOIN  dataset using(dataset_id) 
+    JOIN  sequence_ill using(sequence_ill_id) 
+    WHERE project = "JAH_LAU_Bv6" 
+    AND taxonomy LIKE '%;Sulfurimonas%'
+
+3. Amount of illumina data per run/lane/domain
+  SELECT run, lane, left(primer_suite, 8) AS domain, sum(seq_count) AS seq_count 
+  FROM run_info_ill
+  JOIN run using(run_id)
+  JOIN sequence_pdr_info_ill using(run_info_ill_id)
+  JOIN primer_suite using(primer_suite_id)
+  GROUP BY run, lane, primer_suite
+
+== How to rename a column which is a foreign key reference ==
+
+1. <span class="script_name">SELECT TABLE_NAME, CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_NAME = 'X' AND REFERENCED_COLUMN_NAME = 'X_id';</span>
+
+That will show you in which table this foreign key exists.
+
+Or get all of them:
+
+<span class="script_name">SELECT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, REFERENCED_TABLE_SCHEMA FROM information_schema.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_NAME != ""</span>
+
+2. Then you want to copy a definition of this key from 
+<span class="script_name">SHOW CREATE TABLE table_name</span>
+and keep it.
+
+3. Drop foreign key:
+
+<span class="script_name">ALTER TABLE tbl_name DROP FOREIGN KEY constraint_name;</span>
+
+4. rename you table id:
+
+ALTER TABLE tbl_name 
+CHANGE field_name field_name description
+
+for example:
+
+<span class="script_name">ALTER TABLE `dataset` CHANGE `dataset_id` `id` smallint(5) unsigned NOT NULL AUTO_INCREMENT</span>
+
+5. create foreign key again, for that change only reference in what your copied:
+
+was:
+
+CONSTRAINT `run_info_ill_ibfk_5` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`dataset_id`) ON UPDATE CASCADE
+
+now:
+
+<span class="script_name">ALTER TABLE run_info_ill ADD<br/>
+CONSTRAINT `run_info_ill_ibfk_5` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`) ON UPDATE CASCADE</span>

@@ -1,0 +1,424 @@
+== News ==
+<p>Please use specific platform directory under <span class="comm_line">/xraid2-2/g454/run_new_pipeline/</span>: <span class="comm_line">roche454</span> or <span class="comm_line">ion_torrent</span>.</p>
+<p>The pipeline now works for Ion Torrent as well. A platform should be specified (if not 454 which is default) for <span class="script_name">import_flxrun</span>, <span class="script_name">trim454</span>, see below.</p>
+
+== Conventions ==
+<p>
+  On this page <span class="comm_line">red color</span> used for a literal command line and <span class="script_name">green</span> is for a script name.
+</p>
+<p><pre>This font</pre> used for another literal lines, like SQL queries.</p>
+<p><i>Italic font</i> or &lt;i&gt; tag (e.g. &lt;i&gt;rundate&lt;/i&gt;) means that you have to change that part of a command line with you own data, for example <i>rundate</i> becomes "20110928". (And of course you want to use an appropriate dna region instead of "v6v4" in examples.)</p>
+
+
+<h2> <span class="mw-headline" id="before_you_begin!"> Before you begin! </span></h2>
+<!-- == Before you begin! == -->
+
+  <ol>
+    <li>
+It is standard procedure to include a run_* script for all of the scripts discussed below.  This allows staff to review the files and script parameters that were used.  By reviewing previous pipeline directories (such as sff_* and VERSION3 in the g454 project directory) you can view and copy/edit existing run_* scripts.  New users require a ".dbconf" and a ".my.cnf" in order to process runs through the pipeline.
+   </li>
+  <li>
+If something went wrong and you want to clear tables use <span class="comm_line">clear454run</span>. (The script name without arguments gives you all options.) For example: <span class="comm_line">clear454run -trim -run <i>rundate</i></span> clears all "trim" tables. 
+  </li>
+</ol>
+
+<h2> <span class="mw-headline" id="Move_the_454_data_files_to_shire_and_backup_disk"> Move the 454 data files to shire and backup disk </span></h2>
+<p>Bring the sff.txt files into the database where they can be processed and analyzed.
+</p>
+<p>New on the FLX:</p>
+  <ol>
+    <li>
+Backup the Run<br/>
+There is a text file on the Desktop called FLX backup instructions:<br/>
+ssh into FLX 10.1.0.14 to get name of dir to be backed up
+      <div class="comm_line">ssh adminrig@10.1.0.14</div>
+log in and cd to data, find dir name, and logout.
+
+<p>Move into the "Data to Archive" dir 
+<div class="comm_line">cd /Volumes/Data\ To\ Archive/</div>
+</p>
+<p>Secure copy the remote files</p>
+<div class="comm_line">scp -r adminrig@10.1.0.14:/data/<i>rundir</i> .</div>
+    </li>
+    <li>
+<p>Copy the files from "Data to Archive" to the run dir in g454/downloads.
+<br/>Create a dir named the <i>rundate</i> (YYYYMMDD) in g454/downloads.
+<br/>cd to the run dir in "Data to Archive" the D_dir</p>
+<div class="comm_line">scp *.* cholmes@arthur.mbl.edu:~/g454/downloads/<i>run</i> <i>dir</i></div>
+cd to the sff dir
+<div class="comm_line">scp *.sff cholmes@arthur.mbl.edu:~/g454/downloads/<i>run</i> <i>dir</i></div>      
+    </li>
+</ol>
+
+<h2> <span class="mw-headline" id="Import_Info_and_Sequences_into_env454">Import Info and Sequences into env454</span></h2>
+<!-- == Import Info and Sequences into env454 == -->
+
+<ol>
+  <li>Fill out submission form on Vamps.</li>
+  <li>Log on to one of the bioinformatics machines (e.g. arthur).
+  </li>
+  <li><b>Create a new directory named <i>rundate</i> under <span class="comm_line">/xraid2-2/g454/run_new_pipeline/roche454</span> (or <span class="comm_line">/xraid2-2/g454/run_new_pipeline/ion_torrent</span>) and move there until the gast step</b> 
+  </li>
+  <li>Import the project, researcher, run keys, and dataset information with <span class="script_name">import_flxruninfo</span>.  If samples are external, double-check the run date to see if it already exists in run_keys. This information goes from submisiion form on VAMPS. This will write into tables:
+    project, contact, run_key, run, dataset, dna_region, run_info, run_primer
+<div class="comm_line">import_flxruninfo -r <i>rundate</i></div>
+  </li>
+  <li>Import the sff files into the database with <span class="script_name">import_flxrun</span>, import once for each region.  This will write into rawseq, rawqual, rawflow, rawflowindex.  The ampersand "&amp;" allows the command to run in the background.<br/>
+    
+        <b>NB</b>: If you running the pipeline in any other directory then g454/downloads/<i>run_name</i>/sff, you'll need link ssf files to this directory.
+        E.g., 
+        from a working directory:
+        
+  <div class="comm_line">ln -s /xraid2-2/g454/downloads/<i>20110928/D_2011_09_29_10_35_09_taiga_fullProcessingAmplicons-rCafieFLX</i>/sff/*.sff .</div>
+        
+Then, use the sff file names like that:
+
+<div class="comm_line">import_flxrun -r <i>rundate</i> -i <i>EFWL25X01</i>.sff &amp;
+import_flxrun -r <i>rundate</i> -i <i>EFWL25X02</i>.sff &amp;
+</div>    
+Or, if data are from Ion Torrent:  
+<div class="comm_line">import_flxrun -platform ion_torrent -r <i>rundate</i> -i <i>file_name</i>.sff &amp;
+</div>    
+
+Each command takes about an hour.
+  </li>
+  <li>Check that the sequences imported fully.  Often the database connection is dropped and the import fails before all sequences are imported.
+    <ol type="a">
+      <li>determine the number of reads you should have:
+<div class="comm_line">head *.sff.txt | grep "# of Reads:" </div>
+      </li>
+      <li>determine the number of reads that made it into the database:
+
+<div class="comm_line">
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT lane, count(rawseq_id) as seqcnt FROM rawseq
+JOIN run using(run_id) 
+WHERE run='<i>rundate</i>' group by lane order by lane"
+</div>  
+
+<b>NB</b>: If the counts for each region do not match the number of reads in each sff file, the data will need to be cleared out and rerun
+where <i>rundate</i> is the actual date of the run, and <i>lane</i> is 1 or 2 (which region to clear out)            
+
+<div class="comm_line">clear454run -raw -reg <i>lane</i> -run <i>rundate</i></div>
+
+and, import that region again (import_flxrun...)      
+      </li>
+      <li>
+        If the counts are the same, then run the statistics on the reads <!--(in the downloads/<i>rundate</i> directory) -->
+<div class="comm_line">report_trimmingstats -raw <i>rundate</i> 
+</div>
+      </li>
+      <li>
+        Review the results in <span class = "filename">trimstats_<i>rundate</i>.txt</span>.  Be sure that counts are correct and that all datasets have reasonable numbers of reads (at least several thousand) and that runkeys were not found in the wrong region in numbers &gt; 100.<br/>
+
+If the sameregion = 0, and expectedregion is not 0 and there numerous reads (&gt;40) something may be wrong.<br/>
+
+If the value of the sameregion field is 1, and there are few reads, that is also suspect.<br/>
+
+If the value of ReadCount is low for any dataset, it is suspect.<br/>
+
+The script will check Run Keys in only one region (region&nbsp;!= 0)<br/>
+
+If the Run Key is in both regions (region=0) use:       
+<pre>
+SELECT k.run_key, k.lane, dataset, count(r.read_id) AS ReadCount
+       FROM run_info_view AS k 
+       LEFT JOIN
+       rawseq AS r
+       ON (substr(uncompress(r.sequence_comp), 1, 5) = k.run_key)
+       WHERE k.run="<i>20070802</i>"
+       AND k.lane = 0
+       GROUP BY k.run_key, k.lane
+
+</pre>
+      </li>
+    </ol>
+  </li>
+</ol>
+
+<!-- == Trim the sequences == -->
+<h2> <span class="mw-headline" id="Trim_the_sequences"> Trim the sequences </span></h2>
+<p>Removes low quality reads and the primers from the high quality reads, and assigns dataset and project names to each read.</p>
+
+<ol>
+  <li>
+    Run:
+<!-- <pre> --><div class="comm_line">trim454 -r <i>rundate</i></div><!-- </pre> -->
+
+Or, if data are from Ion Torrent:  
+<div class="comm_line">trim454 -platform ion_torrent -r <i>rundate</i></div>
+
+This takes 2&ndash;3 hours.<br/>
+  </li>
+  <li>
+    When the trimming is complete, finishing running the statistics (still in the downloads/run directory)
+<div class="comm_line">report_trimmingstats -trim <i>rundate</i></div>
+This will give you in trimstats_<i>rundate</i>.txt:
+  <ol type = "a">
+    <li>Count of reads in database tables: trimseq deleted and not deleted
+    </li>
+    <li>Count of Reads deleted and delete reasons from table trimseq
+    </li>
+    <li>Count of Reads deleted by dataset and project
+    </li>
+    <li>Count of Reads deleted because of distal by dataset and project
+    </li>
+    <li>Percent deleted and not deleted reads by project, dataset
+    </li>
+  </ol>
+  <!-- Taxonomy by project, dataset
+
+  <pre>SELECT project, dataset, taxonomy, count(read_id) from `tagtax` JOIN taxonomy USING(taxonomy_id) JOIN `trimseq` using(`read_id`) JOIN `project` using(`project_id`) JOIN `dna_region` using(`dna_region_id`) JOIN dataset using(dataset_id) WHERE run_id=$run_id group by project, dataset, taxonomy; </pre> -->
+</ol>
+
+<h2> <span class="mw-headline" id="chimera_checking"> Chimera checking </span></h2>
+<!-- == Chimera checking == -->
+
+<p> No need to run it for v6 or v9! </p>
+<ol>
+  <li>Log on to the cluster (grendel).</li>
+  <li>Create "chimera" directory under your run processing directory.</li>
+  <li>cd to the directory.</li>
+  <li>Run 
+<div class="comm_line">run_chimera <i>rundate</i></div>
+  </li>
+  <li>Check if all reads made it to chimeras table:
+
+<pre>
+SELECT @run_prefix:=run_prefix FROM run WHERE run = "<i>rundate</i>" ;
+SELECT count(read_id) FROM chimeras WHERE read_id LIKE CONCAT('',@run_prefix,'%');
+SELECT count(read_id) FROM trimseq WHERE read_id LIKE CONCAT('',@run_prefix,'%');
+</pre>
+
+Numbers from the last two queries should be the same.
+  </li>
+</ol>
+
+<h2> <span class="mw-headline" id="chimeric_moving"> Move chimeric into trimseq_deleted </span></h2>
+
+<p> No need to run it for v6 or v9! </p>
+<ol>
+  <li>Run 
+<div class="comm_line">mv_chimeric_from_trimseq</div>
+  </li>
+  <li>Check if all chimeric read_ids moved:
+<pre>
+select * from trimseq join chimeras using(read_id) where chimeric = 'Y';   
+</pre>
+The result should be empty.
+  </li>
+</ol>
+
+<h2> <span class="mw-headline" id="GAST_-_distance_to_nearest_RefHVR_references"> GAST - distance to nearest RefHVR references </span></h2>
+<!-- == GAST - distance to nearest RefHVR references == -->
+
+<p>GAST (global alignment search tool) uses USearch to find a set of top hits for each sequence (unique read) in a reference database of sequences with accepted taxonomy (our RefHVR database), then does a global alignment and distance calculation to find the reference sequence(s) most similar to each 454 sequence.
+GAST needs to be run separately for each hypervariable target region in the run.  For example, if you have both v6 and v9 data, 
+run once for v6, then repeat it for v9.
+</p>
+<ol>
+  <li>
+    Log onto the cluster (grendel).
+  </li>
+  <li>
+    From the gast directory (cd /xraid2-2/g454/gast), run <span class="script_name">clustergast</span> for each hypervariable region sequenced, i.e.:
+<div><span class="comm_line">
+clustergast -r <i>rundate</i> -reg <i>v6v4</i><br/>
+clustergast -r <i>rundate</i> -reg <i>v6v4a</i>
+</span></div>
+
+<b>NB</b>:   You can check for when your processes have completed on the cluster:
+<div class="comm_line">qstat</div>
+or&nbsp;:
+<div class="comm_line">qstat | grep <i>your_username</i></div>
+
+<span class="script_name">clustergast</span> creates a directory (<i>e.g.</i> <i>rundate_v6v4</i>) with a fasta file of all reads that were not deleted for quality and a second fasta file containing only the unique sequences represented by the reads, with a .names file that links each sequence to the reads it represents. It then splits up the file of sequences and runs the GAST algorithm in parallel, generating many .txt files as output.
+  </li>
+  <li>
+When the cluster processes have completed, log on to a bioware machine and confirm that all the sequences were upload by comparing the gast output in the *txt files with the contents of the new table in env454:<br/>
+    <ol type = "a">
+      <li>
+        Using mysql check the number of reads that were loaded:
+        <div class="comm_line">     
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4</i>"<br/> 
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4a</i>" 
+        </div>            
+      </li>
+      <li>
+        Compare the result with the number of gast results in the g454/gast directory for each source you have used:
+        <div class="comm_line">       
+cat /xraid2-2/g454/gast/<i>rundate_v6v4</i>/gast_<i>rundate_v6v4</i>.*.txt | cut -f1 | sort -u | wc -l<br/>
+cat /xraid2-2/g454/gast/<i>rundate_v6v4</i>a/gast_<i>rundate_v6v4</i>a.*.txt | cut -f1 | sort -u | wc -l
+        </div>  
+      </li>
+      <li>
+          If this does not equal the number of reads in the gast_run table you will need to manually load the remaining data:
+        <div class="comm_line">cd $g454/gast/<i>rundate_v6v4</i><br/>
+
+for i in gast_<i>rundate_v6v4</i>.*.txt; do mysqlimport -i -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h newbpcdb2 env454 $i; done;       
+        </div>
+Check the count in the gast_<i>rundate_v6v4</i> table again.  It should now match the results in the directory.          
+      </li>
+    </ol>
+  </li>
+  <li>
+    Check to see how many sequences were assigned a taxonomy by GAST.  
+    <br/>
+    The number of records in the gast table should be nearly equal to the number of sequences in the fasta file of unique sequences in the gast working directory.    
+    <br/>
+    Example:<br/>
+
+<span class="comm_line">facount /xraid2-2/g454/gast/<i>rundate_v6v4</i>/<i>rundate_v6v4</i>.unique.fa</span> = 481,034<br/>      
+<span class="comm_line">mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4</i>"</span> = 471,803<br/>
+    
+481,034 / 471,803 ~= 1.02, or 2% larger.  
+  <br/>
+  The difference is the number of unique sequences &gt;=70% different from any sequence in the reference database.<br/>
+  For bacterial samples, you may drop more or fewer sequences depending on the degree of eukaryotic DNA in your sample.<br/>
+  You will likely drop more reads for eukaryotic and archaeal projects than for bacterial ones.
+  A very large difference indicates something went wrong in assigning taxonomy and you should confirm that your primers are correct and that you really amplified the same region that you told the pipeline you did.
+<br/>
+  Note that the gast count will change after doing <span class="script_name">gast_cleanup</span> below, so this count is only valid at this point in the process.  
+<br/>
+  If the counts are off, first check that the initial set of sequences is correct
+<div class="comm_line">
+grep -c ">" <i>rundate_v6v4</i>/*.fa
+</div><div class="comm_line">
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(DISTINCT trimsequence_id) FROM trimseq<br/> 
+JOIN run using(run_id)<br/>
+JOIN dna_region using(dna_region_id)<br/>
+WHERE run = '<i>rundate</i>' AND dna_region = '<i>v6v4</i>'"
+</div>
+If anything goes wrong, the process can be restarted, see <span class="script_name">clustergast</span> usage by typing '<span class="comm_line">clustergast</span>' on the command line.
+(Note: you can clear out the table first by:<br/> 
+<span class="comm_line">delete from gast_<i>rundate_v6v4</i>;</span> [HGM]) <br/>
+Example of restart:
+ <div class="comm_line">clustergast -r <i>rundate</i> -reg <i>v6v4</i> -start bestalign</div>
+ 
+<b>NB</b>: The same checking could be done using <span class="script_name">check_clustergast_result</span>. The script checks if all read_ids from .txt are in gast_run_region table and rerun import if amount of read_ids in the gast_<i>rundate_v6v4</i> table is less then that in txt) 
+ 
+<div class="comm_line">check_clustergast_result -r <i>rundate</i> -reg <i>v6v4</i></div>
+  </li>
+  <li>
+Now move the data into the central gast tables:
+<div class="comm_line">cd $g454/gast/<i>rundate_v6v4</i><br/>
+gast_cleanup -r <i>rundate</i> -reg <i>v6v4</i> &amp;</div>
+This also expands the gast table by adding back all the reads with the same sequence, and adds all the reads that were deleted for quality (thus the reads are never really deleted, they are just stored in the different table &mdash; trimseq_deleted.
+  </li>
+  <li>
+Check the results in the gast and gast_concat tables:
+<div class="comm_line">gast_check <i>rundate</i> <i>v6v4</i></div>
+which performs the following series of database queries:
+<pre>SELECT count(distinct read_id) as no_hit FROM gast_<i>rundate_v6v4</i> WHERE refhvr_id = '0' AND distance = '1'</pre>
+
+which is the total number of reads that were not assigned a taxonomy by gast.  This should be a slightly larger number that the number of sequences that were not assigned a taxonomy.<br/>
+
+The next four numbers should all be the same. They are the total number of reads in the gast table from gast_<i>rundate_v6v4</i> above and the number in the main trimseq, gast, and gast_concat tables, found with the following queries:
+
+<pre>SELECT count(read_id) as total_trimseq FROM trimseq JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '<i>rundate</i>' AND dna_region = '<i>v6v4</i>';
+SELECT count(distinct read_id) as total_gast_<i>rundate_v6v4</i> FROM gast_<i>rundate_v6v4</i>;
+SELECT count(distinct gast.read_id) as total_gast_trimseq FROM gast JOIN trimseq using(read_id) JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '<i>rundate</i>' AND dna_region = '<i>v6v4</i>';
+SELECT count(gast_concat.read_id) as total_gast_concat_trimseq FROM gast_concat JOIN trimseq using(read_id) JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '<i>rundate</i>' AND dna_region = '<i>v6v4</i>';
+</pre>
+The gast table has a separate entry for each best match to the reference database for each read, thus the "distinct".
+The gast_concat table has a single entry for each read.
+  </li>
+  <li>
+Log back onto the cluster (grendel) and cd to the gast directory corresponding to the run.  Expand the taxonomic assignment from the sequences to each read with <span class="script_name">gast2tax</span>, which stores data in the tagtax and tax_assignment tables.
+  <br/>
+Use defaults for the output table, boot scores and majority.
+  <br/>
+The reference table should be refhvr_* where * is the vregion from 5' to 3' -- in other words, for v6v4 specify refhvr_v4v6.   
+<div class="comm_line">clusterize gast2tax -g gast_<i>rundate_v6v4</i> -reg <i>v6v4</i> -ref <span style="color:#9400D3">refhvr_v4v6</span></div>
+</li>
+  <li>
+To verify, count the reads in the tagtax table from your run.  
+      <ol type="a">
+      <li>
+<div class="comm_line">
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(read_id) from tagtax<br/>
+JOIN trimseq using(read_id)<br/>
+JOIN run using(run_id)<br/>
+WHERE run='<i>rundate</i>'"
+</div>
+
+<li>
+How to interpret:<br/>
+    
+For example, you have the following result of <span class="script_name">gast_check</span>:<br/>
+
+<div class="comm_line">gast_check <i>rundate</i> <i>v6v4</i></div>
+<pre>
+| no_hit |
++--------+
+|   5119 | 
++--------+
++---------------+
+| total_trimseq |
++---------------+
+|        166400 | 
+</pre>
+...
+
+<div class="comm_line">gast_check <i>rundate</i> <i>v6v4a</i></div>
+<pre>
+| no_hit |
++--------+
+|   5446 | 
++--------+
++---------------+
+| total_trimseq |
++---------------+
+|         83639 | 
+</pre>
+...  
+<br/>
+
+Then sum of "total_trimseq" should be equal to a result of the last command (i.e. "<span class="comm_line">mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(read_id) from tagtax JOIN trimseq using(read_id) JOIN run using(run_id) WHERE run='<i>rundate</i>'</span>"). E.g.: 166400 + 83639 = 250039.
+      </li>
+    </li>
+
+    <li>You can get some summary information about the taxonomic diversity of your run with this query:
+
+<div class="comm_line">
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT taxonomy, count(read_id) as count_all from tagtax JOIN taxonomy USING(taxonomy_id)<br/>
+JOIN trimseq using(read_id)<br/>
+JOIN run using(run_id)<br/> 
+WHERE run='<i>rundate</i>' group by taxonomy"
+</div>
+
+The number of "Unknown" is usually equal to the sum of "no_hit" from the <span class="script_name">gast_check</span> result.
+    </li>
+    <li>
+    You might want to check taxonomy by project and dataset:
+      <div class="comm_line">
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT project, dataset, taxonomy, count(read_id) from tagtax<br/> 
+JOIN taxonomy USING(taxonomy_id)<br/>
+JOIN trimseq using(read_id)<br/>
+JOIN project using(project_id)<br/>
+JOIN dna_region using(dna_region_id)<br/>
+JOIN dataset using(dataset_id)<br/>
+JOIN run using (run_id)<br/>
+WHERE run=<i>rundate</i> group by project, dataset, taxonomy;"
+</div>
+    </li>
+  </ol>  
+  </li>
+</ol>
+
+<h2> <span class="mw-headline" id="Uploading_sequences_to_VAMPS"> Uploading sequences to VAMPS </span></h2>
+<!-- == Uploading sequences to VAMPS == -->
+
+When the data are processed, please send an email notification to vamps@mbl.edu with the subject line: "New VAMPS data ready".<br/>
+The body of the email should contain:
+<ol type="a">
+  <li>
+    the date of the run, 
+  </li>
+  <li>
+    projects included in the run
+  </li>
+  <li>
+    and any users requiring access to each project. 
+  </li>
+</ol>
+<b>Remember, BPC users automatically have access to all projects, other users are provided access to non-public data on a project by project basis.</b>
