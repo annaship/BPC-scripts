@@ -7,10 +7,10 @@ class CsvTools():
 
       print args
 
-      self.from_file_name  = args.from_file_name
-      self.to_file_name    = args.to_file_name
-      self.res_file_name   = args.res_file_name
-      self.result_content  = []
+      self.from_file_name = args.from_file_name
+      self.to_file_name   = args.to_file_name
+      self.res_file_name  = args.res_file_name
+      self.result_content = []
 
       self.delimiter = args.delimiter
       self.quotechar = args.quotechar
@@ -109,9 +109,6 @@ if __name__ == '__main__':
                 help = "Field name from the FROM_file to be added to the result")
 
 
-
-# TODO: add key names args
-
     args = parser.parse_args()
 
     csv_tools = CsvTools(args)
@@ -120,5 +117,3 @@ if __name__ == '__main__':
     csv_tools.make_res_dict()
     csv_tools.write_to_res_file()
 
-
-  # TODO preserve headers order
