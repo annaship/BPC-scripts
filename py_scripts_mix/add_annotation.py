@@ -18,57 +18,69 @@ class CsvTools():
       self.quotechar = args.quotechar
       print "quotechar = '%s'" % (self.quotechar)
 
+    
+    def read_in_file(self):
+      input_reader = self.get_reader(self.from_file_name)
+      self.input_file_content = self.parce_csv(input_reader)
+      print "=" * 10        
       
+      for x in self.input_file_content:
+          print "for x in self.input_file_content:"
+          print (x)
+      
+    #
+    # def import_from_file(self):
+    #     self.from_file_name
+    #     print "self.from_file_name"
+    #     print self.from_file_name
+    #
+    #     self.get_reader()
+    #     # print "LLL self.reader"
+    #     # print self.reader
+    #
+    #     # self.csv_headers, self.csv_content =
+    #     self.parce_csv()
+    #
+    #     # print "=" * 10
+    #     # print self.csv_headers
+    #     # print "=" * 10
+    #
+    #     print "SSS self.csv_content: "
+    #     print self.input_file_content
+    #     print "=" * 10
+    #
+    #     for x in self.input_file_content:
+    #         print "for x in self.input_file_content:"
+    #         print (x)
+    #     #
+    #     # self.check_headers_presence()
+    #     #
+    #     # self.get_csv_by_header_uniqued()
+    #
 
-    def import_from_file(self):
-        self.from_file_name
-        print "self.from_file_name"
-        print self.from_file_name
-
-        self.get_reader()
-        # print "LLL self.reader"
-        # print self.reader
-
-        # self.csv_headers, self.csv_content =
-        self.parce_csv()
-        
-        # print "=" * 10
-        # print self.csv_headers
-        # print "=" * 10
-        
-        print "SSS self.csv_content: "
-        print self.input_file_content
-        print "=" * 10        
-        
-        for x in self.input_file_content:
-            print "for x in self.input_file_content:"
-            print (x)
-        #
-        # self.check_headers_presence()
-        #
-        # self.get_csv_by_header_uniqued()
-
-
-    def get_reader(self):
+    def get_reader(self, file_name):
         try:
-            infile = open(self.from_file_name, mode='r')
-            self.reader = csv.DictReader(codecs.EncodedFile(infile, "utf-8"), delimiter = self.delimiter, quotechar = self.quotechar)
+            infile = open(file_name, mode = 'r')
+            return csv.DictReader(codecs.EncodedFile(infile, "utf-8"), delimiter = self.delimiter, quotechar = self.quotechar)
         except csv.Error as e:
             self.errors.append('%s is not a valid CSV file: %s' % (infile, e))
         except:
             raise
 
 
-    def parce_csv(self):
-      
-      # reader = csv.DictReader(csvfile)
-      for row in self.reader:
-        self.input_file_content.append(row)
-        print row
-        """
-        {'Min Sequence Length': '', 'Hit end': '448855', 'Ref Seq Name': '', 'Molecule Type': 'DNA', 'Query end': '507', 'dash': '-', 'strain': 'NEG-M', '# Nucleotide Sequences With Mates': '', 'Genetic Code': 'Standard', 'Query start': '40', 'E Value': '2.52E-144', 'Ref Seq Length': '', 'Description': 'Naegleria gruberi strain NEG-M genomic NAEGRscaffold_22, whole genome shotgun sequence', 'Bit-Score': '323.188', 'SequenceListOrderingRevisionNumber': '', 'db_xref': 'taxon:744533', '# Nucleotide Sequences With Quality': '0', '% Pairwise Identity': '', 'Annotation': '26S proteasome CDS', 'Hit start': '449322', 'Topology': 'linear', 'Sequence Length': '156', 'Query coverage': '50.16%', 'Name': 'NW_003163305', 'Database': 'Naegleria gruberi NZ ACER00000000', 'Max Sequence Length': '', 'URN': 'urn:local:.:gak-6gx1c49', 'Modified': 'Mon Mar 29 00:00:00 EDT 2010', 'Created Date': 'Wed Aug 10 09:40:22 EDT 2016', '# Sequences': '', 'GID': '290990065', 'Organism': 'Naegleria gruberi strain NEG-M', '% Identical Sites': '', 'Sequence': 'GGGGMQGDQPLPDTAETVTISSLALLKMLKHGRAGVPMEVMGLMLGEFIDDYTVRCIDVFAMPQSGTGVSVEAVDPVFQTKMLELLKQTGRPEMVVGWYHSHPGFGCWLSSVDINTQQSFESLTKRSVAVVVDPIQSVKGKVVIDAFRTINPQLAM', 'Grade': '67.70%', 'Taxonomy': 'Eukaryota; Heterolobosea; Schizopyrenida; Vahlkampfiidae; Naegleria', 'Mean Coverage': '', 'Ref Seq Index': '', 'Accession': 'NW_003163305', 'Free end gaps': '', '# Nucleotides': '', 'country': 'USA', 'Query': '55387_Solumitrus_QUALITY_PASSED_R1_paired_contig_1705_7110_8043f', 'Original Query Frame': '1', 'Size': '8 KB'}
+    def parce_csv(self, reader):
+      file_content = []
+      for row in reader:
+        file_content.append(row)
         
-        """
+        
+      return file_content
+        
+      # print row
+      """
+      {'Min Sequence Length': '', 'Hit end': '448855', 'Ref Seq Name': '', 'Molecule Type': 'DNA', 'Query end': '507', 'dash': '-', 'strain': 'NEG-M', '# Nucleotide Sequences With Mates': '', 'Genetic Code': 'Standard', 'Query start': '40', 'E Value': '2.52E-144', 'Ref Seq Length': '', 'Description': 'Naegleria gruberi strain NEG-M genomic NAEGRscaffold_22, whole genome shotgun sequence', 'Bit-Score': '323.188', 'SequenceListOrderingRevisionNumber': '', 'db_xref': 'taxon:744533', '# Nucleotide Sequences With Quality': '0', '% Pairwise Identity': '', 'Annotation': '26S proteasome CDS', 'Hit start': '449322', 'Topology': 'linear', 'Sequence Length': '156', 'Query coverage': '50.16%', 'Name': 'NW_003163305', 'Database': 'Naegleria gruberi NZ ACER00000000', 'Max Sequence Length': '', 'URN': 'urn:local:.:gak-6gx1c49', 'Modified': 'Mon Mar 29 00:00:00 EDT 2010', 'Created Date': 'Wed Aug 10 09:40:22 EDT 2016', '# Sequences': '', 'GID': '290990065', 'Organism': 'Naegleria gruberi strain NEG-M', '% Identical Sites': '', 'Sequence': 'GGGGMQGDQPLPDTAETVTISSLALLKMLKHGRAGVPMEVMGLMLGEFIDDYTVRCIDVFAMPQSGTGVSVEAVDPVFQTKMLELLKQTGRPEMVVGWYHSHPGFGCWLSSVDINTQQSFESLTKRSVAVVVDPIQSVKGKVVIDAFRTINPQLAM', 'Grade': '67.70%', 'Taxonomy': 'Eukaryota; Heterolobosea; Schizopyrenida; Vahlkampfiidae; Naegleria', 'Mean Coverage': '', 'Ref Seq Index': '', 'Accession': 'NW_003163305', 'Free end gaps': '', '# Nucleotides': '', 'country': 'USA', 'Query': '55387_Solumitrus_QUALITY_PASSED_R1_paired_contig_1705_7110_8043f', 'Original Query Frame': '1', 'Size': '8 KB'}
+      
+      """
         # print(row['Name'], row['Annotation'])
       
       
@@ -112,5 +124,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     csv_tools = CsvTools(args)
-    csv_tools.import_from_file()
+    csv_tools.read_in_file()
+    csv_tools.read_out_file()
+    csv_tools.write_to_out_file()
+    
 
