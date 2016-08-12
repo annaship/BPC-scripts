@@ -56,10 +56,11 @@ class CsvTools():
             raise
 
     def parce_csv(self, reader):
-      file_content = []
-      for row in reader:
-        file_content.append(row)
-      return file_content
+      # file_content = []
+      # for row in reader:
+      #   file_content.append(row)
+      # return file_content
+      return [row for row in reader]
 
 
 if __name__ == '__main__':
