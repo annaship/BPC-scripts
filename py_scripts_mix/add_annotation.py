@@ -4,7 +4,8 @@ import codecs
 class CsvTools():
 
     def __init__(self):
-      self.input_file_dict = {}
+      self.input_file_content = []
+      self.otput_file_content = []
       self.in_file_name = ""
       self.csv_content = []
 
@@ -15,17 +16,22 @@ class CsvTools():
         self.csvfile = csvfile
 
         self.get_reader()
-        print "LLL self.reader"
-        print self.reader
+        # print "LLL self.reader"
+        # print self.reader
 
-        self.csv_headers, self.csv_content = self.parce_csv()
+        # self.csv_headers, self.csv_content =
+        self.parce_csv()
         
-        print "=" * 10        
-        print self.csv_headers
-        print "=" * 10        
+        # print "=" * 10
+        # print self.csv_headers
+        # print "=" * 10
         
         print "SSS self.csv_content: "
-        for x in self.csv_content:
+        print self.input_file_content
+        print "=" * 10        
+        
+        for x in self.input_file_content:
+            print "for x in self.input_file_content:"
             print (x)
         #
         # self.check_headers_presence()
@@ -47,8 +53,13 @@ class CsvTools():
       
       # reader = csv.DictReader(csvfile)
       for row in self.reader:
-        # print row
-        print(row['Name'], row['Annotation'])
+        self.input_file_content.append(row)
+        print row
+        """
+        {'Min Sequence Length': '', 'Hit end': '448855', 'Ref Seq Name': '', 'Molecule Type': 'DNA', 'Query end': '507', 'dash': '-', 'strain': 'NEG-M', '# Nucleotide Sequences With Mates': '', 'Genetic Code': 'Standard', 'Query start': '40', 'E Value': '2.52E-144', 'Ref Seq Length': '', 'Description': 'Naegleria gruberi strain NEG-M genomic NAEGRscaffold_22, whole genome shotgun sequence', 'Bit-Score': '323.188', 'SequenceListOrderingRevisionNumber': '', 'db_xref': 'taxon:744533', '# Nucleotide Sequences With Quality': '0', '% Pairwise Identity': '', 'Annotation': '26S proteasome CDS', 'Hit start': '449322', 'Topology': 'linear', 'Sequence Length': '156', 'Query coverage': '50.16%', 'Name': 'NW_003163305', 'Database': 'Naegleria gruberi NZ ACER00000000', 'Max Sequence Length': '', 'URN': 'urn:local:.:gak-6gx1c49', 'Modified': 'Mon Mar 29 00:00:00 EDT 2010', 'Created Date': 'Wed Aug 10 09:40:22 EDT 2016', '# Sequences': '', 'GID': '290990065', 'Organism': 'Naegleria gruberi strain NEG-M', '% Identical Sites': '', 'Sequence': 'GGGGMQGDQPLPDTAETVTISSLALLKMLKHGRAGVPMEVMGLMLGEFIDDYTVRCIDVFAMPQSGTGVSVEAVDPVFQTKMLELLKQTGRPEMVVGWYHSHPGFGCWLSSVDINTQQSFESLTKRSVAVVVDPIQSVKGKVVIDAFRTINPQLAM', 'Grade': '67.70%', 'Taxonomy': 'Eukaryota; Heterolobosea; Schizopyrenida; Vahlkampfiidae; Naegleria', 'Mean Coverage': '', 'Ref Seq Index': '', 'Accession': 'NW_003163305', 'Free end gaps': '', '# Nucleotides': '', 'country': 'USA', 'Query': '55387_Solumitrus_QUALITY_PASSED_R1_paired_contig_1705_7110_8043f', 'Original Query Frame': '1', 'Size': '8 KB'}
+        
+        """
+        # print(row['Name'], row['Annotation'])
       
       
       # for y_index, row in enumerate(self.reader):
@@ -63,7 +74,7 @@ class CsvTools():
           # else:
           #     self.csv_content.append(row)
                        
-      return self.csv_headers, self.csv_content
+      # return self.csv_headers, self.csv_content
 
 
 
@@ -79,6 +90,8 @@ if __name__ == '__main__':
     parser.add_argument("-t", "--to_file_name",
                 required = True,  action = "store", dest = "to_file_name", default = "",
                 help = "Destination file_name")
+                
+
 
     args = parser.parse_args()
     print args
