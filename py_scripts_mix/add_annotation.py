@@ -35,11 +35,9 @@ class CsvTools():
         self.result_content.append(combined_row)
 
     def write_to_res_file(self):
-      self.make_res_dict()
-      ordered_fieldnames = self.to_headers
-      ordered_fieldnames.append('Annotation')
+      self.to_headers.append('Annotation')
       with open(self.res_file_name, 'wb') as fou:
-        dw = csv.DictWriter(fou, delimiter=self.delimiter, fieldnames=ordered_fieldnames)
+        dw = csv.DictWriter(fou, delimiter=self.delimiter, fieldnames=self.to_headers)
         dw.writeheader()
         for item in self.result_content:
           dw.writerow(item)
@@ -56,10 +54,6 @@ class CsvTools():
             raise
 
     def parce_csv(self, reader):
-      # file_content = []
-      # for row in reader:
-      #   file_content.append(row)
-      # return file_content
       return [row for row in reader]
 
 
@@ -96,6 +90,7 @@ if __name__ == '__main__':
     csv_tools = CsvTools(args)
     csv_tools.read_from_file()
     csv_tools.read_to_file()
+    csv_tools.make_res_dict()
     csv_tools.write_to_res_file()
 
 
