@@ -36,7 +36,7 @@ class CsvTools():
     def get_reader(self):
         try:
             infile = open(self.csvfile, mode='r')
-            self.reader = csv.reader(codecs.EncodedFile(infile, "utf-8"), delimiter=',', quotechar='"')
+            self.reader = csv.DictReader(codecs.EncodedFile(infile, "utf-8"), delimiter=',', quotechar='"')
         except csv.Error as e:
             self.errors.append('%s is not a valid CSV file: %s' % (infile, e))
         except:
@@ -44,15 +44,24 @@ class CsvTools():
 
 
     def parce_csv(self):
-      for y_index, row in enumerate(self.reader):
+      
+      # reader = csv.DictReader(csvfile)
+      for row in self.reader:
+        # print row
+        print(row['Name'], row['Annotation'])
+      
+      
+      # for y_index, row in enumerate(self.reader):
+
+
           # print "parce_csv row"
           # print row
 
-          if y_index == 0:
-              self.csv_headers = [header_name.lower() for header_name in row if header_name]
-              # continue
-          else:
-              self.csv_content.append(row)
+          # if y_index == 0:
+          #     self.csv_headers = [header_name.lower() for header_name in row if header_name]
+          #     # continue
+          # else:
+          #     self.csv_content.append(row)
                        
       return self.csv_headers, self.csv_content
 
