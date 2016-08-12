@@ -1,27 +1,61 @@
 import csv
+import codecs
 
-class CsvMetadata():
+class CsvTools():
 
     def __init__(self):
-      pass
+      input_file_dict
       
     def import_from_file(self, csvfile):
         print "csvfile"
         print csvfile
         self.csvfile = csvfile
-        dialect = self.get_dialect()
-        print "dialect = "
-        print dialect
+        
+        with open(csvfile, 'rb') as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=',', quotechar='"')
+            for row in spamreader:
+                print ', '.join(row)
+        
+        # dialect = self.get_dialect()
+        # print "dialect = "
+        # print dialect
+        #
+        # self.get_reader(dialect)
+        # print "LLL self.reader"
+        # print self.reader
+        #
+        # self.csv_headers, self.csv_content = self.parce_csv()
+        #
+        # self.check_headers_presence()
+        #
+        # self.get_csv_by_header_uniqued()
+        #
 
-        self.get_reader(dialect)
-        print "LLL self.reader"
-        print self.reader
+    def get_dialect(self):
+        try:
+            # dialect = csv.Sniffer().sniff(self.csvfile.read(1024), delimiters=";,")
+            # dialect = csv.Sniffer().sniff(self.csvfile.read(1024), ",")
+            # dialect = csv.Sniffer().sniff(self.csvfile.read(1024), delimiters=";,")
 
-        self.csv_headers, self.csv_content = self.parce_csv()
+            dialect = csv.Sniffer().sniff(codecs.EncodedFile(self.csvfile, "utf-8").read(1024), delimiters=',')
+            self.csvfile.seek(0)
+            print "dialect.delimiter"
+            print dialect.delimiter
+            return dialect
+        except csv.Error as e:
+            self.errors.append('Warning for %s: %s' % (self.csvfile, e))
+        except:
+            raise
 
-        self.check_headers_presence()
-
-        self.get_csv_by_header_uniqued()
+    def get_reader(self, dialect):
+        try:
+            self.csvfile.open()
+            self.reader = csv.reader(codecs.EncodedFile(self.csvfile, "utf-8"), delimiter=',', dialect=dialect)
+        except csv.Error as e:
+            self.errors.append('%s is not a valid CSV file: %s' % (self.csvfile, e))
+        except:
+            raise
+        
 
 
 if __name__ == '__main__':
@@ -38,7 +72,11 @@ if __name__ == '__main__':
                 help = "Destination file_name")
 
     args = parser.parse_args()
-    print args.accumulate(args.integers)
+    print args
+    
+    
+    csv_tools = CsvTools()
+    csv_tools.import_from_file(args.from_file_name)
 
 #
 #
