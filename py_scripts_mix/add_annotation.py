@@ -5,102 +5,85 @@ class CsvTools():
 
     def __init__(self, args):
       
-      # print args
+      print args
       
       self.from_file_name = args.from_file_name
       self.to_file_name   = args.to_file_name
-      # self.from_file_content = []
-      # self.to_file_content = []
+      self.to_file_content = []
+      self.result_content = []
 
       self.delimiter = args.delimiter
-      print "delimiter = '%s'" % (self.delimiter)
-
       self.quotechar = args.quotechar
-      print "quotechar = '%s'" % (self.quotechar)
 
-    
-    def read_in_file(self):
-      input_reader = self.get_reader(self.from_file_name)
-      self.from_file_content = self.parce_csv(input_reader)
-      print "=" * 10        
+
+    def read_from_file(self):
+      from_headers, from_reader = self.get_reader(self.from_file_name)
+      self.from_file_content = self.parce_csv(from_reader)
+      # print "=" * 10      
       
       # for x in self.from_file_content:
       #     print "for x in self.from_file_content:"
           # print (x)
       
-    def read_out_file(self):
-      out_reader = self.get_reader(self.to_file_name)
-      self.to_file_content = self.parce_csv(out_reader)
-      
+    def read_to_file(self):
+      to_headers, to_reader = self.get_reader(self.to_file_name)
+      self.to_file_content = self.parce_csv(to_reader)
+      print "=" * 10
+      print self.to_file_content[0].keys()
+      print "=" * 10
       # for x in self.to_file_content:
       #     print "for x in self.to_file_content:"
       #     print (x)
       
 
-    def make_out_dict(self):
-      print "in make_out_dict"
+    def make_res_dict(self):
+      print "in make_to_dict"
       # print self.to_file_content
       # for x in self.to_file_content:
       #     print "for x in self.to_file_content:"
       #     print (x)
       
-      print "1" * 10        
+      # print "1" * 10
       for o_row in self.to_file_content:
         combined_row = o_row
-        print combined_row
+        combined_row['Annotation'] = ""
+        # print(o_row['Name'])
+        
         for i_row in self.from_file_content:
+          # print(i_row['Query'], i_row['Annotation'])
+          
           if i_row['Query'] == o_row['Name']:
+            # print "combined_row 1 = "
+            # print combined_row
+            # print "i_row = %s" % i_row
             # print(i_row['Query'], i_row['Annotation'])
             combined_row['Annotation'] = i_row['Annotation']
-            print "2" * 10        
-            print "combined_row = "
-            print combined_row
+        self.result_content.append(combined_row)
+      # print "2" * 10
+      # print "combined_row 2 = "
+      # print combined_row
             
+        # {'RPKM': '6349.9472163476', 'Name': '44522_Solumitrus_QUALITY_PASSED_R1_paired_contig_1060_12057_12951r', 'Region': '1..894', 'Expression value': '6431', 'Annotation': 'hypothetical protein CDS 3', 'Unique gene reads': '6431', 'Total gene reads': '6431', 'Gene length': '894', 'TPM': '5444.0419224799', 'Chromosome': '44522_Solumitrus_QUALITY_PASSED_R1_paired_contig_1060_12057_12951r'}
         
 
       
-    def write_to_out_file(self):
-      self.make_out_dict()
-      
-    #
-    # def import_from_file(self):
-    #     self.from_file_name
-    #     print "self.from_file_name"
-    #     print self.from_file_name
-    #
-    #     self.get_reader()
-    #     # print "LLL self.reader"
-    #     # print self.reader
-    #
-    #     # self.csv_headers, self.csv_content =
-    #     self.parce_csv()
-    #
-    #     # print "=" * 10
-    #     # print self.csv_headers
-    #     # print "=" * 10
-    #
-    #     print "SSS self.csv_content: "
-    #     print self.from_file_content
-    #     print "=" * 10
-    #
-    #     for x in self.from_file_content:
-    #         print "for x in self.from_file_content:"
-    #         print (x)
-    #     #
-    #     # self.check_headers_presence()
-    #     #
-    #     # self.get_csv_by_header_uniqued()
-    #
+    def write_to_res_file(self):
+      self.make_res_dict()
+      # print "8" * 8
+      # print self.result_content
 
     def get_reader(self, file_name):
         try:
-            infile = open(file_name, mode = 'r')
-            return csv.DictReader(codecs.EncodedFile(infile, "utf-8"), delimiter = self.delimiter, quotechar = self.quotechar)
+            infile  = open(file_name, mode = 'r')
+            reader  = csv.DictReader(codecs.EncodedFile(infile, "utf-8"), delimiter = self.delimiter, quotechar = self.quotechar)
+            headers = reader.fieldnames
+            # print "headers"
+            # print headers
+            return headers, reader
         except csv.Error as e:
             self.errors.append('%s is not a valid CSV file: %s' % (infile, e))
         except:
             raise
-
 
     def parce_csv(self, reader):
       file_content = []
@@ -144,8 +127,13 @@ if __name__ == '__main__':
                 help = "From CSV file name")
 
     parser.add_argument("-t", "--to_file_name",
-                required = True, action = "store", dest = "to_file_name", default = "out_file.csv",
+                required = True, action = "store", dest = "to_file_name", default = "to_file.csv",
                 help = "Destination CSV file name")
+
+    parser.add_argument("-r", "--result_file_name",
+                required = False, action = "store", dest = "result_file_name", default = 'result_file.csv',
+                help = "Result CSV file name")
+
                 
     parser.add_argument("-d", "--delimiter",
                 required = False, action = "store", dest = "delimiter", default = ',',
@@ -155,11 +143,14 @@ if __name__ == '__main__':
                 required = False, action = "store", dest = "quotechar", default = '"',
                 help = "CSV quote character: single or double quote")                
 
+# TODO: add key names args
+
     args = parser.parse_args()
 
     csv_tools = CsvTools(args)
-    csv_tools.read_in_file()
-    csv_tools.read_out_file()
-    csv_tools.make_out_dict()
+    csv_tools.read_from_file()
+    csv_tools.read_to_file()
+    csv_tools.write_to_res_file()
     
 
+  # TODO preserve headers order
