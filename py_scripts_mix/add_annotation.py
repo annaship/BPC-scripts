@@ -3,17 +3,27 @@ import codecs
 
 class CsvTools():
 
-    def __init__(self):
+    def __init__(self, args):
+      
+      # print args
+      
+      self.from_file_name = args.from_file_name
+      self.to_file_name   = args.to_file_name
       self.input_file_content = []
       self.otput_file_content = []
-      self.in_file_name = ""
-      self.csv_content = []
 
+      self.delimiter = args.delimiter
+      print "delimiter = '%s'" % (self.delimiter)
 
-    def import_from_file(self, csvfile):
-        print "csvfile"
-        print csvfile
-        self.csvfile = csvfile
+      self.quotechar = args.quotechar
+      print "quotechar = '%s'" % (self.quotechar)
+
+      
+
+    def import_from_file(self):
+        self.from_file_name
+        print "self.from_file_name"
+        print self.from_file_name
 
         self.get_reader()
         # print "LLL self.reader"
@@ -41,8 +51,8 @@ class CsvTools():
 
     def get_reader(self):
         try:
-            infile = open(self.csvfile, mode='r')
-            self.reader = csv.DictReader(codecs.EncodedFile(infile, "utf-8"), delimiter=',', quotechar='"')
+            infile = open(self.from_file_name, mode='r')
+            self.reader = csv.DictReader(codecs.EncodedFile(infile, "utf-8"), delimiter = self.delimiter, quotechar = self.quotechar)
         except csv.Error as e:
             self.errors.append('%s is not a valid CSV file: %s' % (infile, e))
         except:
@@ -92,7 +102,7 @@ if __name__ == '__main__':
                 help = "Destination CSV file name")
                 
     parser.add_argument("-d", "--delimiter",
-                required = False, action = "store", dest = "delim", default = ',',
+                required = False, action = "store", dest = "delimiter", default = ',',
                 help = "CSV delimeter: comma, tab, space etc")
                 
     parser.add_argument("-q", "--quotechar",
@@ -100,8 +110,7 @@ if __name__ == '__main__':
                 help = "CSV quote character: single or double quote")                
 
     args = parser.parse_args()
-    print args
 
-    csv_tools = CsvTools()
-    csv_tools.import_from_file(args.from_file_name)
+    csv_tools = CsvTools(args)
+    csv_tools.import_from_file()
 
