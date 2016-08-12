@@ -81,17 +81,23 @@ class CsvTools():
 if __name__ == '__main__':
 
     import argparse
-    parser = argparse.ArgumentParser(description = 'Adds a column from one csv file to another. Two files should have a common column (a common key).')
+    parser = argparse.ArgumentParser(description = 'Adds a column from one csv file to another. Two files should have a common column (a common key).',     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-f", "--from_file_name",
-                required = True,  action = "store", dest = "from_file_name", default = "",
-                help = "From file_name")
+                required = True, action = "store", dest = "from_file_name", default = "in_file.csv",
+                help = "From CSV file name")
 
     parser.add_argument("-t", "--to_file_name",
-                required = True,  action = "store", dest = "to_file_name", default = "",
-                help = "Destination file_name")
+                required = True, action = "store", dest = "to_file_name", default = "out_file.csv",
+                help = "Destination CSV file name")
                 
-
+    parser.add_argument("-d", "--delimiter",
+                required = False, action = "store", dest = "delim", default = ',',
+                help = "CSV delimeter: comma, tab, space etc")
+                
+    parser.add_argument("-q", "--quotechar",
+                required = False, action = "store", dest = "quotechar", default = '"',
+                help = "CSV quote character: single or double quote")                
 
     args = parser.parse_args()
     print args
