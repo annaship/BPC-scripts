@@ -6,6 +6,7 @@ class CsvTools():
     def __init__(self):
       self.input_file_dict = {}
       self.in_file_name = ""
+      self.csv_content = []
 
 
     def import_from_file(self, csvfile):
@@ -17,7 +18,15 @@ class CsvTools():
         print "LLL self.reader"
         print self.reader
 
-        # self.csv_headers, self.csv_content = self.parce_csv()
+        self.csv_headers, self.csv_content = self.parce_csv()
+        
+        print "=" * 10        
+        print self.csv_headers
+        print "=" * 10        
+        
+        print "SSS self.csv_content: "
+        for x in self.csv_content:
+            print (x)
         #
         # self.check_headers_presence()
         #
@@ -33,35 +42,20 @@ class CsvTools():
         except:
             raise
 
-    # def import_from_file(self, in_file_name, out_file_name):
-    #     print "in_file_name"
-    #     print in_file_name
-    #     self.in_file_name = in_file_name
-    #
-    #     self.get_reader()
-    #
-    #     self.csv_headers, self.csv_content = self.parce_csv()
-    #
-    # def get_reader(self):
-    #     try:
-    #         self.in_file_name.open()
-    #         self.reader = csv.reader(self.in_file_name, delimiter=',', quotechar='"')
-    #     except csv.Error as e:
-    #         self.errors.append('%s is not a valid CSV file: %s' % (self.in_file_name, e))
-    #     except:
-    #         raise
-    #
-    # def parce_csv(self):
-    #   for y_index, row in enumerate(self.reader):
-    #       print "parce_csv row"
-    #       print row
-    #
-    #       self.csv_content.append(row)
-    #       if y_index == 0:
-    #           self.csv_headers = [header_name.lower() for header_name in row if header_name]
-    #           continue
-    #   return self.csv_headers, self.csv_content
-    #
+
+    def parce_csv(self):
+      for y_index, row in enumerate(self.reader):
+          # print "parce_csv row"
+          # print row
+
+          if y_index == 0:
+              self.csv_headers = [header_name.lower() for header_name in row if header_name]
+              # continue
+          else:
+              self.csv_content.append(row)
+                       
+      return self.csv_headers, self.csv_content
+
 
 
 if __name__ == '__main__':
