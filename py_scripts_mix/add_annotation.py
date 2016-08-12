@@ -9,8 +9,8 @@ class CsvTools():
       
       self.from_file_name = args.from_file_name
       self.to_file_name   = args.to_file_name
-      self.input_file_content = []
-      self.otput_file_content = []
+      # self.from_file_content = []
+      # self.to_file_content = []
 
       self.delimiter = args.delimiter
       print "delimiter = '%s'" % (self.delimiter)
@@ -21,12 +21,46 @@ class CsvTools():
     
     def read_in_file(self):
       input_reader = self.get_reader(self.from_file_name)
-      self.input_file_content = self.parce_csv(input_reader)
+      self.from_file_content = self.parce_csv(input_reader)
       print "=" * 10        
       
-      for x in self.input_file_content:
-          print "for x in self.input_file_content:"
-          print (x)
+      # for x in self.from_file_content:
+      #     print "for x in self.from_file_content:"
+          # print (x)
+      
+    def read_out_file(self):
+      out_reader = self.get_reader(self.to_file_name)
+      self.to_file_content = self.parce_csv(out_reader)
+      
+      # for x in self.to_file_content:
+      #     print "for x in self.to_file_content:"
+      #     print (x)
+      
+
+    def make_out_dict(self):
+      print "in make_out_dict"
+      # print self.to_file_content
+      # for x in self.to_file_content:
+      #     print "for x in self.to_file_content:"
+      #     print (x)
+      
+      print "1" * 10        
+      for o_row in self.to_file_content:
+        combined_row = o_row
+        print combined_row
+        for i_row in self.from_file_content:
+          if i_row['Query'] == o_row['Name']:
+            # print(i_row['Query'], i_row['Annotation'])
+            combined_row['Annotation'] = i_row['Annotation']
+            print "2" * 10        
+            print "combined_row = "
+            print combined_row
+            
+        
+
+      
+    def write_to_out_file(self):
+      self.make_out_dict()
       
     #
     # def import_from_file(self):
@@ -46,11 +80,11 @@ class CsvTools():
     #     # print "=" * 10
     #
     #     print "SSS self.csv_content: "
-    #     print self.input_file_content
+    #     print self.from_file_content
     #     print "=" * 10
     #
-    #     for x in self.input_file_content:
-    #         print "for x in self.input_file_content:"
+    #     for x in self.from_file_content:
+    #         print "for x in self.from_file_content:"
     #         print (x)
     #     #
     #     # self.check_headers_presence()
@@ -126,6 +160,6 @@ if __name__ == '__main__':
     csv_tools = CsvTools(args)
     csv_tools.read_in_file()
     csv_tools.read_out_file()
-    csv_tools.write_to_out_file()
+    csv_tools.make_out_dict()
     
 
