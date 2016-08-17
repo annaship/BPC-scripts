@@ -4,6 +4,10 @@ release11_2_Archaea_unaligned.fa.gz
 release11_2_Bacteria_unaligned.fa.gz
 and make taxonomy.map
 
+S000871964	Acidimicrobium_ferrooxidans	Acidimicrobium	NA
+should be
+S000871964	Acidimicrobium_ferrooxidans	Acidimicrobium  Acidimicrobiaceae	NA
+
 """
 import gzip
 
@@ -35,6 +39,24 @@ class Spingo_Taxonomy():
     def get_taxmap_dict(self):
         for line in self.tax_map_file_content:
             self.taxmap_dict[line.split("\t")[0]] = line.split("\t")[1:]
+    
+    def make_taxonomy_by_rank(self, arr):
+        print "arr = %s" % arr
+        # print 'arr[0] = %s, type = %s' % (arr[0], type(arr[0]))
+        n_a = arr[0].split(";")
+        print 'arr[0].split(";") = %s' % n_a
+        print len(n_a)
+        #     q = r.split(";")
+        #     print 'r.split(";") = %s' % (q)
+        #     print "len(r.split(\";\")) = %s" % (len(q))
+        
+        # l = 'Lineage=Root;rootrank;Bacteria;domain;"Actinobacteria";phylum;Actinobacteria;class;Acidimicrobidae;subclass;Acidimicrobiales;order;"Acidimicrobineae";suborder;Acidimicrobiaceae;family;Ferrimicrobium;genus'
+        # l_arr = l.split(";")
+        # my_dict['S001416053'][l_arr[3]] = l_arr[2] 
+        # my_dict['S001416053'][l_arr[5]] = l_arr[4] 
+        # my_dict['S001416053'][l_arr[7]] = l_arr[2] 
+        # my_dict['S001416053'][l_arr[9]] = l_arr[2] 
+        # my_dict['S001416053'][l_arr[3]] = l_arr[2] 
 
     # too slow!
     # def get_maped_taxonomy_arr(self, filename):
@@ -91,3 +113,6 @@ if __name__ == '__main__':
     
     for k, v in a.items():
         print k, v
+        
+    for k, v in a.items():
+        spingo_tax.make_taxonomy_by_rank(v[1])
