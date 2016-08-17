@@ -23,7 +23,7 @@ class Spingo_Taxonomy():
         time gzip -dc release11_2_Bacteria_unaligned.fa.gz | grep -F -f mapped_ind.txt >mapped_bact_headers.txt
 
         """
-        self.tax_map_filename = "/users/ashipunova/spingo/database/taxonomy.map"
+        self.tax_map_filename = "/users/ashipunova/spingo/database/taxonomy.map_orig"
         self.arc_filename = "/users/ashipunova/spingo/database/mapped_arc_headers.txt"
         self.bact_filename = "/users/ashipunova/spingo/database/mapped_bact_headers.txt"
 
@@ -108,7 +108,13 @@ class Spingo_Taxonomy():
             for k1, v1 in self.taxmap_dict.items():
                 if k1 == k:
                     # print "k1 = %s" % k1
-                    print "%s\t%s\t%s" % (k, v["family"], "\t".join(v1))
+                    orig_string = "\t".join(v1).strip()
+                    try:
+                        print "%s\t%s\t%s" % (k, orig_string, v["family"])
+                    except KeyError:
+                        print "%s\t%s\t%s" % (k, orig_string, "")
+                    except:
+                        raise
                 
         
 
@@ -130,7 +136,7 @@ if __name__ == '__main__':
 
     test = spingo_tax.bact_file_content[0:3]
     # a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
-    a = spingo_tax.get_mapped_dict(test)
+    a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
     tax_w_rank_dict = spingo_tax.make_taxonomy_by_rank(a)
     # for k, v in a.items():
     #     print k, v
