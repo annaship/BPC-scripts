@@ -56,9 +56,18 @@ class Spingo_Taxonomy():
         m_d = {}
         for line in arr:
             print "line = %s" % line
-            l = line.split("\t")
-            m_d[l[0].strip(">")] = line.split("\t")[1:]
-            print "m_d[l[0].strip(\">\")] = line.split(\"\t\")[1:]\n %s, %s" % (l[0].strip(">"), m_d[l[0].strip(">")])
+            
+            # S003805392 Ferrimicrobium acidiphilum; PS130, ['Lineage=Root;rootrank;Bacteria;domain;"Actinobacteria";phylum;Actinobacteria;class;Acidimicrobidae;subclass;Acidimicrobiales;order;"Acidimicrobineae";suborder;Acidimicrobiaceae;family;Ferrimicrobium;genus\n']
+            l     = line.split("\t")
+            # print "l = %s" % l
+            
+            first_part = l[0].split(" ")
+            ind   = first_part[0].strip(">")
+            binom = first_part[1:]
+            tax   = l[1:]
+            
+            # print "ind = %s; binom = %s; tax = %s" % (ind, binom, tax)
+            m_d[ind] = (binom, tax)
         return m_d
 
 
@@ -80,8 +89,5 @@ if __name__ == '__main__':
     test = spingo_tax.bact_file_content[0:3]
     a = spingo_tax.get_mapped_dict(test)
     
-    # print "spingo_tax.get_mapped_dict(test)"
-    # print a
-
-    # for k, v in a:
-    #     print k, v
+    for k, v in a.items():
+        print k, v
