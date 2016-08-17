@@ -31,8 +31,8 @@ class Spingo_Taxonomy():
         self.arc_file_content = []
         self.bact_file_content = []
         self.taxmap_dict = {}
-        self.maped_taxonomy_arr = []
-        self.new_map_text = []
+        self.new_map_arr = []
+        
         # self.my_dict = defaultdict()
 
         
@@ -115,7 +115,27 @@ class Spingo_Taxonomy():
                         print "%s\t%s\t%s" % (k, orig_string, "")
                     except:
                         raise
-                
+
+    def make_current_string(k, v, v1):
+        orig_string = "\t".join(v1).strip()
+        try:
+            return "%s\t%s\t%s" % (k, orig_string, v["family"])
+        except KeyError:
+            return "%s\t%s\t%s" % (k, orig_string, "")
+        except:
+            raise
+
+    def make_new_tax_map(self, tax_w_rank_dict):
+        for k, v in tax_w_rank_dict.items():
+            for k1, v1 in self.taxmap_dict.items():
+                if k1 == k:
+                    # cur_str = make_current_string(k, v, v1)
+                    # print "k1 = %s" % k1
+                    self.new_map_arr.append(make_current_string(k, v, v1))
+
+    def write_to_file(self):
+        pass
+                     
         
 
 
