@@ -45,10 +45,18 @@ class Spingo_Taxonomy():
     def pairwise(self, iterable):
         tax_array = iterable[0].strip().split(";")
         "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-        print type(tax_array)
-        a, b = tee(tax_array)
-        next(b, None)
-        return izip(b, a)
+        print "=" * 10
+        print "tax_array = %s" % (tax_array)
+        a = iter(tax_array)
+        return izip(a, a)
+
+    # def grouped(iterable, n):
+    #     tax_array = iterable[0].strip().split(";")
+    #     
+    #     "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
+    #     return izip(*[iter(iterable)]*n)
+
+
 
     # def pairwise(self, iterable):
     #     print iterable
