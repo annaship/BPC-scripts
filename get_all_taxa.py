@@ -56,7 +56,7 @@ class Spingo_Taxonomy():
     def make_taxonomy_by_rank(self, i_dict):
         tax_w_rank_dict = defaultdict()
         for k, v in i_dict.items():
-            print "=" * 10            
+            # print "=" * 10            
             # print k
             tax_w_rank_dict[k] = {}
             for x, y in spingo_tax.pairwise(v[1]):
@@ -98,6 +98,21 @@ class Spingo_Taxonomy():
         return m_d
 
 
+    def print_new_tax_map(self, tax_w_rank_dict):
+        # for k1, v1 in self.taxmap_dict.items():
+        #     print "self.taxmap_dict k1 = %s, v1 = %s" % (k1, v1)
+        
+        for k, v in tax_w_rank_dict.items():
+            # print ":" * 8
+            print "k =  %s, v = %s" % (k, v)
+            for k1, v1 in self.taxmap_dict.items():
+                if k1 == k:
+                    print "k1 = %s" % k1
+                    print "%s\t%s\t%s" % (k, v["family"], "\t".join(v1))
+                
+        
+
+
 if __name__ == '__main__':
     spingo_tax = Spingo_Taxonomy()
 
@@ -127,10 +142,11 @@ if __name__ == '__main__':
     #        print "%s: %s" % (y, x)
     #     
     
-    for k, v in tax_w_rank_dict.items():
-        print ":" * 8
-        print "k =  %s, v = %s" % (k, v)
+    # for k, v in tax_w_rank_dict.items():
+    #     print ":" * 8
+    #     print "k =  %s, v = %s" % (k, v)
         # k =  S000871964, v = {'domain': 'Bacteria', 'family': 'Acidimicrobiaceae', 'subclass': 'Acidimicrobidae', 'order': 'Acidimicrobiales', 'phylum': '"Actinobacteria"', 'suborder': '"Acidimicrobineae"', 'genus': 'Acidimicrobium', 'class': 'Actinobacteria'}
 
 
+    spingo_tax.print_new_tax_map(tax_w_rank_dict)
     
