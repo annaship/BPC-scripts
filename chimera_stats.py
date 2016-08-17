@@ -99,8 +99,19 @@ def frequency_count(chimeric_file_name):
         #for key, val in freq_dict.iteritems():
             # print "freq_dict.iteritems: key = %s, val = %s" % (key, val)
             #print "DDD freq_dict.iteritems: remove_size(key) = %s, val = %s" % (remove_size(key), val)
-        sorted_freq = (sorted((int(remove_size(key)), val) for key, val in freq_dict.iteritems())) 
-        return sorted_freq   
+        try:
+          sorted_freq = (sorted((int(remove_size(key)), val) for key, val in freq_dict.iteritems())) 
+          return sorted_freq   
+        except ValueError:
+          for key, val in freq_dict.iteritems():
+              print "freq_dict.iteritems: key = %s, val = %s" % (key, val)
+              print "ERR freq_dict.iteritems: remove_size(key) = %s, val = %s" % (remove_size(key), val)
+          print "chimeric_file_name = %s" % chimeric_file_name
+          raise
+        except:
+          raise
+          
+          
     except:
         print "+-" * 50
         print "Unexpected error:", sys.exc_info()[0]
