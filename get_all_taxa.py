@@ -10,7 +10,8 @@ S000871964	Acidimicrobium_ferrooxidans	Acidimicrobium  Acidimicrobiaceae	NA
 
 """
 import gzip
-from itertools import tee, izip
+from itertools import izip
+from collections import defaultdict
 
 class Spingo_Taxonomy():
     def __init__(self):
@@ -32,6 +33,9 @@ class Spingo_Taxonomy():
         self.taxmap_dict = {}
         self.maped_taxonomy_arr = []
         self.new_map_text = []
+        # self.my_dict = defaultdict()
+
+        
 
     def get_file_content(self, in_filename):
         with open(in_filename, 'rb') as f:
@@ -50,15 +54,22 @@ class Spingo_Taxonomy():
         return izip(a, a)
         
     def make_taxonomy_by_rank(self, i_dict):
+        tax_w_rank_dict = defaultdict()
         for k, v in i_dict.items():
-            print "=" * 10
-            
-            print k
-            # spingo_tax.make_taxonomy_by_rank(v[1])
-            # print v[1]
+            print "=" * 10            
+            # print k
+            tax_w_rank_dict[k] = {}
             for x, y in spingo_tax.pairwise(v[1]):
-               print "%s: %s" % (y, x)
+               # print "%s: %s" % (y, x)
+               if not y.startswith("rootrank"):
+                   try:
+                       tax_w_rank_dict[k][y] = x
+                   except KeyError:
+                       pass
+                   except:
+                       raise
         
+        return tax_w_rank_dict
 
         # l = 'Lineage=Root;rootrank;Bacteria;domain;"Actinobacteria";phylum;Actinobacteria;class;Acidimicrobidae;subclass;Acidimicrobiales;order;"Acidimicrobineae";suborder;Acidimicrobiaceae;family;Ferrimicrobium;genus'
         # l_arr = l.split(";")
@@ -105,7 +116,7 @@ if __name__ == '__main__':
     test = spingo_tax.bact_file_content[0:3]
     # a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
     a = spingo_tax.get_mapped_dict(test)
-    spingo_tax.make_taxonomy_by_rank(a)
+    tax_w_rank_dict = spingo_tax.make_taxonomy_by_rank(a)
     # for k, v in a.items():
     #     print k, v
         
@@ -115,3 +126,11 @@ if __name__ == '__main__':
     #     for x, y in spingo_tax.pairwise(v[1]):
     #        print "%s: %s" % (y, x)
     #     
+    
+    for k, v in tax_w_rank_dict.items():
+        print ":" * 8
+        print "k =  %s, v = %s" % (k, v)
+        # k =  S000871964, v = {'domain': 'Bacteria', 'family': 'Acidimicrobiaceae', 'subclass': 'Acidimicrobidae', 'order': 'Acidimicrobiales', 'phylum': '"Actinobacteria"', 'suborder': '"Acidimicrobineae"', 'genus': 'Acidimicrobium', 'class': 'Actinobacteria'}
+
+
+    
