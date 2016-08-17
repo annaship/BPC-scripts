@@ -45,61 +45,21 @@ class Spingo_Taxonomy():
     def pairwise(self, iterable):
         tax_array = iterable[0].strip().split(";")
         "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-        print "=" * 10
-        print "tax_array = %s" % (tax_array)
+        # print "tax_array = %s" % (tax_array)
         a = iter(tax_array)
         return izip(a, a)
-
-    # def grouped(iterable, n):
-    #     tax_array = iterable[0].strip().split(";")
-    #     
-    #     "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
-    #     return izip(*[iter(iterable)]*n)
-
-
-
-    # def pairwise(self, iterable):
-    #     print iterable
-    #     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
-    #     a = iter(iterable)
-    #     return izip(a, a)
-    
-    # def make_taxonomy_by_rank(self, i_arr):
-    #     a = iter(i_arr)
-    #     return izip(a, a)
-        # def pairwise(iterable):
-        #     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
-        #     a = iter(iterable)
-        #     return izip(a, a)
-
-        # for x, y in pairwise(l):
-        #    print "%d + %d = %d" % (x, y, x + y)
         
-        # print "i_arr = %s" % i_arr
-        # # print 'arr[0] = %s, type = %s' % (arr[0], type(arr[0]))
-        # tax_array = i_arr[0].strip().split(";")
-        #  
-        # rank_name = ""
-        # tax_name  = ""
-        # print "=" * 10
-        # for i, val in enumerate(tax_array):
-        #     if (i % 2 == 0):
-        #         tax_name = val
-        #     else:
-        #         rank_name = val
-        #         print i, rank_name, tax_name
-        #         rank_name = ""
-        #         tax_name  = ""
+    def make_taxonomy_by_rank(self, i_dict):
+        for k, v in i_dict.items():
+            print "=" * 10
             
-            
+            print k
+            # spingo_tax.make_taxonomy_by_rank(v[1])
+            # print v[1]
+            for x, y in spingo_tax.pairwise(v[1]):
+               print "%s: %s" % (y, x)
         
-        
-        # print 'arr[0].split(";") = %s' % n_a
-        # print len(n_a)
-        #     q = r.split(";")
-        #     print 'r.split(";") = %s' % (q)
-        #     print "len(r.split(\";\")) = %s" % (len(q))
-        
+
         # l = 'Lineage=Root;rootrank;Bacteria;domain;"Actinobacteria";phylum;Actinobacteria;class;Acidimicrobidae;subclass;Acidimicrobiales;order;"Acidimicrobineae";suborder;Acidimicrobiaceae;family;Ferrimicrobium;genus'
         # l_arr = l.split(";")
         # my_dict['S001416053'][l_arr[3]] = l_arr[2] 
@@ -107,22 +67,6 @@ class Spingo_Taxonomy():
         # my_dict['S001416053'][l_arr[7]] = l_arr[2] 
         # my_dict['S001416053'][l_arr[9]] = l_arr[2] 
         # my_dict['S001416053'][l_arr[3]] = l_arr[2] 
-
-    # too slow!
-    # def get_maped_taxonomy_arr(self, filename):
-    #     maped_taxonomy_arr = []
-    #     with gzip.open(filename, 'rb') as f:
-    #         for line in f:
-    #             if line.startswith(">"):
-    #                 for ind, val in self.taxmap_dict.items():
-    #                     i1 = ">" + ind
-    #                     if line.startswith(i1):
-    #                         maped_taxonomy_arr.append(line)
-    #     return maped_taxonomy_arr
-
-    # def get_maped_taxonomy_arr(self, filename):
-    #     with open(self.filename, 'rb') as f:
-    #         for line in f:
 
     def get_mapped_dict(self, arr):
         m_d = {}
@@ -161,13 +105,13 @@ if __name__ == '__main__':
     test = spingo_tax.bact_file_content[0:3]
     # a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
     a = spingo_tax.get_mapped_dict(test)
-    
+    spingo_tax.make_taxonomy_by_rank(a)
     # for k, v in a.items():
     #     print k, v
         
-    for k, v in a.items():
-        # spingo_tax.make_taxonomy_by_rank(v[1])
-        # print v[1]
-        for x, y in spingo_tax.pairwise(v[1]):
-           print "%s: %s" % (x, y)
-        
+    # for k, v in a.items():
+    #     # spingo_tax.make_taxonomy_by_rank(v[1])
+    #     # print v[1]
+    #     for x, y in spingo_tax.pairwise(v[1]):
+    #        print "%s: %s" % (y, x)
+    #     
