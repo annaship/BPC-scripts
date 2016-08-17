@@ -10,6 +10,7 @@ S000871964	Acidimicrobium_ferrooxidans	Acidimicrobium  Acidimicrobiaceae	NA
 
 """
 import gzip
+from itertools import tee, izip
 
 class Spingo_Taxonomy():
     def __init__(self):
@@ -39,23 +40,48 @@ class Spingo_Taxonomy():
     def get_taxmap_dict(self):
         for line in self.tax_map_file_content:
             self.taxmap_dict[line.split("\t")[0]] = line.split("\t")[1:]
+
+
+    def pairwise(self, iterable):
+        tax_array = iterable[0].strip().split(";")
+        "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+        print type(tax_array)
+        a, b = tee(tax_array)
+        next(b, None)
+        return izip(b, a)
+
+    # def pairwise(self, iterable):
+    #     print iterable
+    #     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
+    #     a = iter(iterable)
+    #     return izip(a, a)
     
-    def make_taxonomy_by_rank(self, i_arr):
-        print "i_arr = %s" % i_arr
-        # print 'arr[0] = %s, type = %s' % (arr[0], type(arr[0]))
-        tax_array = i_arr[0].strip().split(";")
- 
-        rank_name = ""
-        tax_name  = ""
-        print "=" * 10
-        for i, val in enumerate(tax_array):
-            if (i % 2 == 0):
-                tax_name = val
-            else:
-                rank_name = val
-                print i, rank_name, tax_name
-                rank_name = ""
-                tax_name  = ""
+    # def make_taxonomy_by_rank(self, i_arr):
+    #     a = iter(i_arr)
+    #     return izip(a, a)
+        # def pairwise(iterable):
+        #     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
+        #     a = iter(iterable)
+        #     return izip(a, a)
+
+        # for x, y in pairwise(l):
+        #    print "%d + %d = %d" % (x, y, x + y)
+        
+        # print "i_arr = %s" % i_arr
+        # # print 'arr[0] = %s, type = %s' % (arr[0], type(arr[0]))
+        # tax_array = i_arr[0].strip().split(";")
+        #  
+        # rank_name = ""
+        # tax_name  = ""
+        # print "=" * 10
+        # for i, val in enumerate(tax_array):
+        #     if (i % 2 == 0):
+        #         tax_name = val
+        #     else:
+        #         rank_name = val
+        #         print i, rank_name, tax_name
+        #         rank_name = ""
+        #         tax_name  = ""
             
             
         
@@ -132,4 +158,8 @@ if __name__ == '__main__':
     #     print k, v
         
     for k, v in a.items():
-        spingo_tax.make_taxonomy_by_rank(v[1])
+        # spingo_tax.make_taxonomy_by_rank(v[1])
+        # print v[1]
+        for x, y in spingo_tax.pairwise(v[1]):
+           print "%s: %s" % (x, y)
+        
