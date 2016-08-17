@@ -40,12 +40,28 @@ class Spingo_Taxonomy():
         for line in self.tax_map_file_content:
             self.taxmap_dict[line.split("\t")[0]] = line.split("\t")[1:]
     
-    def make_taxonomy_by_rank(self, arr):
-        print "arr = %s" % arr
+    def make_taxonomy_by_rank(self, i_arr):
+        print "i_arr = %s" % i_arr
         # print 'arr[0] = %s, type = %s' % (arr[0], type(arr[0]))
-        n_a = arr[0].split(";")
-        print 'arr[0].split(";") = %s' % n_a
-        print len(n_a)
+        tax_array = i_arr[0].strip().split(";")
+ 
+        rank_name = ""
+        tax_name  = ""
+        print "=" * 10
+        for i, val in enumerate(tax_array):
+            if (i % 2 == 0):
+                tax_name = val
+            else:
+                rank_name = val
+                print i, rank_name, tax_name
+                rank_name = ""
+                tax_name  = ""
+            
+            
+        
+        
+        # print 'arr[0].split(";") = %s' % n_a
+        # print len(n_a)
         #     q = r.split(";")
         #     print 'r.split(";") = %s' % (q)
         #     print "len(r.split(\";\")) = %s" % (len(q))
@@ -77,7 +93,7 @@ class Spingo_Taxonomy():
     def get_mapped_dict(self, arr):
         m_d = {}
         for line in arr:
-            print "line = %s" % line
+            # print "line = %s" % line
             
             # S003805392 Ferrimicrobium acidiphilum; PS130, ['Lineage=Root;rootrank;Bacteria;domain;"Actinobacteria";phylum;Actinobacteria;class;Acidimicrobidae;subclass;Acidimicrobiales;order;"Acidimicrobineae";suborder;Acidimicrobiaceae;family;Ferrimicrobium;genus\n']
             l     = line.split("\t")
@@ -109,10 +125,11 @@ if __name__ == '__main__':
     print spingo_tax.bact_file_content[0]
 
     test = spingo_tax.bact_file_content[0:3]
+    # a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
     a = spingo_tax.get_mapped_dict(test)
     
-    for k, v in a.items():
-        print k, v
+    # for k, v in a.items():
+    #     print k, v
         
     for k, v in a.items():
         spingo_tax.make_taxonomy_by_rank(v[1])
