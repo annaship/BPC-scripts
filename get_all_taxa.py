@@ -104,10 +104,10 @@ class Spingo_Taxonomy():
         
         for k, v in tax_w_rank_dict.items():
             # print ":" * 8
-            print "k =  %s, v = %s" % (k, v)
+            # print "k =  %s, v = %s" % (k, v)
             for k1, v1 in self.taxmap_dict.items():
                 if k1 == k:
-                    print "k1 = %s" % k1
+                    # print "k1 = %s" % k1
                     print "%s\t%s\t%s" % (k, v["family"], "\t".join(v1))
                 
         
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     spingo_tax = Spingo_Taxonomy()
 
     spingo_tax.tax_map_file_content = spingo_tax.get_file_content(spingo_tax.tax_map_filename)
-    print spingo_tax.tax_map_file_content[0]
+    # print spingo_tax.tax_map_file_content[0]
     spingo_tax.get_taxmap_dict()
     # arc_maped_taxonomy_arr  = spingo_tax.get_maped_taxonomy_arr(spingo_tax.arc_filename)
     # bact_maped_taxonomy_arr = spingo_tax.get_maped_taxonomy_arr(spingo_tax.bact_filename)
@@ -125,8 +125,8 @@ if __name__ == '__main__':
     spingo_tax.arc_file_content  = spingo_tax.get_file_content(spingo_tax.arc_filename)
     spingo_tax.bact_file_content = spingo_tax.get_file_content(spingo_tax.bact_filename)
 
-    print "spingo_tax.bact_file_content[0]"
-    print spingo_tax.bact_file_content[0]
+    # print "spingo_tax.bact_file_content[0]"
+    # print spingo_tax.bact_file_content[0]
 
     test = spingo_tax.bact_file_content[0:3]
     # a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
