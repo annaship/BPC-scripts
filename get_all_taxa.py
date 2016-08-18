@@ -90,14 +90,6 @@ class Spingo_Taxonomy():
         
         return tax_w_rank_dict
 
-        # l = 'Lineage=Root;rootrank;Bacteria;domain;"Actinobacteria";phylum;Actinobacteria;class;Acidimicrobidae;subclass;Acidimicrobiales;order;"Acidimicrobineae";suborder;Acidimicrobiaceae;family;Ferrimicrobium;genus'
-        # l_arr = l.split(";")
-        # my_dict['S001416053'][l_arr[3]] = l_arr[2] 
-        # my_dict['S001416053'][l_arr[5]] = l_arr[4] 
-        # my_dict['S001416053'][l_arr[7]] = l_arr[2] 
-        # my_dict['S001416053'][l_arr[9]] = l_arr[2] 
-        # my_dict['S001416053'][l_arr[3]] = l_arr[2] 
-
     def get_mapped_dict(self, arr):
         m_d = {}
         for line in arr:
@@ -135,12 +127,12 @@ class Spingo_Taxonomy():
                     except:
                         raise
 
-    def make_current_string(self, k, v, v1):
-        orig_string = "\t".join(v1).strip()
+    def make_current_string(self, key, tax_val, orig_tax_map_val):
+        orig_string = "\t".join(orig_tax_map_val).strip()
         try:
-            return "%s\t%s\t%s" % (k, orig_string, v["family"])
+            return "%s\t%s\t%s" % (key, orig_string, tax_val["family"])
         except KeyError:
-            return "%s\t%s\t%s" % (k, orig_string, "")
+            return "%s\t%s\t%s" % (key, orig_string, "")
         except:
             raise
             
@@ -154,49 +146,26 @@ class Spingo_Taxonomy():
     def make_new_tax_map(self, tax_w_rank_dict):
       comb_dict = self.combine_two_dicts(tax_w_rank_dict, self.taxmap_dict)
       print "CCC comb_dict = "
-      for k2, v2 in comb_dict.items():
-        orig_string = "\t".join(v2[1]).strip()
-        # print k2, v2
-        try:
-          print "%s\t%s\t%s" % (k2, orig_string, v2[0]["family"])
-          self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, v2[0]["family"]))
-        except KeyError:
-          print "%s\t%s\t%s" % (k2, orig_string, "")
-          self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, ""))
-        except:
-          raise          
-
-      
-      # S001014081 ({'domain': 'Bacteria', 'family': 'Acidimicrobiaceae', 'subclass': 'Acidimicrobidae', 'order': 'Acidimicrobiales', 'phylum': '"Actinobacteria"', 'suborder': '"Acidimicrobineae"', 'genus': 'Ilumatobacter', 'class': 'Actinobacteria'}, ['Ilumatobacter_fluminis', 'Ilumatobacter', 'NA\n'])
-      
-
-    # def make_new_tax_map(self, tax_w_rank_dict):
-    #     for k, v in tax_w_rank_dict.items():
-    #         for k1, v1 in self.taxmap_dict.items():
-    #             if k1 == k:
-    #                 # cur_str = make_current_string(k, v, v1)
-    #                 # print "k1 = %s" % k1
-    #                 self.new_map_arr.append(self.make_current_string(k, v, v1))
-
-    # def make_new_tax_map1(self, tax_w_rank_dict):
-    #     for k, v in tax_w_rank_dict.items():
-    #         self.new_map_arr = [self.make_current_string(k, v, v1) for k1, v1 in self.taxmap_dict.items() if k1 == k]
-
-    # def make_new_tax_map(self, tax_w_rank_dict):
-    #     for k, v in tax_w_rank_dict.items():
-    #         for k1, v1 in self.taxmap_dict.items():
-    #             if k1 == k:
-    #                 # cur_str = make_current_string(k, v, v1)
-    #                 # print "k1 = %s" % k1
-    #                 self.new_map_arr.append(self.make_current_string(k, v, v1))
+      for key, v2 in comb_dict.items():
+        self.new_map_arr.append(self.make_current_string(key, v2[0], v2[1]))
+        # self.new_map_arr.append(make_current_string(self, key, tax_val, orig_tax_map_val))
+        
+        # orig_string = "\t".join(v2[1]).strip()
+        # # print k2, v2
+        # try:
+        #   print "%s\t%s\t%s" % (k2, orig_string, v2[0]["family"])
+        #   self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, v2[0]["family"]))
+        # except KeyError:
+        #   print "%s\t%s\t%s" % (k2, orig_string, "")
+        #   self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, ""))
+        # except:
+        #   raise        
 
     def write_to_file(self):
         f = open('new_taxonomy.map', 'w')
         f.write("\n".join(self.new_map_arr))
         f.close
                      
-        
-
 
 if __name__ == '__main__':
     spingo_tax = Spingo_Taxonomy()
