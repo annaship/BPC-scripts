@@ -12,6 +12,25 @@ S000871964	Acidimicrobium_ferrooxidans	Acidimicrobium  Acidimicrobiaceae	NA
 import gzip
 from itertools import izip
 from collections import defaultdict
+import time
+
+class Util():
+  def benchmark_w_return_1(self, message):
+    print  "\n"
+    print "-" * 10
+    print message
+    return time.time()
+    
+  def benchmark_w_return_2(self, t0):
+    t1 = time.time()
+    total = float(t1-t0) / 60
+    print 'time: %.2f m' % total
+    
+  def print_out_dict(self, dict_name):
+    print dict_name
+    for k, v in dict_name.items():
+        print "%s: %s" % (k, v)
+
 
 class Spingo_Taxonomy():
     def __init__(self):
@@ -32,7 +51,7 @@ class Spingo_Taxonomy():
         self.bact_file_content = []
         self.taxmap_dict = {}
         self.new_map_arr = []
-        
+                
         # self.my_dict = defaultdict()
 
         
@@ -116,7 +135,7 @@ class Spingo_Taxonomy():
                     except:
                         raise
 
-    def make_current_string(k, v, v1):
+    def make_current_string(self, k, v, v1):
         orig_string = "\t".join(v1).strip()
         try:
             return "%s\t%s\t%s" % (k, orig_string, v["family"])
@@ -124,23 +143,65 @@ class Spingo_Taxonomy():
             return "%s\t%s\t%s" % (k, orig_string, "")
         except:
             raise
+            
+    def combine_two_dicts(self, d1, d2):            
+      ds = [d1, d2]
+      d = {}
+      for k in d1:
+          d[k] = tuple(d[k] for d in ds)
+      return d
 
     def make_new_tax_map(self, tax_w_rank_dict):
-        for k, v in tax_w_rank_dict.items():
-            for k1, v1 in self.taxmap_dict.items():
-                if k1 == k:
-                    # cur_str = make_current_string(k, v, v1)
-                    # print "k1 = %s" % k1
-                    self.new_map_arr.append(make_current_string(k, v, v1))
+      comb_dict = self.combine_two_dicts(tax_w_rank_dict, self.taxmap_dict)
+      print "CCC comb_dict = "
+      for k2, v2 in comb_dict.items():
+        orig_string = "\t".join(v2[1]).strip()
+        # print k2, v2
+        try:
+          print "%s\t%s\t%s" % (k2, orig_string, v2[0]["family"])
+          self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, v2[0]["family"]))
+        except KeyError:
+          print "%s\t%s\t%s" % (k2, orig_string, "")
+          self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, ""))
+        except:
+          raise          
+
+      
+      # S001014081 ({'domain': 'Bacteria', 'family': 'Acidimicrobiaceae', 'subclass': 'Acidimicrobidae', 'order': 'Acidimicrobiales', 'phylum': '"Actinobacteria"', 'suborder': '"Acidimicrobineae"', 'genus': 'Ilumatobacter', 'class': 'Actinobacteria'}, ['Ilumatobacter_fluminis', 'Ilumatobacter', 'NA\n'])
+      
+
+    # def make_new_tax_map(self, tax_w_rank_dict):
+    #     for k, v in tax_w_rank_dict.items():
+    #         for k1, v1 in self.taxmap_dict.items():
+    #             if k1 == k:
+    #                 # cur_str = make_current_string(k, v, v1)
+    #                 # print "k1 = %s" % k1
+    #                 self.new_map_arr.append(self.make_current_string(k, v, v1))
+
+    # def make_new_tax_map1(self, tax_w_rank_dict):
+    #     for k, v in tax_w_rank_dict.items():
+    #         self.new_map_arr = [self.make_current_string(k, v, v1) for k1, v1 in self.taxmap_dict.items() if k1 == k]
+
+    # def make_new_tax_map(self, tax_w_rank_dict):
+    #     for k, v in tax_w_rank_dict.items():
+    #         for k1, v1 in self.taxmap_dict.items():
+    #             if k1 == k:
+    #                 # cur_str = make_current_string(k, v, v1)
+    #                 # print "k1 = %s" % k1
+    #                 self.new_map_arr.append(self.make_current_string(k, v, v1))
 
     def write_to_file(self):
-        pass
+        f = open('new_taxonomy.map', 'w')
+        f.write("\n".join(self.new_map_arr))
+        f.close
                      
         
 
 
 if __name__ == '__main__':
     spingo_tax = Spingo_Taxonomy()
+    util = Util()
+    
 
     spingo_tax.tax_map_file_content = spingo_tax.get_file_content(spingo_tax.tax_map_filename)
     # print spingo_tax.tax_map_file_content[0]
@@ -148,31 +209,43 @@ if __name__ == '__main__':
     # arc_maped_taxonomy_arr  = spingo_tax.get_maped_taxonomy_arr(spingo_tax.arc_filename)
     # bact_maped_taxonomy_arr = spingo_tax.get_maped_taxonomy_arr(spingo_tax.bact_filename)
 
+
+    t = util.benchmark_w_return_1("get_file_content arc_filename")
     spingo_tax.arc_file_content  = spingo_tax.get_file_content(spingo_tax.arc_filename)
+    util.benchmark_w_return_2(t)
+    
+    
+    t = util.benchmark_w_return_1("get_file_content bact_filename")
     spingo_tax.bact_file_content = spingo_tax.get_file_content(spingo_tax.bact_filename)
+    util.benchmark_w_return_2(t)
 
     # print "spingo_tax.bact_file_content[0]"
     # print spingo_tax.bact_file_content[0]
 
-    test = spingo_tax.bact_file_content[0:3]
+    test = spingo_tax.bact_file_content[0:300]
+
+    t = util.benchmark_w_return_1("bact_file_content")
+    a = spingo_tax.get_mapped_dict(test)
     # a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
-    a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
+    util.benchmark_w_return_2(t)
+
+    t = util.benchmark_w_return_1("make_taxonomy_by_rank")
     tax_w_rank_dict = spingo_tax.make_taxonomy_by_rank(a)
-    # for k, v in a.items():
-    #     print k, v
-        
-    # for k, v in a.items():
-    #     # spingo_tax.make_taxonomy_by_rank(v[1])
-    #     # print v[1]
-    #     for x, y in spingo_tax.pairwise(v[1]):
-    #        print "%s: %s" % (y, x)
-    #     
-    
-    # for k, v in tax_w_rank_dict.items():
-    #     print ":" * 8
-    #     print "k =  %s, v = %s" % (k, v)
-        # k =  S000871964, v = {'domain': 'Bacteria', 'family': 'Acidimicrobiaceae', 'subclass': 'Acidimicrobidae', 'order': 'Acidimicrobiales', 'phylum': '"Actinobacteria"', 'suborder': '"Acidimicrobineae"', 'genus': 'Acidimicrobium', 'class': 'Actinobacteria'}
+    util.benchmark_w_return_2(t)
 
+    t = util.benchmark_w_return_1("make_new_tax_map")
+    spingo_tax.make_new_tax_map(tax_w_rank_dict)
+    util.benchmark_w_return_2(t)
 
-    spingo_tax.print_new_tax_map(tax_w_rank_dict)
+    # t = util.benchmark_w_return_1("make_new_tax_map1")
+    # spingo_tax.make_new_tax_map1(tax_w_rank_dict)
+    # util.benchmark_w_return_2(t)
+
+    # t = util.benchmark_w_return_1("print_new_tax_map")
+    # spingo_tax.print_new_tax_map(tax_w_rank_dict)
+    # util.benchmark_w_return_2(t)
+
+    t = util.benchmark_w_return_1("write_to_file")
+    spingo_tax.write_to_file()
+    util.benchmark_w_return_2(t)
     
