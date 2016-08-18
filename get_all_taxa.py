@@ -31,6 +31,13 @@ class Util():
     for k, v in dict_name.items():
         print "%s: %s" % (k, v)
 
+  def write_to_file(self, file_name, text):
+      f = open(file_name, 'w')
+      f.write(text)
+      f.close
+                   
+
+
 
 class Spingo_Taxonomy():
     def __init__(self):
@@ -108,25 +115,6 @@ class Spingo_Taxonomy():
             m_d[ind] = (binom, tax)
         return m_d
 
-
-    def print_new_tax_map(self, tax_w_rank_dict):
-        # for k1, v1 in self.taxmap_dict.items():
-        #     print "self.taxmap_dict k1 = %s, v1 = %s" % (k1, v1)
-        
-        for k, v in tax_w_rank_dict.items():
-            # print ":" * 8
-            # print "k =  %s, v = %s" % (k, v)
-            for k1, v1 in self.taxmap_dict.items():
-                if k1 == k:
-                    # print "k1 = %s" % k1
-                    orig_string = "\t".join(v1).strip()
-                    try:
-                        print "%s\t%s\t%s" % (k, orig_string, v["family"])
-                    except KeyError:
-                        print "%s\t%s\t%s" % (k, orig_string, "")
-                    except:
-                        raise
-
     def make_current_string(self, key, tax_val, orig_tax_map_val):
         orig_string = "\t".join(orig_tax_map_val).strip()
         try:
@@ -144,28 +132,12 @@ class Spingo_Taxonomy():
       return d
 
     def make_new_tax_map(self, tax_w_rank_dict):
+      self.new_map_arr = []
       comb_dict = self.combine_two_dicts(tax_w_rank_dict, self.taxmap_dict)
       print "CCC comb_dict = "
       for key, v2 in comb_dict.items():
         self.new_map_arr.append(self.make_current_string(key, v2[0], v2[1]))
-        # self.new_map_arr.append(make_current_string(self, key, tax_val, orig_tax_map_val))
-        
-        # orig_string = "\t".join(v2[1]).strip()
-        # # print k2, v2
-        # try:
-        #   print "%s\t%s\t%s" % (k2, orig_string, v2[0]["family"])
-        #   self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, v2[0]["family"]))
-        # except KeyError:
-        #   print "%s\t%s\t%s" % (k2, orig_string, "")
-        #   self.new_map_arr.append("%s\t%s\t%s" % (k2, orig_string, ""))
-        # except:
-        #   raise        
 
-    def write_to_file(self):
-        f = open('new_taxonomy.map', 'w')
-        f.write("\n".join(self.new_map_arr))
-        f.close
-                     
 
 if __name__ == '__main__':
     spingo_tax = Spingo_Taxonomy()
@@ -193,9 +165,10 @@ if __name__ == '__main__':
 
     test = spingo_tax.bact_file_content[0:300]
 
+    # Bact:
     t = util.benchmark_w_return_1("bact_file_content")
-    a = spingo_tax.get_mapped_dict(test)
-    # a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
+    # a = spingo_tax.get_mapped_dict(test)
+    a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
     util.benchmark_w_return_2(t)
 
     t = util.benchmark_w_return_1("make_taxonomy_by_rank")
@@ -206,15 +179,25 @@ if __name__ == '__main__':
     spingo_tax.make_new_tax_map(tax_w_rank_dict)
     util.benchmark_w_return_2(t)
 
-    # t = util.benchmark_w_return_1("make_new_tax_map1")
-    # spingo_tax.make_new_tax_map1(tax_w_rank_dict)
-    # util.benchmark_w_return_2(t)
+    t = util.benchmark_w_return_1("write_to_file")
+    util.write_to_file('new_taxonomy.map_b', "\n".join(spingo_tax.new_map_arr))
+    util.benchmark_w_return_2(t)
 
-    # t = util.benchmark_w_return_1("print_new_tax_map")
-    # spingo_tax.print_new_tax_map(tax_w_rank_dict)
-    # util.benchmark_w_return_2(t)
+    # Arc:
+    t = util.benchmark_w_return_1("arc_file_content")
+    # a2 = spingo_tax.get_mapped_dict(test)
+    a2 = spingo_tax.get_mapped_dict(spingo_tax.arc_file_content)
+    util.benchmark_w_return_2(t)
+
+    t = util.benchmark_w_return_1("make_taxonomy_by_rank")
+    tax_w_rank_dict2 = spingo_tax.make_taxonomy_by_rank(a2)
+    util.benchmark_w_return_2(t)
+
+    t = util.benchmark_w_return_1("make_new_tax_map")
+    spingo_tax.make_new_tax_map(tax_w_rank_dict2)
+    util.benchmark_w_return_2(t)
 
     t = util.benchmark_w_return_1("write_to_file")
-    spingo_tax.write_to_file()
+    util.write_to_file('new_taxonomy.map_a', "\n".join(spingo_tax.new_map_arr))
     util.benchmark_w_return_2(t)
     
