@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # util.get_diff_tax_only(tax_content_119_p, minus_both_content_123_p)
     # util.get_diff_stop_only(tax_content_119_p, minus_both_content_123_p)
     text = util.get_same_tax_same_id_diff_start_or_diff_stop(tax_content_119_p, minus_both_content_123_p)
-    util.write_to_file("same_tax_same_id_diff_start_or_diff_stop", text):
+    util.write_to_file("same_tax_same_id_diff_start_or_diff_stop", text)
 
     # for t1 in minus_both_content_123_p:
     #     for t2 in tax_content_119_p:
