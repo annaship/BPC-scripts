@@ -21,8 +21,8 @@ class MySilva():
         return parsed_content
         
     def get_diff_tax_only(self, cont_n119, cont_n123):
-        for t1 in minus_both_content_123_p:
-            for t2 in tax_content_119_p:
+        for t1 in cont_n123:
+            for t2 in cont_n119:
                 if ((t1[0:2] == t2[0:2]) and (t1[3] != t2[3])):
                     print "119 = %s\n123 = %s" % (t2, t1)
 
@@ -32,8 +32,6 @@ class MySilva():
             for t2 in tax_content_119_p:
                 if ((t1[0] == t2[0]) and (t1[2] == t2[2]) and (t1[3] == t2[3])):
                     print "119 = %s\n123 = %s" % (t2, t1)
-
-
 
         
 
@@ -46,10 +44,11 @@ if __name__ == '__main__':
     minus_both_content_123_p = util.parse_tax_content(minus_both_content_123)
     tax_content_119_p = util.parse_tax_content(tax_content_119)
 
-    for t1 in minus_both_content_123_p:
-        for t2 in tax_content_119_p:
-            if ((t1[0:2] == t2[0:2]) and (t1[3] != t2[3])):
-                print "119 = %s\n123 = %s" % (t2, t1)
+    util.get_diff_tax_only(tax_content_119_p, minus_both_content_123_p)
+    # for t1 in minus_both_content_123_p:
+    #     for t2 in tax_content_119_p:
+    #         if ((t1[0:2] == t2[0:2]) and (t1[3] != t2[3])):
+    #             print "119 = %s\n123 = %s" % (t2, t1)
     # 
     # print "+" * 10
     # print minus_both_content_123_p
