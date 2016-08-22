@@ -2,7 +2,7 @@ from collections import namedtuple
 
 class MySilva():
     def __init__(self):
-        self.content_line = namedtuple('content_line', 'id start end tax')
+        # self.content_line = namedtuple('content_line', 'id start end tax') longer!
     
     def get_file_content(self, in_filename):
         with open(in_filename, 'rb') as f:
