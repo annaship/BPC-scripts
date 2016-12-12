@@ -9,7 +9,7 @@ def usage():
            -v verbose
            -l <refhvr_cut length> (default = 50)
            -f <f_primer> (default "TTGTACACACCGCCC" v9 1389F)
-           -r <r_primer> (default "GTAGGTGAACCTGC.GAAGG" v9 1510R)
+           -r <r_primer> (default "GTAGGTGAACCTGC.GAAG" v9 1510R)
            '''  
            
 
@@ -19,7 +19,7 @@ def main(argv):
     verbose    = False
     min_refhvr_cut_len = 50
     f_primer   = "TTGTACACACCGCCC"
-    r_primer   = "GTAGGTGAACCTGC.GAAGG"    
+    r_primer   = "GTAGGTGAACCTGC.GAAG"    
     
     try:
       opts, args = getopt.getopt(argv, "hvi:o:f:r:l:", ["ifile=", "ofile=", "f_primer=", "r_primer=", "len="])
