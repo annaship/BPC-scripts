@@ -237,19 +237,19 @@ my $previous_project_dataset_counts_table = $final_project_dataset_counts_table 
 my $projectDatasetCountsFile = $subdir . $tmp_project_dataset_counts_table . $fileSuffix;
 
 # env454 source tables
-my $source_tax_table											= "tagtax";
-my $source_tax_assignment_table						= "tax_assignment";
-my $source_trim_table											= "trimseq";
-my $source_trimsequence_table							= "trimsequence";
-my $source_gast_table											= "gast_concat";
-my $source_longs_tax_table								= "tagtax_longs";
+my $source_tax_table										= "tagtax";
+my $source_tax_assignment_table						        = "tax_assignment";
+my $source_trim_table										= "trimseq";
+my $source_trimsequence_table							    = "trimsequence";
+my $source_gast_table										= "gast_concat";
+my $source_longs_tax_table								    = "tagtax_longs";
 my $source_project_table									= "project";
 my $source_dataset_table									= "dataset";
-my $source_run_table											= "run";
+my $source_run_table										= "run";
 my $source_taxonomy_table									= "taxonomy";
-my $source_rank_table											= "rank";
-my $source_trimseq_not_chimera_temp_table	= "trimseq_not_chimera_temp";
-my $source_vamps_sequences_temp_table			= "vamps_sequences_temp";
+my $source_rank_table										= "rank";
+my $source_trimseq_not_chimera_temp_table	                = "trimseq_not_chimera_temp";
+my $source_vamps_sequences_temp_table			            = "vamps_sequences_temp";
 # my $target_vamps_sequences_temp_table     = "vamps_sequences_temp";
 #my $source_unique_trim_table = "trimseq_illumina";
 #my $source_unique_tax_table = "tagtax_uniques";
@@ -780,7 +780,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # ExecuteInsert_newbpcdb2($join_buffer_decrease_temp) unless ($test_only == 1);
     # 5) dump vamps_sequences_transfer to a disc  
     # q 6-5)
-    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
+        my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
     &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
     unless ($test_only == 1)
     {
@@ -880,7 +880,8 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
 
     &print_out("Selecting data for $final_taxes_table");
 
-    open(OUTTAX, ">$taxesFile") or warn print LOG "Unable to open SQL file: $taxesFile (". (localtime) . ")\n";
+    open(OUTTAX, ">$1953
+    ") or warn print LOG "Unable to open SQL file: $taxesFile (". (localtime) . ")\n";
 
     # SELECT the taxonomy and project/dataset information
     my $selectCube =
@@ -975,6 +976,13 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
 
     # vamps_data_cube_transfer
     CreateEmpty($tmp_taxes_table);
+    
+    # todo: make sql file, as with sequences?
+    # split vamps_data_cube_transfer.txt
+    &print_out("Split vamps_data_cube_transfer.txt");
+    &print_out("time split --lines 1000000 --numeric-suffixes $taxesFile vamps_data_cube_transfer.");
+    system("time split --lines 1000000 --numeric-suffixes $taxesFile vamps_data_cube_transfer.");
+    
     ExecuteLoad($taxesFile, $tmp_taxes_table);
 
 # todo:
