@@ -660,7 +660,9 @@ sub assign_taxonomy
             {
                 print OUT join("\t", $d, $results{$read}[0], $results{$read}[1], $results{$read}[2]) . "\n";
             } else {
-                print OUT join("\t", $d, @{$results{$read}}, join(",", sort @{$refs_for{$read}})) . "\n";
+                # print OUT join("\t", $d, @{$results{$read}}, join(",", sort @{$refs_for{$read}})) . "\n";
+                my $temp_res = @{$results{$read}};                                
+                print OUT join("\t", $d, $temp_res, join(",", sort @{$refs_for{$read}})) . "\n";
             }
         }
 
