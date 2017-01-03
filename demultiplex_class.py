@@ -27,6 +27,8 @@ class Demultiplex:
     def get_args(self, args):
         self.in_barcode_file_name = args.in_barcode_file_name
         self.compressed = args.compressed
+        print "CCC compressed = %s" % (self.compressed)
+
         self.in_fastq_file_name = args.in_fastq_file_name
         self.out_dir = args.out_dir
 
@@ -84,15 +86,17 @@ class Demultiplex:
         return any("NNNN" in s for s in self.sample_barcodes)
 
     def write_to_files_r1(self):
-      fastq_input = fq.FastQSource(self.in_fastq_file_name, self.compressed)
+      # fastq_input = fq.FastQSource(self.in_fastq_file_name, self.compressed)
+      print "CCC1 compressed = %s" % (self.compressed)
+      if self.compressed.lower() == "yes":
+          fastq_input = fq.FastQSource(self.in_fastq_file_name, self.compressed)
+      else:
+          fastq_input = fq.FastQSource(self.in_fastq_file_name)
 
       while fastq_input.next():
           e = fastq_input.entry
           if int(e.pair_no) == 1:
               barcode = self.get_run_key(e.sequence)
-              # e.sequence[:8]
-
-              # print "BBB barcode = %s" % (barcode)
               self.make_id_dataset_idx(e.header_line, barcode)
               try:
                   self.out_files[barcode + "_R1"].store_entry(e)
@@ -102,7 +106,13 @@ class Demultiplex:
     def write_to_files_r2(self):
       file_r2_name = re.sub(r'_R1_', '_R2_', self.in_fastq_file_name)
       # print "file_r2_name = %s" % file_r2_name
-      f2_input  = fq.FastQSource(file_r2_name, self.compressed)
+      # f2_input  = fq.FastQSource(file_r2_name, self.compressed)
+
+      if self.compressed.lower() == "yes":
+          f2_input  = fq.FastQSource(file_r2_name, self.compressed)
+      else:
+          f2_input  = fq.FastQSource(file_r2_name)
+
       while f2_input.next():
           e = f2_input.entry
           if (int(e.pair_no) == 2) and (e.header_line in self.id_sample_idx):

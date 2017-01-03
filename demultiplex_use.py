@@ -17,11 +17,11 @@ if __name__ == '__main__':
                                         help = 'Output directory. Default is res_\{in_fastq_file_name\}. Should be created upfront manually.')
     
     parser.add_argument('--in_barcode_file_name',
-                                        help = 'Comma delimited file with sample names in the first column and its barcode in the second.')
+                                        help = 'Comma delimited file with sample names in the first column and its barcodes in the second.')
     parser.add_argument('--in_fastq_file_name',
                                         help = 'Fastq file name for the read 1 (assuming read 2 differs only by R1/2).')
     parser.add_argument('--compressed', default = "yes",
-                                        help = 'Is fastq compressed? (yes/no) Default is %(default)d.')
+                                        help = 'Is fastq compressed? (yes/no) Default is a %(default)s.')
 
 
     args = parser.parse_args()
