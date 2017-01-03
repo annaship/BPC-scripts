@@ -7,13 +7,13 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='''Demultiplex Illumina fastq. Will make fastq files per barcode from "in_barcode_file_name"
-    Command line example: time python demultiplex_use.py --in_barcode_file_name "prep_template.txt" --in_fastq_file_name S1_L001_R1_001.fastq.gz --out_file_path results
+    Command line example: time python demultiplex_use.py --in_barcode_file_name "prep_template.txt" --in_fastq_file_name S1_L001_R1_001.fastq.gz --out_dir results
     
     ''')
     # todo: add user_config
     # parser.add_argument('--user_config', metavar = 'CONFIG_FILE',
     #                                     help = 'User configuration to run')
-    parser.add_argument('--out_file_path', default = "",
+    parser.add_argument('--out_dir', default = "",
                                         help = 'Output directory. Default is res_\{in_fastq_file_name\}. Should be created upfront manually.')
     
     parser.add_argument('--in_barcode_file_name',

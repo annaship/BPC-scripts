@@ -28,17 +28,17 @@ class Demultiplex:
         self.in_barcode_file_name = args.in_barcode_file_name
         self.compressed = args.compressed
         self.in_fastq_file_name = args.in_fastq_file_name
-        self.out_file_path = args.out_file_path
+        self.out_dir = args.out_dir
 
-        if (args.out_file_path == ""):
-            self.out_file_path = "res_" + self.in_fastq_file_name
+        if (args.out_dir == ""):
+            self.out_dir = "res_" + self.in_fastq_file_name
 
     """demultiplex"""
     def get_file_name_by_barcode_from_prep(self):
         # in_barcode_file_name = "prep_template_MoBE_dairy_BITS.txt"
         with open(self.in_barcode_file_name) as openfileobject:
             # rm headline from tsv
-            next(openfileobject)
+            # next(openfileobject)
             for line in openfileobject:
                 barcode_line = line.strip('\n').split(",")
                 try:
@@ -54,14 +54,15 @@ class Demultiplex:
                     raise
 
     def open_sample_files(self):
-        # print self.sample_barcodes.keys()
+        print "self.sample_barcodes.keys()"
+        print self.sample_barcodes.keys()
         self.out_file_names_barcodes = set(self.sample_barcodes.keys())
         print "self.out_file_names_barcodes = %s" % self.out_file_names_barcodes
         file_name_base = [i + "_R1" for i in self.out_file_names_barcodes] + [i + "_R2" for i in self.out_file_names_barcodes]
         for f_name in file_name_base:
-            out_file = os.path.join(self.out_file_path, f_name + ".fastq")
+            out_file = os.path.join(self.out_dir, f_name + ".fastq")
             self.out_files[f_name] = fq.FastQOutput(out_file)
-        self.out_files["unknown"] = fq.FastQOutput(os.path.join(self.out_file_path, "unknown" + ".fastq"))
+        self.out_files["unknown"] = fq.FastQOutput(os.path.join(self.out_dir, "unknown" + ".fastq"))
 
     def close_sample_files(self):
         [o_file[1].close() for o_file in self.out_files.iteritems()]
@@ -91,7 +92,7 @@ class Demultiplex:
               barcode = self.get_run_key(e.sequence)
               # e.sequence[:8]
 
-              print "BBB barcode = %s" % (barcode)
+              # print "BBB barcode = %s" % (barcode)
               self.make_id_dataset_idx(e.header_line, barcode)
               try:
                   self.out_files[barcode + "_R1"].store_entry(e)
