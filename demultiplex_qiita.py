@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys, getopt
 import IlluminaUtils.lib.fastalib as fastalib
 
@@ -23,7 +24,7 @@ class Demultiplex:
     
     for opt, arg in opts:
       if opt == '-h':
-        usage()
+        self.usage()
         sys.exit()
       elif opt in ("-i", "--ifile"):
         self.inputfile = arg
@@ -83,7 +84,7 @@ class Demultiplex:
       self.write_id(f_output, id)
       self.write_seq(f_output, f_input.seq)
       if (i % 100000 == 0 or i == 1):
-        sys.stderr.write('\r[demultiplex] Writing entryies into files: %s\n' % (i))
+        sys.stderr.write('\r[demultiplex] Writing entries into files: %s\n' % (i))
         sys.stderr.flush()
 
 if __name__ == "__main__":
