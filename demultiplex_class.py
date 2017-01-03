@@ -42,7 +42,7 @@ class Demultiplex:
             for line in openfileobject:
                 barcode_line = line.strip('\n').split(",")
                 try:
-                    print "barcode_line = %s" % (barcode_line)
+                    # print "barcode_line = %s" % (barcode_line)
                     # print "barcode_line = %s, barcode_line[0] = %s; barcode_line[1] = %s" % (barcode_line, barcode_line[0], barcode_line[1])
                     self.sample_barcodes[barcode_line[1]] = barcode_line[0]
                 except IndexError:
@@ -54,10 +54,10 @@ class Demultiplex:
                     raise
 
     def open_sample_files(self):
-        print "self.sample_barcodes.keys()"
-        print self.sample_barcodes.keys()
+        # print "self.sample_barcodes.keys()"
+        # print self.sample_barcodes.keys()
         self.out_file_names_barcodes = set(self.sample_barcodes.keys())
-        print "self.out_file_names_barcodes = %s" % self.out_file_names_barcodes
+        # print "self.out_file_names_barcodes = %s" % self.out_file_names_barcodes
         file_name_base = [i + "_R1" for i in self.out_file_names_barcodes] + [i + "_R2" for i in self.out_file_names_barcodes]
         for f_name in file_name_base:
             out_file = os.path.join(self.out_dir, f_name + ".fastq")
