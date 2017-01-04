@@ -5,23 +5,11 @@ from demultiplex_class import Demultiplex
 
 if __name__ == '__main__':
     import argparse
+
+    parser = argparse.ArgumentParser(description='''Demultiplex Illumina fastq. Will make fastq files per barcode from "in_barcode_file_name".
+    Command line example: time python demultiplex_use.py --in_barcode_file_name "prep_template.txt" --in_fastq_file_name S1_L001_R1_001.fastq.gz --out_dir results --compressed
     
-    class MyParser(argparse.ArgumentParser):
-        def error(self, message):
-            sys.stderr.write('error: %s\n' % message)
-            self.print_help()
-            sys.exit(2)
-    
-
-    parser = MyParser(description='''Demultiplex Illumina fastq. Will make fastq files per barcode from "in_barcode_file_name"
-            Command line example: time python demultiplex_use.py --in_barcode_file_name "prep_template.txt" --in_fastq_file_name S1_L001_R1_001.fastq.gz --out_dir results --compressed
-
-            ''')
-
-    # parser = argparse.ArgumentParser(description='''Demultiplex Illumina fastq. Will make fastq files per barcode from "in_barcode_file_name"
-    # Command line example: time python demultiplex_use.py --in_barcode_file_name "prep_template.txt" --in_fastq_file_name S1_L001_R1_001.fastq.gz --out_dir results --compressed
-    # 
-    # ''')
+    ''')
     # todo: add user_config
     # parser.add_argument('--user_config', metavar = 'CONFIG_FILE',
     #                                     help = 'User configuration to run')
@@ -33,19 +21,22 @@ if __name__ == '__main__':
     parser.add_argument('--in_fastq_file_name',
                                         help = 'Fastq file name for the read 1 (assuming read 2 differs only by R1/2).')
                                         
-    parser.add_argument('-c', '--compressed', action = "store_true", default = False,
-                                        help = 'Use if fastq compressed. Default is %(default)s.')
+    parser.add_argument('--compressed', '-c', action = "store_true", default = False,
+                                        help = 'Use if fastq compressed. Default is a %(default)s.')
                                         
     args = parser.parse_args()
     
     try:
-        print "HHH"
-        print os.path.exists(args.in_fastq_file_name)
         if not os.path.exists(args.in_fastq_file_name):
             print "Input fastq file does not exist (at least not at '%s')." % args.in_fastq_file_name
             print
             sys.exit()
-    # except TypeError:
+    except TypeError:
+        if len(sys.argv)==1:
+            parser.print_help()
+            sys.exit(1)
+        else:
+            raise
     except:
         raise
         
