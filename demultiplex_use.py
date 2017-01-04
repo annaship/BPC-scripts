@@ -20,8 +20,12 @@ if __name__ == '__main__':
                                         help = 'Comma delimited file with sample names in the first column and its barcodes in the second.')
     parser.add_argument('--in_fastq_file_name',
                                         help = 'Fastq file name for the read 1 (assuming read 2 differs only by R1/2).')
-    parser.add_argument('--compressed', default = "yes",
-                                        help = 'Is fastq compressed? (yes/no) Default is a %(default)s.')
+                                        
+    parser.add_argument('--compressed', '-c', action = "store_true", default = False,
+                                        help = 'Use if fastq compressed. Default is a %(default)s.')
+                                        
+    # parser.add_argument('--compressed', default = "yes",
+    #                                     help = 'Is fastq compressed? (yes/no) Default is a %(default)s.')
 
 
     args = parser.parse_args()
@@ -32,7 +36,6 @@ if __name__ == '__main__':
         sys.exit()
 
     demultiplex = Demultiplex(args)
-
 
     # =========
     demultiplex.get_file_name_by_barcode_from_prep()

@@ -25,6 +25,7 @@ class Demultiplex:
     """util"""
 
     def get_args(self, args):
+        print "AAA args = %s" % (args)
         self.in_barcode_file_name = args.in_barcode_file_name
         self.compressed = args.compressed
         print "CCC compressed = %s" % (self.compressed)
@@ -86,7 +87,7 @@ class Demultiplex:
         return any("NNNN" in s for s in self.sample_barcodes)
 
     def get_current_file_name(self, filename):
-      if self.compressed.lower() == "yes":
+      if self.compressed:
           return fq.FastQSource(filename, self.compressed)
       else:
           return fq.FastQSource(filename)
