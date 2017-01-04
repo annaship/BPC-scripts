@@ -13,32 +13,25 @@ if __name__ == '__main__':
     # todo: add user_config
     # parser.add_argument('--user_config', metavar = 'CONFIG_FILE',
     #                                     help = 'User configuration to run')
-    parser.add_argument('--out_dir', default = "",
-                                        help = 'Output directory. Default is res_\{in_fastq_file_name\}. Should be created upfront manually.')
-    
-    parser.add_argument('--in_barcode_file_name',
+    parser.add_argument('--in_barcode_file_name', required = True,
                                         help = 'Comma delimited file with sample names in the first column and its barcodes in the second.')
-    parser.add_argument('--in_fastq_file_name',
-                                        help = 'Fastq file name for the read 1 (assuming read 2 differs only by R1/2).')
-                                        
+    parser.add_argument('--in_fastq_file_name', required = True,
+                                        help = 'Fastq file name for the read 1 (assuming read 2 differs only by R1/2).')                                        
+    parser.add_argument('--out_dir', default = "",
+                                        help = 'Output directory. Default is res_\{IN_FASTQ_FILE_NAME\}. Should be created upfront manually.')
     parser.add_argument('--compressed', '-c', action = "store_true", default = False,
                                         help = 'Use if fastq compressed. Default is a %(default)s.')
                                         
     args = parser.parse_args()
     
-    try:
-        if not os.path.exists(args.in_fastq_file_name):
-            print "Input fastq file does not exist (at least not at '%s')." % args.in_fastq_file_name
-            print
-            sys.exit()
-    except TypeError:
-        if len(sys.argv)==1:
-            parser.print_help()
-            sys.exit(1)
-        else:
-            raise
-    except:
-        raise
+    if not os.path.exists(args.in_fastq_file_name):
+        print "Input fastq file '%s' does not exist." % args.in_fastq_file_name
+        print
+        sys.exit()
+    
+    #     if len(sys.argv)==1:
+    #         parser.print_help()
+    #         sys.exit(1)
         
 
     demultiplex = Demultiplex(args)
