@@ -28,7 +28,6 @@ class Demultiplex:
         print "AAA args = %s" % (args)
         self.in_barcode_file_name = args.in_barcode_file_name
         self.compressed = args.compressed
-        print "CCC compressed = %s" % (self.compressed)
 
         self.in_fastq_file_name = args.in_fastq_file_name
         self.out_dir = args.out_dir
@@ -86,14 +85,11 @@ class Demultiplex:
     def has_ns(self):
         return any("NNNN" in s for s in self.sample_barcodes)
 
-    def get_current_file_name(self, filename):
-      if self.compressed:
-          return fq.FastQSource(filename, self.compressed)
-      else:
-          return fq.FastQSource(filename)
+    def open_current_file(self, filename):
+        return fq.FastQSource(filename, self.compressed)
 
     def write_to_files_r1(self):
-      fastq_input = self.get_current_file_name(self.in_fastq_file_name)
+      fastq_input = self.open_current_file(self.in_fastq_file_name)
 
       while fastq_input.next():
           e = fastq_input.entry
@@ -108,7 +104,7 @@ class Demultiplex:
     def write_to_files_r2(self):
       file_r2_name = re.sub(r'_R1_', '_R2_', self.in_fastq_file_name)
 
-      f2_input = self.get_current_file_name(file_r2_name)
+      f2_input = self.open_current_file(file_r2_name)
 
       while f2_input.next():
           e = f2_input.entry
