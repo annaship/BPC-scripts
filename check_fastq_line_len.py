@@ -25,7 +25,32 @@ def check_if_verb():
     print "Unexpected error:", sys.exc_info()[0]
     return False
   return False
+  
+def compare_w_score(f_input, file_name, all_dirs):
+  for _ in range(50):
+  #while f_input.next():
+    f_input.next()
+    e = f_input.entry
+    seq_len = len(e.sequence)
+    qual_scores_len = len(e.qual_scores)
+    # print e.header_line
+    if (seq_len != qual_scores_len):
+      print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
+      all_dirs.add(fq_files[file_name][0])
 
+
+def get_seq_len(f_input, file_name, all_dirs):
+  seq_lens = []
+  for _ in range(50):
+  # while f_input.next():
+    f_input.next()
+    e = f_input.entry
+    seq_len = len(e.sequence)
+    seq_lens.append(seq_len)
+    # print seq_len
+  print sorted(set(seq_lens))
+
+    
 
 start_dir = sys.argv[1]
 print "Start from %s" % start_dir
@@ -46,16 +71,18 @@ for file_name in fq_files:
 
   try:
     f_input  = fq.FastQSource(file_name, True)
-    for _ in range(5000):
-    #while f_input.next():
-      f_input.next()
-      e = f_input.entry
-      seq_len = len(e.sequence)
-      qual_scores_len = len(e.qual_scores)
-      #print e.header_line
-      if (seq_len != qual_scores_len):
-        print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
-        all_dirs.add(fq_files[file_name][0])
+    compare_w_score(f_input, file_name, all_dirs)
+    get_seq_len(f_input, file_name, all_dirs)
+    # for _ in range(5000):
+    # #while f_input.next():
+    #   f_input.next()
+    #   e = f_input.entry
+    #   seq_len = len(e.sequence)
+    #   qual_scores_len = len(e.qual_scores)
+    #   #print e.header_line
+    #   if (seq_len != qual_scores_len):
+    #     print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
+    #     all_dirs.add(fq_files[file_name][0])
   except RuntimeError:
     if (check_if_verb):
       print sys.exc_info()[0]
