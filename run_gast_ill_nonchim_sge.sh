@@ -60,7 +60,7 @@ select opt in "${options[@]}"; do
 
     "*.unique.nonchimeric.fa v4v5" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa v4v5a for Archaea" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5a; echo "You picked option $REPLY"; break;;
-    "*.unique.nonchimeric.fa v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4; FULL_OPTION=" -full "; echo "You picked option $REPLY"; break;;
+    "*.unique.nonchimeric.fa v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4; FULL_OPTION=" -full -ignoregaps "; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa Euk v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4e; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa Fungi ITS1" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refits1; FULL_OPTION=" -full "; echo "You picked option $REPLY"; break;;
     "*.unique v6" ) NAME_PAT=$REPLY; REF_DB_NAME=refv6;   echo "You picked option $REPLY"; break;;
@@ -69,7 +69,7 @@ select opt in "${options[@]}"; do
 
     1 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     2 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
-    3 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4; FULL_OPTION=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;    
+    3 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4; FULL_OPTION=" -full -ignoregaps "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;    
     4 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4e; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     5 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refits1; FULL_OPTION=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     6 ) NAME_PAT="*.unique";      REF_DB_NAME=refv6; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
