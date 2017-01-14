@@ -10,9 +10,12 @@ class Reads():
     def __init__(self, args):
         self.compressed  = args.compressed
         if args.ext is None and self.compressed == True:
-            self.ext == "1_R1.fastq.gz"
+            self.ext     = "1_R1.fastq.gz"
         elif args.ext is not None:
             self.ext     = args.ext
+        else:
+            self.ext     = "1_R1.fastq"
+        print "extension = %s" % self.ext
         self.start_dir   = args.start_dir
         self.quality_len = args.quality_len
         self.verbatim    = args.verbatim
@@ -88,8 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--dir', '-d', required = True, action='store', dest='start_dir',
                         help = 'A start directory path.')
     parser.add_argument('--extension', '-e', required = False, action='store', dest='ext',
-                        default = "1_R1.fastq",
-                        help = 'An extension to look for. Default is a %(default)s.')
+                        help = 'An extension to look for. Default is a "1_R1.fastq".')
     parser.add_argument('--compressed', '-c', action = "store_true", default = False,
                         help = 'Use if fastq compressed. Default is a %(default)s.')
     parser.add_argument('--quality_len', '-q', action = "store_true", default = False,
