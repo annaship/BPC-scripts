@@ -33,9 +33,16 @@ def compare_w_score(f_input, file_name, all_dirs):
     e = f_input.entry
     seq_len = len(e.sequence)
     qual_scores_len = len(e.qual_scores)
-    # print "COMPARE_W_SCORE"
-    # print "seq_len = %s" % (seq_len)
-    # print "qual_scores_len = %s" % (qual_scores_len)
+    try:
+        # print sys.argv
+        if sys.argv[2] == "-q":
+            print "\n=======\nCOMPARE_W_SCORE"
+            print "seq_len = %s" % (seq_len)
+            print "qual_scores_len = %s" % (qual_scores_len)
+    except IndexError:
+        pass
+    except:
+        raise
     # print e.header_line
     if (seq_len != qual_scores_len):
       print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
@@ -63,8 +70,8 @@ all_dirs = set()
 
 #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
 # "/xraid2-2/sequencing/Illumina/20151014ns"
-fq_files = get_files(start_dir, "R1_001.fastq.gz")
-print "Found %s R1_001.fastq.gz files" % (len(fq_files))
+fq_files = get_files(start_dir, "1_R1.fastq.gz")
+print "Found %s 1_R1.fastq.gz files" % (len(fq_files))
 
 check_if_verb = check_if_verb()
 
@@ -73,19 +80,9 @@ for file_name in fq_files:
     print file_name
 
   try:
-    f_input  = fq.FastQSource(file_name, True)
+    f_input  = fq.FastQSource(file_name, compress)
     compare_w_score(f_input, file_name, all_dirs)
     get_seq_len(f_input, file_name, all_dirs)
-    # for _ in range(5000):
-    # #while f_input.next():
-    #   f_input.next()
-    #   e = f_input.entry
-    #   seq_len = len(e.sequence)
-    #   qual_scores_len = len(e.qual_scores)
-    #   #print e.header_line
-    #   if (seq_len != qual_scores_len):
-    #     print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
-    #     all_dirs.add(fq_files[file_name][0])
   except RuntimeError:
     if (check_if_verb):
       print sys.exc_info()[0]
