@@ -102,14 +102,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print args
 
+    reads = Reads(args)
     if not os.path.exists(args.start_dir):
         # try:
-        print "Input fastq file with a '%s' extension does not exist in %s" % (args.ext, args.start_dir)
+        print "Input fastq file with the '%s' extension does not exist in %s" % (reads.ext, reads.start_dir)
         # except AttributeError:
         #     print "Input fastq file with a '%s' extension does not exist in ." % (args.ext)
         sys.exit()
-
-    reads = Reads(args)
 
     all_dirs = set()
 
