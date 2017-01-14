@@ -85,21 +85,23 @@ if __name__ == '__main__':
     parser.add_argument('--dir', '-d', required = True, action='store', dest='start_dir',
                         help = 'A start directory path.')
     parser.add_argument('--extension', '-e', required = False, action='store', dest='ext',
-                        default = "1_R1.fastq.gz",
+                        default = "1_R1.fastq",
                         help = 'An extension to look for. Default is a %(default)s.')
     parser.add_argument('--compressed', '-c', action = "store_true", default = False,
                         help = 'Use if fastq compressed. Default is a %(default)s.')
     parser.add_argument('--quality_len', '-q', action = "store_true", default = False,
                         help = 'Print out the quality and read length. Default is a %(default)s.')
     parser.add_argument('--verbatim', '-v', action = "store_true", default = False,
-                        help = 'Use if fastq compressed. Default is a %(default)s.')
+                        help = 'Print outs.')
 
     args = parser.parse_args()
     print args
 
     if not os.path.exists(args.start_dir):
-        print "Input fastq file with a '%s' extension does not exist in ." % (args.extension)
-        print
+        # try:
+        print "Input fastq file with a '%s' extension does not exist in %s" % (args.ext, args.start_dir)
+        # except AttributeError:
+        #     print "Input fastq file with a '%s' extension does not exist in ." % (args.ext)
         sys.exit()
 
     reads = Reads(args)
