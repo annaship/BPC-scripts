@@ -9,8 +9,11 @@ class Files():
 class Reads():
     def __init__(self, args):
         self.compressed  = args.compressed
+        if args.ext is None and self.compressed == True:
+            self.ext == "1_R1.fastq.gz"
+        elif args.ext is not None:
+            self.ext     = args.ext
         self.start_dir   = args.start_dir
-        self.ext         = args.ext
         self.quality_len = args.quality_len
         self.verbatim    = args.verbatim
         print "Start from %s" % self.start_dir
