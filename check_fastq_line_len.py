@@ -8,18 +8,18 @@ class Files():
         
 class Reads():
     def __init__(self, args):
-        self.compressed = args.compressed
-        self.start_dir  = args.start_dir
-        self.ext        = args.ext
+        self.compressed  = args.compressed
+        self.start_dir   = args.start_dir
+        self.ext         = args.ext
+        self.quality_len = args.quality_len
+        self.verbatim    = args.verbatim
         print "Start from %s" % self.start_dir
-        print "Getting file names"
-        
 
     def get_files(self):
         files = {}
         filenames = []
         for dirname, dirnames, filenames in os.walk(self.start_dir, followlinks=True):
-            if ext:
+            if self.ext:
                 filenames = [f for f in filenames if f.endswith(self.ext)]
 
             for file_name in filenames:
@@ -30,13 +30,14 @@ class Reads():
 
     def check_if_verb(self):
       try:
-        if sys.argv[2] == "-v":
+        if self.verbatim:
           return True
       except IndexError:
         return False
       except:
-        print "Unexpected error:", sys.exc_info()[0]
-        return False
+        raise
+        # print "Unexpected error:", sys.exc_info()[0]
+        # return False
       return False
 
     def compare_w_score(self, f_input, file_name, all_dirs):
@@ -46,8 +47,7 @@ class Reads():
         seq_len = len(e.sequence)
         qual_scores_len = len(e.qual_scores)
         try:
-            # print sys.argv
-            if sys.argv[2] == "-q":
+            if self.quality_len:
                 print "\n=======\nCOMPARE_W_SCORE"
                 print "seq_len = %s" % (seq_len)
                 print "qual_scores_len = %s" % (qual_scores_len)
@@ -88,13 +88,17 @@ if __name__ == '__main__':
                         default = "1_R1.fastq.gz",
                         help = 'An extension to look for. Default is a %(default)s.')
     parser.add_argument('--compressed', '-c', action = "store_true", default = False,
-                                        help = 'Use if fastq compressed. Default is a %(default)s.')
+                        help = 'Use if fastq compressed. Default is a %(default)s.')
+    parser.add_argument('--quality_len', '-q', action = "store_true", default = False,
+                        help = 'Print out the quality and read length. Default is a %(default)s.')
+    parser.add_argument('--verbatim', '-v', action = "store_true", default = False,
+                        help = 'Use if fastq compressed. Default is a %(default)s.')
 
     args = parser.parse_args()
     print args
 
     if not os.path.exists(args.start_dir):
-        print "Input fastq file '%s' does not exist." % args.in_fastq_file_name
+        print "Input fastq file with a '%s' extension does not exist in ." % (args.extension)
         print
         sys.exit()
 
@@ -104,8 +108,9 @@ if __name__ == '__main__':
 
     #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
     # "/xraid2-2/sequencing/Illumina/20151014ns"
+    print "Getting file names"
     fq_files = reads.get_files()
-    print "Found %s %s" % (len(fq_files))
+    print "Found %s %s" % (len(fq_files), reads.ext)
 
     check_if_verb = reads.check_if_verb()
 
@@ -114,15 +119,16 @@ if __name__ == '__main__':
         print file_name
 
       try:
-        f_input  = fq.FastQSource(file_name, compress)
+        f_input  = fq.FastQSource(file_name, args.compressed)
         reads.compare_w_score(f_input, file_name, all_dirs)
         reads.get_seq_len(f_input, file_name, all_dirs)
       except RuntimeError:
         if (check_if_verb):
           print sys.exc_info()[0]
       except:
-        print "Unexpected error:", sys.exc_info()[0]
-        next
+        raise
+        # print "Unexpected error:", sys.exc_info()[0]
+        # next
 
     print all_dirs
     
