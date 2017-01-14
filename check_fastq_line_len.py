@@ -2,94 +2,127 @@ import IlluminaUtils.lib.fastqlib as fq
 import os
 import sys
 
-def get_files(walk_dir_name, ext = ""):
-    files = {}
-    filenames = []
-    for dirname, dirnames, filenames in os.walk(walk_dir_name, followlinks=True):
-        if ext:
-            filenames = [f for f in filenames if f.endswith(ext)]
-        
-        for file_name in filenames:
-            full_name = os.path.join(dirname, file_name)
-            (file_base, file_extension) = os.path.splitext(os.path.join(dirname, file_name))
-            files[full_name] = (dirname, file_base, file_extension)
-    return files
-
-def check_if_verb():
-  try: 
-    if sys.argv[2] == "-v":
-      return True
-  except IndexError:
-    return False
-  except: 
-    print "Unexpected error:", sys.exc_info()[0]
-    return False
-  return False
-  
-def compare_w_score(f_input, file_name, all_dirs):
-  for _ in range(50):
-  #while f_input.next():
-    f_input.next()
-    e = f_input.entry
-    seq_len = len(e.sequence)
-    qual_scores_len = len(e.qual_scores)
-    try:
-        # print sys.argv
-        if sys.argv[2] == "-q":
-            print "\n=======\nCOMPARE_W_SCORE"
-            print "seq_len = %s" % (seq_len)
-            print "qual_scores_len = %s" % (qual_scores_len)
-    except IndexError:
+class Files():
+    def __init__(self, args):
         pass
-    except:
-        raise
-    # print e.header_line
-    if (seq_len != qual_scores_len):
-      print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
-      all_dirs.add(fq_files[file_name][0])
+        
+class Reads():
+    def __init__(self, args):
+        self.compressed = args.compressed
+        self.start_dir  = args.start_dir
+        self.ext        = args.ext
+        print "Start from %s" % self.start_dir
+        print "Getting file names"
+        
+
+    def get_files(self):
+        files = {}
+        filenames = []
+        for dirname, dirnames, filenames in os.walk(self.start_dir, followlinks=True):
+            if ext:
+                filenames = [f for f in filenames if f.endswith(self.ext)]
+
+            for file_name in filenames:
+                full_name = os.path.join(dirname, file_name)
+                (file_base, file_extension) = os.path.splitext(os.path.join(dirname, file_name))
+                files[full_name] = (dirname, file_base, file_extension)
+        return files
+
+    def check_if_verb(self):
+      try:
+        if sys.argv[2] == "-v":
+          return True
+      except IndexError:
+        return False
+      except:
+        print "Unexpected error:", sys.exc_info()[0]
+        return False
+      return False
+
+    def compare_w_score(self, f_input, file_name, all_dirs):
+      for _ in range(50):
+        f_input.next()
+        e = f_input.entry
+        seq_len = len(e.sequence)
+        qual_scores_len = len(e.qual_scores)
+        try:
+            # print sys.argv
+            if sys.argv[2] == "-q":
+                print "\n=======\nCOMPARE_W_SCORE"
+                print "seq_len = %s" % (seq_len)
+                print "qual_scores_len = %s" % (qual_scores_len)
+        except IndexError:
+            pass
+        except:
+            raise
+        # print e.header_line
+        if (seq_len != qual_scores_len):
+          print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
+          all_dirs.add(fq_files[file_name][0])
 
 
-def get_seq_len(f_input, file_name, all_dirs):
-  seq_lens = []
-  for _ in range(50):
-  # while f_input.next():
-    f_input.next()
-    e = f_input.entry
-    seq_len = len(e.sequence)
-    seq_lens.append(seq_len)
-    # print seq_len
-  print sorted(set(seq_lens))
+    def get_seq_len(self, f_input, file_name, all_dirs):
+      seq_lens = []
+      for _ in range(50):
+        f_input.next()
+        e = f_input.entry
+        seq_len = len(e.sequence)
+        seq_lens.append(seq_len)
+        # print seq_len
+      print sorted(set(seq_lens))
 
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='''Check fastq files reads and quality lines length.
+    Command line example: python %(prog)s -d/--dir DIRNAME -e/--extension -v --compressed/-c
+    ''')
+    # todo: add user_config
+    # parser.add_argument('--user_config', metavar = 'CONFIG_FILE',
+    #                                     help = 'User configuration to run')
+    parser.add_argument('--dir', '-d', required = True, action='store', dest='start_dir',
+                        help = 'A start directory path.')
+    parser.add_argument('--extension', '-e', required = False, action='store', dest='ext',
+                        default = "1_R1.fastq.gz",
+                        help = 'An extension to look for. Default is a %(default)s.')
+    parser.add_argument('--compressed', '-c', action = "store_true", default = False,
+                                        help = 'Use if fastq compressed. Default is a %(default)s.')
+
+    args = parser.parse_args()
+    print args
+
+    if not os.path.exists(args.start_dir):
+        print "Input fastq file '%s' does not exist." % args.in_fastq_file_name
+        print
+        sys.exit()
+
+    reads = Reads(args)
+
+    all_dirs = set()
+
+    #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
+    # "/xraid2-2/sequencing/Illumina/20151014ns"
+    fq_files = reads.get_files()
+    print "Found %s %s" % (len(fq_files))
+
+    check_if_verb = reads.check_if_verb()
+
+    for file_name in fq_files:
+      if (check_if_verb):
+        print file_name
+
+      try:
+        f_input  = fq.FastQSource(file_name, compress)
+        reads.compare_w_score(f_input, file_name, all_dirs)
+        reads.get_seq_len(f_input, file_name, all_dirs)
+      except RuntimeError:
+        if (check_if_verb):
+          print sys.exc_info()[0]
+      except:
+        print "Unexpected error:", sys.exc_info()[0]
+        next
+
+    print all_dirs
     
-
-start_dir = sys.argv[1]
-print "Start from %s" % start_dir
-print "Getting file names"
-
-all_dirs = set()
-
-#fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
-# "/xraid2-2/sequencing/Illumina/20151014ns"
-fq_files = get_files(start_dir, "1_R1.fastq.gz")
-print "Found %s 1_R1.fastq.gz files" % (len(fq_files))
-
-check_if_verb = check_if_verb()
-
-for file_name in fq_files:
-  if (check_if_verb):
-    print file_name
-
-  try:
-    f_input  = fq.FastQSource(file_name, compress)
-    compare_w_score(f_input, file_name, all_dirs)
-    get_seq_len(f_input, file_name, all_dirs)
-  except RuntimeError:
-    if (check_if_verb):
-      print sys.exc_info()[0]
-  except:
-    print "Unexpected error:", sys.exc_info()[0]
-    next
-
-print all_dirs
-
-
