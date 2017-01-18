@@ -157,6 +157,7 @@ class Findprimer:
     'D':'[AGT]',
     'H':'[ACT]',
     'V':'[ACG]',
+    'N':'[ACGT]',
     '.':'[ACGT-]'
     }
 
