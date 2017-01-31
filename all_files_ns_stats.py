@@ -7,12 +7,14 @@ class Merge_stats:
     def __init__(self):
 
         self.verbose = False
+        # TODO: to a method
         for arg in sys.argv:
           if arg == "-v":
             self.verbose = True
         self.count_all_reads = 0
         self.count_good_reads = 0
 
+        # TODO: to a method
         self.files = []
         self.current_dir = os.getcwd()
         for (dirpath, dirname, filenames) in os.walk(self.current_dir):
@@ -40,6 +42,7 @@ class Merge_stats:
         self.total_sequences_trimmed = 0
         self.number_of_sequences_to_trimm = 0
 
+    # TODO: 
     def prepare_line(self):
         pass
 
