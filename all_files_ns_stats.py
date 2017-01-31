@@ -33,6 +33,7 @@ Num_mismatches_found_in_merged_reads = 0
 Mismatches_recovered_from_read_1 = 0
 Mismatches_recovered_from_read_2 = 0
 Mismatches_replaced_with_N = 0
+total_sequences_trimmed = 0
 
 for f in files:
   if f.endswith("_STATS"):
@@ -64,11 +65,17 @@ for f in files:
               Prefix_failed_in_read_1 += int(num)
           elif line.startswith("Prefix failed in read 2"):
               Prefix_failed_in_read_2 += int(num)
+          elif line.startswith("RP failed"):
+              num = line.split(":")[1].split()[0]
+              Prefix_failed_in_read_2 += int(num)
           elif line.startswith("Prefix failed in both"):
               Prefix_failed_in_both += int(num)
           elif line.startswith("Passed prefix total"):
               Passed_prefix_total += int(num)
           elif line.startswith("Failed prefix total"):
+              Failed_prefix_total += int(num)
+          elif line.startswith("total pairs failed"):
+              num = line.split(":")[1].split()[0]
               Failed_prefix_total += int(num)
           elif line.startswith("Merged total"):
               Merged_total += int(num)
@@ -94,7 +101,9 @@ for f in files:
               Mismatches_recovered_from_read_2 += int(num)
           elif line.startswith("Mismatches replaced with N"):
               Mismatches_replaced_with_N += int(num)
-          # total sequences trimmed
+          elif line.startswith("total sequences trimmed"):
+              num = line.split(":")[1].split()[0]
+              total_sequences_trimmed += int(num)
         except LookupError:
           pass
 
@@ -108,7 +117,7 @@ print('Number_of_pairs_analyzed (in all files)              = %s') % Number_of_p
 print('Prefix_failed_in_read_1 (in all files)               = %s (%s%% from Number_of_pairs_analyzed)') % (Prefix_failed_in_read_1, get_percents(Prefix_failed_in_read_1))     
 print('Prefix_failed_in_read_2 (in all files)               = %s (%s%% from Number_of_pairs_analyzed)') % (Prefix_failed_in_read_2, get_percents(Prefix_failed_in_read_2))     
 print('Prefix_failed_in_both (in all files)                 = %s (%s%% from Number_of_pairs_analyzed)') % (Prefix_failed_in_both, get_percents(Prefix_failed_in_both))        
-print('Passed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (Passed_prefix_total, get_percents(Passed_prefix_total))        
+# print('Passed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (Passed_prefix_total, get_percents(Passed_prefix_total))
 print('Failed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (Failed_prefix_total, get_percents(Failed_prefix_total))        
 print('Merged_total (in all files)                          = %s (%s%% from Number_of_pairs_analyzed)') % (Merged_total, get_percents(Merged_total))        
 print('Complete_overlap_forced_total (in all files)         = %s (%s%% from Number_of_pairs_analyzed)') % (Complete_overlap_forced_total, get_percents(Complete_overlap_forced_total))        
@@ -124,4 +133,4 @@ print('Num_mismatches_found_in_merged_reads (in all files)  = %s') % (Num_mismat
 print('Mismatches_recovered_from_read_1 (in all files)      = %s') % (Mismatches_recovered_from_read_1)        
 print('Mismatches_recovered_from_read_2 (in all files)      = %s') % (Mismatches_recovered_from_read_2)        
 print('Mismatches_replaced_with_N (in all files)            = %s') % (Mismatches_replaced_with_N)        
-
+print('total sequences trimmed from primers                 = %s (%s%% from Number_of_pairs_analyzed)') % (total_sequences_trimmed, get_percents(total_sequences_trimmed))
