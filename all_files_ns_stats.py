@@ -6,11 +6,6 @@ class Merge_stats:
 
     def __init__(self):
 
-        self.verbose = False
-        # TODO: to a method
-        for arg in sys.argv:
-          if arg == "-v":
-            self.verbose = True
         self.count_all_reads = 0
         self.count_good_reads = 0
 
@@ -42,15 +37,17 @@ class Merge_stats:
         self.total_sequences_trimmed = 0
         self.number_of_sequences_to_trimm = 0
 
+    def get_verbose(self):
+        self.verbose = False
+        for arg in sys.argv:
+          if arg == "-v":
+            self.verbose = True
+            
     # TODO: 
     def prepare_line(self):
         pass
 
     def read_1_STATS(self):
-        self.num = 0
-        self.line = self.line.strip()
-        if (self.verbose):
-          print(self.line)
         self.num = self.line.split()[-1]
         if (self.verbose):
           print(self.num)
@@ -132,7 +129,7 @@ class Merge_stats:
         print('Mismatches_recovered_from_read_2 (in all files)      = %s') % (self.Mismatches_recovered_from_read_2)
         print('Mismatches_replaced_with_N (in all files)            = %s') % (self.Mismatches_replaced_with_N)
         print('----------\nNumber_of_sequences_to_trimm             = %s') % (self.number_of_sequences_to_trimm)
-        print('total_sequences_trimmed                  = %s (%s%% from Number_of_sequences_to_trimm), (%s%% from Number_of_pairs_analyzed)') % (self.total_sequences_trimmed, self.get_percents(self.total_sequences_trimmed, self.number_of_sequences_to_trimm), self.get_percents(self.total_sequences_trimmed))
+        print('total_sequences_trimmed                  = %s\t(%s%% from Number_of_sequences_to_trimm,\n\t\t\t\t\t\t\t %s%% from Number_of_pairs_analyzed)') % (self.total_sequences_trimmed, self.get_percents(self.total_sequences_trimmed, self.number_of_sequences_to_trimm), self.get_percents(self.total_sequences_trimmed))
 
     def get_percents(self, cnt_perc, hundred_perc = None):
         if hundred_perc is None:
@@ -142,6 +139,8 @@ class Merge_stats:
 if __name__ == "__main__":
 
     stats = Merge_stats()
+    
+    stats.get_verbose()
     for f in stats.files:
       if f.endswith("_STATS"):
         file = open(f)
