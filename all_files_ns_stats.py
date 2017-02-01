@@ -5,16 +5,11 @@ import os, sys
 class Merge_stats:
 
     def __init__(self):
-
+        
+        self.get_files()
+        
         self.count_all_reads = 0
         self.count_good_reads = 0
-
-        # TODO: to a method
-        self.files = []
-        self.current_dir = os.getcwd()
-        for (dirpath, dirname, filenames) in os.walk(self.current_dir):
-            self.files.extend(filenames)
-            break
 
         self.Number_of_pairs_analyzed = 0
         self.Prefix_failed_in_read_1 = 0
@@ -37,11 +32,18 @@ class Merge_stats:
         self.total_sequences_trimmed = 0
         self.number_of_sequences_to_trimm = 0
 
-    def get_verbose(self):
+    def is_verbose(self):
         self.verbose = False
         for arg in sys.argv:
           if arg == "-v":
             self.verbose = True
+            
+    def get_files(self):
+        self.files = []
+        self.current_dir = os.getcwd()
+        for (dirpath, dirname, filenames) in os.walk(self.current_dir):
+            self.files.extend(filenames)
+            break
             
     # TODO: 
     def prepare_line(self):
@@ -113,7 +115,7 @@ class Merge_stats:
         print('Prefix_failed_in_read_1 (in all files)               = %s (%s%% from Number_of_pairs_analyzed)') % (self.Prefix_failed_in_read_1, self.get_percents(self.Prefix_failed_in_read_1))
         print('Prefix_failed_in_read_2 (in all files)               = %s (%s%% from Number_of_pairs_analyzed)') % (self.Prefix_failed_in_read_2, self.get_percents(self.Prefix_failed_in_read_2))
         print('Prefix_failed_in_both (in all files)                 = %s (%s%% from Number_of_pairs_analyzed)') % (self.Prefix_failed_in_both, self.get_percents(self.Prefix_failed_in_both))
-        # print('Passed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (self.Passed_prefix_total, self.get_percents(self.Passed_prefix_total))
+        print('Passed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (self.Passed_prefix_total, self.get_percents(self.Passed_prefix_total))
         print('Failed_prefix_total (in all files)                   = %s (%s%% from Number_of_pairs_analyzed)') % (self.Failed_prefix_total, self.get_percents(self.Failed_prefix_total))
         print('Merged_total (in all files)                          = %s (%s%% from Number_of_pairs_analyzed)') % (self.Merged_total, self.get_percents(self.Merged_total))
         print('Complete_overlap_forced_total (in all files)         = %s (%s%% from Number_of_pairs_analyzed)') % (self.Complete_overlap_forced_total, self.get_percents(self.Complete_overlap_forced_total))
@@ -140,7 +142,8 @@ if __name__ == "__main__":
 
     stats = Merge_stats()
     
-    stats.get_verbose()
+    stats.is_verbose()
+    
     for f in stats.files:
       if f.endswith("_STATS"):
         file = open(f)
