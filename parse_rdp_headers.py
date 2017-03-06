@@ -9,6 +9,7 @@ should be
 S000871964	Acidimicrobium_ferrooxidans	Acidimicrobium  Acidimicrobiaceae	NA
 
 """
+import IlluminaUtils.lib.fastalib as fa
 import gzip
 from itertools import izip
 from collections import defaultdict
@@ -36,8 +37,17 @@ class Util():
       f.write(text)
       f.close
                    
+class Parse_RDP():
+  def __init__(self):
+    self.classification = {}
+      
+  def read_file(self, in_fa_gz_file_name):
+    input = fa.SequenceSource(in_fa_gz_file_name)
 
-
+    while input.next():
+      print input.id
+    
+  
 
 class Spingo_Taxonomy():
     def __init__(self):
@@ -140,64 +150,6 @@ class Spingo_Taxonomy():
 
 
 if __name__ == '__main__':
-    spingo_tax = Spingo_Taxonomy()
-    util = Util()
-    
-
-    spingo_tax.tax_map_file_content = spingo_tax.get_file_content(spingo_tax.tax_map_filename)
-    # print spingo_tax.tax_map_file_content[0]
-    spingo_tax.get_taxmap_dict()
-    # arc_maped_taxonomy_arr  = spingo_tax.get_maped_taxonomy_arr(spingo_tax.arc_filename)
-    # bact_maped_taxonomy_arr = spingo_tax.get_maped_taxonomy_arr(spingo_tax.bact_filename)
-
-
-    t = util.benchmark_w_return_1("get_file_content arc_filename")
-    spingo_tax.arc_file_content  = spingo_tax.get_file_content(spingo_tax.arc_filename)
-    util.benchmark_w_return_2(t)
-    
-    
-    t = util.benchmark_w_return_1("get_file_content bact_filename")
-    spingo_tax.bact_file_content = spingo_tax.get_file_content(spingo_tax.bact_filename)
-    util.benchmark_w_return_2(t)
-
-    # print "spingo_tax.bact_file_content[0]"
-    # print spingo_tax.bact_file_content[0]
-
-    test = spingo_tax.bact_file_content[0:300]
-
-    # Bact:
-    t = util.benchmark_w_return_1("bact_file_content")
-    # a = spingo_tax.get_mapped_dict(test)
-    a = spingo_tax.get_mapped_dict(spingo_tax.bact_file_content)
-    util.benchmark_w_return_2(t)
-
-    t = util.benchmark_w_return_1("make_taxonomy_by_rank")
-    tax_w_rank_dict = spingo_tax.make_taxonomy_by_rank(a)
-    util.benchmark_w_return_2(t)
-
-    t = util.benchmark_w_return_1("make_new_tax_map")
-    spingo_tax.make_new_tax_map(tax_w_rank_dict)
-    util.benchmark_w_return_2(t)
-
-    t = util.benchmark_w_return_1("write_to_file")
-    util.write_to_file('new_taxonomy.map_b', "\n".join(spingo_tax.new_map_arr))
-    util.benchmark_w_return_2(t)
-
-    # Arc:
-    t = util.benchmark_w_return_1("arc_file_content")
-    # a2 = spingo_tax.get_mapped_dict(test)
-    a2 = spingo_tax.get_mapped_dict(spingo_tax.arc_file_content)
-    util.benchmark_w_return_2(t)
-
-    t = util.benchmark_w_return_1("make_taxonomy_by_rank")
-    tax_w_rank_dict2 = spingo_tax.make_taxonomy_by_rank(a2)
-    util.benchmark_w_return_2(t)
-
-    t = util.benchmark_w_return_1("make_new_tax_map")
-    spingo_tax.make_new_tax_map(tax_w_rank_dict2)
-    util.benchmark_w_return_2(t)
-
-    t = util.benchmark_w_return_1("write_to_file")
-    util.write_to_file('new_taxonomy.map_a', "\n".join(spingo_tax.new_map_arr))
-    util.benchmark_w_return_2(t)
-    
+    parser = Parse_RDP()
+    in_fa_gz_file_name = "/Users/ashipunova/Dropbox/mix/today_ch/spingo_assign/small_current_bact.fa"
+    parser.read_file(in_fa_gz_file_name)
