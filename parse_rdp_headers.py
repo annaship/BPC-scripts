@@ -45,7 +45,13 @@ class Parse_RDP():
     input = fa.SequenceSource(in_fa_gz_file_name)
 
     while input.next():
-      print input.id
+      self.parse_id(input.id)
+      
+  def parse_id(self, header):
+    first_part, lineage = header.split("\t")
+    print first_part
+    print lineage
+    # locus, organism, 
     
   
 
@@ -151,5 +157,6 @@ class Spingo_Taxonomy():
 
 if __name__ == '__main__':
     parser = Parse_RDP()
+    # todo: ARGS
     in_fa_gz_file_name = "/Users/ashipunova/Dropbox/mix/today_ch/spingo_assign/small_current_bact.fa"
     parser.read_file(in_fa_gz_file_name)
