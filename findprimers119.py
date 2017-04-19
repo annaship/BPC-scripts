@@ -96,29 +96,29 @@ class Findprimer:
     # r.sequence as unalignseq, 
     self.select_ref_seqs = """SELECT %s, a.sequence as alignseq 
       FROM %s as r
-      JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
-      JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
+      JOIN refssu_taxonomy_source USING(refssu_taxonomy_source_id) 
+      JOIN taxonomy on (taxonomy_id = original_taxonomy_id)
       JOIN %s as a using(%s) 
       WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
         LIMIT 1""" % (self.refssu_name, self.ref_table, self.align_table, self.refID_field, self.domain, self.search_in_db)
     
-    # self.print_v("self.select_ref_seqs from get_sql_queries(): %s" % (self.select_ref_seqs))
+    self.print_v("self.select_ref_seqs from get_sql_queries(): %s" % (self.select_ref_seqs))
 
     self.get_counts_sql = """SELECT count(refssuid_id)
     FROM %s AS r
-      JOIN refssu_119_taxonomy_source ON(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
-      JOIN taxonomy_119 ON (taxonomy_id = original_taxonomy_id)
+      JOIN refssu_taxonomy_source ON(refssu_taxonomy_source_id = refssu_taxonomy_source_id) 
+      JOIN taxonomy ON (taxonomy_id = original_taxonomy_id)
         WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (self.ref_table, self.domain, self.search_in_db)
 
-    # self.print_v("self.get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql))
+    self.print_v("self.get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql))
       
   # 
   # if (domain eq "all")
   # {
   # select_ref_seqs = "SELECT refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
   #   FROM refTable as r
-  #   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
-  #   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
+  #   JOIN refssu_taxonomy_source on(refssu_taxonomy_source_id = refssu_taxonomy_source_id) 
+  #   JOIN taxonomy on (taxonomy_id = original_taxonomy_id)
   #   JOIN alignTable as a using(refID_field) 
   #     WHERE deleted=0 and r.sequence REGEXP 'regexp1' 
   #     LIMIT 1"
@@ -126,8 +126,8 @@ class Findprimer:
   # {
   # select_ref_seqs = "SELECT refssu_name, r.sequence as unalignseq, a.sequence as alignseq 
   #   FROM refTable as r
-  #   JOIN refssu_119_taxonomy_source on(refssu_taxonomy_source_id = refssu_119_taxonomy_source_id) 
-  #   JOIN taxonomy_119 on (taxonomy_id = original_taxonomy_id)
+  #   JOIN refssu_taxonomy_source on(refssu_taxonomy_source_id = refssu_taxonomy_source_id) 
+  #   JOIN taxonomy on (taxonomy_id = original_taxonomy_id)
   #   JOIN alignTable as a using(refID_field) 
   #     WHERE taxonolike \"domain%\" and deleted=0 and r.sequence REGEXP 'regexp1'
   #     LIMIT 1"
@@ -267,8 +267,8 @@ class Findprimer:
     parser = argparse.ArgumentParser(usage = "%s" % usage, description = "%s" % description, formatter_class=RawTextHelpFormatter)
   
     parser.add_argument('-domain', dest = "domain"      , help = 'superkingdom (in short form: Archae, Bacter, Eukar)')
-    parser.add_argument('-ref'   , dest = "ref_table"   , default = "refssu_119_ok", help = 'reference table (default: refssu)')
-    parser.add_argument('-align' , dest = "align_table" , default = "refssu_119_align", help = 'align table (default: refssu_align)')
+    parser.add_argument('-ref'   , dest = "ref_table"   , default = "refssu", help = 'reference table (default: refssu)')
+    parser.add_argument('-align' , dest = "align_table" , default = "refssu_align", help = 'align table (default: refssu_align)')
     parser.add_argument('-cnt'   , action="count"       , default=0, help = 'count amount of sequences where primer was found (useful if found in both directions)')
     parser.add_argument('-f'     , dest = "f_primer_seq", help = 'forward primer')
     parser.add_argument('-r'     , dest = "r_primer_seq", help = 'reverse primer')
@@ -340,7 +340,7 @@ class Findprimer:
   
   
 # ===
-# time findprimers119 -domain Bacteria -r CCAGCAGC[CT]GCGGTAA. -ref refssu_119_ok -align refssu_119_align -cnt
+# time findprimers119 -domain Bacteria -r CCAGCAGC[CT]GCGGTAA. -ref refssu -align refssu_align -cnt
 
 if __name__ == '__main__':
   findprimers = Findprimer()
