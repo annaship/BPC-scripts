@@ -102,15 +102,15 @@ class Findprimer:
       WHERE taxonomy like '%s%%' and deleted=0 and r.sequence REGEXP '%s'
         LIMIT 1""" % (self.refssu_name, self.ref_table, self.align_table, self.refID_field, self.domain, self.search_in_db)
     
-    self.print_v("self.select_ref_seqs from get_sql_queries(): %s" % (self.select_ref_seqs))
+    # self.print_v("self.select_ref_seqs from get_sql_queries(): %s" % (self.select_ref_seqs))
 
     self.get_counts_sql = """SELECT count(refssuid_id)
     FROM %s AS r
-      JOIN refssu_taxonomy_source ON(refssu_taxonomy_source_id = refssu_taxonomy_source_id) 
+      JOIN refssu_taxonomy_source USING(refssu_taxonomy_source_id) 
       JOIN taxonomy ON (taxonomy_id = original_taxonomy_id)
         WHERE taxonomy like \"%s%%\" and deleted=0 and r.sequence REGEXP '%s'""" % (self.ref_table, self.domain, self.search_in_db)
 
-    self.print_v("self.get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql))
+    # self.print_v("self.get_counts_sql from get_sql_queries(): %s" % (self.get_counts_sql))
       
   # 
   # if (domain eq "all")
