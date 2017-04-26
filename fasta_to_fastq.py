@@ -8,6 +8,7 @@ $ ./fasta_to_fastq NAME.fasta NAME.fastq
 import sys, os
 # from Bio import SeqIO
 import IlluminaUtils.lib.fastalib as fa
+import IlluminaUtils.lib.fastqlib as fq
 
 # Get inputs
 fa_path = sys.argv[1]
@@ -39,9 +40,20 @@ f_qual_dict = make_a_dict(f_qual)
 # print "f_qual_dict"
 # print f_qual_dict
 
+def convert_qual_scores(line):
+  res = []
+  arr = line.split(" ")
+  for num in arr:
+    ch = chr(int(num) + 33)
+    # print ch
+    res.append(ch)
+  return "".join(res)
+    
+
 with open(fq_path, "w") as fastq:
   for id, seq in f_input_dict.items():
-    line = "@%s\n%s\n+\n%s\n" % (id, seq, f_qual_dict[id]) 
+    q = convert_qual_scores(f_qual_dict[id])
+    line = "@%s\n%s\n+\n%s\n  " % (id, seq, q) 
     fastq.write(line)
   
 
@@ -50,7 +62,14 @@ with open(fq_path, "w") as fastq:
   # output.write(input.id + "#" + input.seq + "\n")
 
 
-
+"""    def process_Q_list(self):
+        if self.CASAVA_version == '1.8':
+            self.Q_list = [ord(q) - 33 for q in self.qual_scores]
+        else:
+            self.Q_list = [ord(q) - 64 for q in self.qual_scores]
+ 
+        return self.Q_list
+"""
 
 # make fastq
 """with open(fa_path, "r") as fasta, open(qual_path, "r") as qual, open(fq_path, "w") as fastq:
