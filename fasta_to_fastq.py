@@ -53,7 +53,8 @@ def convert_qual_scores(line):
 with open(fq_path, "w") as fastq:
   for id, seq in f_input_dict.items():
     q = convert_qual_scores(f_qual_dict[id])
-    line = "@%s\n%s\n+\n%s\n  " % (id, seq, q) 
+    # q = "".join(40 * len(f_qual_dict[id]))
+    line = "@%s\n%s\n+\n%s\n" % (id.strip(), seq.strip(), q.strip()) 
     fastq.write(line)
   
 
