@@ -14,25 +14,12 @@ fa_path = sys.argv[1]
 qual_path = sys.argv[2]
 fq_path = sys.argv[3]
 
-
-# def init_unique_id(self):
-#     while self.next_regular():
-#         id = idlib.sha1(self.seq.upper()).hexdigest()
-#         if id in self.unique_id_dict:
-#             self.unique_id_dict[id]['ids'].append(self.id)
-#             self.unique_id_dict[id]['count'] += 1
-#         else:
-#             self.unique_id_dict[id] = {'id' : self.id,
-#                                            'ids': [self.id],
-#                                            'seq': self.seq,
-#                                            'count': 1}
-#
-#     self.unique_id_list = [i[1] for i in sorted([(self.unique_id_dict[id]['count'], id)\
-#                     for id in self.unique_id_dict], reverse = True)]
-#
-#
-#     self.total_unique = len(self.unique_id_dict)
-#     self.reset()
+"""
+TODO:
+args
+no qual (40)
+w qual
+"""
 def make_a_dict(f_path):
   id_dict = {}
   while f_path.next_regular():
@@ -46,23 +33,17 @@ f_qual = fa.SequenceSource(qual_path)
 
 f_input_dict = make_a_dict(f_input)
 f_qual_dict = make_a_dict(f_qual)
-# f_input.init_unique_id()
-# f_qual.init_unique_id()
-# while f_input.next():
-#   fa.init_unique_id()
 
-# fa.SequenceSource
-#
-# f_input_dict = f_input.unique_id_dict.items()
-# f_qual_dict = f_qual.unique_id_dict.items()
-# print f_input.total_unique
-# print f_qual.total_unique
+# print "f_input_dict"
+# print f_input_dict
+# print "f_qual_dict"
+# print f_qual_dict
 
-
-print "f_input_dict"
-print f_input_dict
-print "f_qual_dict"
-print f_qual_dict
+with open(fq_path, "w") as fastq:
+  for id, seq in f_input_dict.items():
+    line = "@%s\n%s\n+\n%s\n" % (id, seq, f_qual_dict[id]) 
+    fastq.write(line)
+  
 
 
 #   print
