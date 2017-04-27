@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys, os
 import IlluminaUtils.lib.fastalib as fa
 import IlluminaUtils.lib.fastqlib as fq
@@ -15,9 +17,19 @@ def parse_arguments():
   description = """Convert fasta files into fastq format, using quality scores from a file provided or makes a fake score (40).
   """
 
-  usage =  """%(prog)s -f fasta_path [-q qual_path -o output_fastq_file]
+  usage =  """%s -f fasta_path [-q qual_path -o output_fastq_file]
+  ex: python %s -f 1.fa -q 1.qual -o 1.fastq
+  """ % (sys.argv[0], sys.argv[0])
+
+  usage1 =  """%(prog)s -f fasta_path [-q qual_path -o output_fastq_file]
   ex: python %(prog)s -f 1.fa -q 1.qual -o 1.fastq
   """
+  
+  if not len(sys.argv) > 1:
+    print description
+    print usage
+    sys.exit(0)
+  
 
   parser = argparse.ArgumentParser(usage = "%s" % usage, description = "%s" % description, formatter_class=RawTextHelpFormatter)
 
@@ -28,14 +40,8 @@ def parse_arguments():
 
   args = parser.parse_args()
   if args.fq_path is None:
-    try:
-      fq_path_default = os.path.splitext(args.fa_path)[0]    
-      args.fq_path = fq_path_default + ".fastq"
-    except AttributeError:
-      print description
-      print usage
-    except:
-      raise
+    fq_path_default = os.path.splitext(args.fa_path)[0]    
+    args.fq_path = fq_path_default + ".fastq"
 
   print "args"
   print args
