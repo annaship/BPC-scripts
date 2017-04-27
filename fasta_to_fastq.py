@@ -41,20 +41,19 @@ f_qual_dict = make_a_dict(f_qual)
 # print f_qual_dict
 
 def convert_qual_scores(line):
-  res = []
+  # res = []
   arr = line.split(" ")
-  for num in arr:
-    ch = chr(int(num) + 33)
-    # print ch
-    res.append(ch)
+  # for num in arr:
+    # ch = chr(int(num) + 33)
+    # # print ch
+    # res.append(ch)
+  res = [chr(int(num) + 33) for num in arr]
   return "".join(res)
     
 def fake_qual_scores(seq):
   res = []
-  seq_len = len(seq)
   ch = chr(40 + 33)
-  res = ch * seq_len
-  return "".join(res)
+  return "".join(ch * len(seq))
 
 with open(fq_path, "w") as fastq:
   for id, seq in f_input_dict.items():
