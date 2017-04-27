@@ -12,7 +12,7 @@ def parse_arguments():
   from argparse import RawTextHelpFormatter
   
 
-  description = """Convert fasta files into fastq format, using quality scores from a file provided or makes a fake 40 score.
+  description = """Convert fasta files into fastq format, using quality scores from a file provided or makes a fake score (40).
   """
 
   usage =  """%(prog)s -f fasta_path [-q qual_path -o output_fastq_file]
@@ -28,8 +28,14 @@ def parse_arguments():
 
   args = parser.parse_args()
   if args.fq_path is None:
-    fq_path_default = os.path.splitext(args.fa_path)[0]    
-    args.fq_path = fq_path_default + ".fastq"
+    try:
+      fq_path_default = os.path.splitext(args.fa_path)[0]    
+      args.fq_path = fq_path_default + ".fastq"
+    except AttributeError:
+      print description
+      print usage
+    except:
+      raise
 
   print "args"
   print args
@@ -47,8 +53,6 @@ def make_a_dict(f_path):
     id_dict[id] = f_path.seq
   f_path.reset()
   return id_dict
-  
-  
 
 args = parse_arguments()
 fa_path   = args.fa_path
@@ -66,10 +70,12 @@ TypeError: coercing to Unicode: need string or buffer, NoneType found
 """
 
 f_input = fa.SequenceSource(fa_path)
-f_qual = fa.SequenceSource(qual_path)
-
 f_input_dict = make_a_dict(f_input)
-f_qual_dict = make_a_dict(f_qual)
+
+if args.qual_path:
+  f_qual = fa.SequenceSource(qual_path)
+  f_qual_dict = make_a_dict(f_qual)
+
 
 # print "f_input_dict"
 # print f_input_dict
@@ -93,8 +99,12 @@ def fake_qual_scores(seq):
 
 with open(fq_path, "w") as fastq:
   for id, seq in f_input_dict.items():
-    q = convert_qual_scores(f_qual_dict[id])
-    # q = fake_qual_scores(seq)
+    try:
+      q = convert_qual_scores(f_qual_dict[id])
+    except NameError:
+      q = fake_qual_scores(seq)
+    except:
+      raise
     line = "@%s\n%s\n+\n%s\n" % (id.strip(), seq.strip(), q.strip()) 
     fastq.write(line)
   
