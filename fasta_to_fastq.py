@@ -49,10 +49,17 @@ def convert_qual_scores(line):
     res.append(ch)
   return "".join(res)
     
+def fake_qual_scores(seq):
+  res = []
+  seq_len = len(seq)
+  ch = chr(40 + 33)
+  res = ch * seq_len
+  return "".join(res)
 
 with open(fq_path, "w") as fastq:
   for id, seq in f_input_dict.items():
     q = convert_qual_scores(f_qual_dict[id])
+    q = fake_qual_scores(seq)
     # q = "".join(40 * len(f_qual_dict[id]))
     line = "@%s\n%s\n+\n%s\n" % (id.strip(), seq.strip(), q.strip()) 
     fastq.write(line)
