@@ -1,25 +1,44 @@
-"""
-https://gist.github.com/mdshw5/c7cf7a232b27de0d4b31#file-fasta_to_fastq-py
-Convert FASTA to FASTQ file with a static
-Usage:
-$ ./fasta_to_fastq NAME.fasta NAME.fastq
-"""
-
 import sys, os
-# from Bio import SeqIO
 import IlluminaUtils.lib.fastalib as fa
 import IlluminaUtils.lib.fastqlib as fq
 
 # Get inputs
-fa_path = sys.argv[1]
-qual_path = sys.argv[2]
-fq_path = sys.argv[3]
+# fa_path = sys.argv[1]
+# qual_path = sys.argv[2]
+# fq_path = sys.argv[3]
+
+def parse_arguments():
+  import argparse
+  from argparse import RawTextHelpFormatter
+  
+
+  description = """Convert fasta files into fastq format, using quality scores from a file provided or makes a fake 40 score.
+  """
+
+  usage =  """%(prog)s -f fasta_path [-q qual_path -o output_fastq_file]
+  ex: python %(prog)s -f 1.fa -q 1.qual -o 1.fastq
+  """
+
+  parser = argparse.ArgumentParser(usage = "%s" % usage, description = "%s" % description, formatter_class=RawTextHelpFormatter)
+
+  parser.add_argument('-f'     , dest = "fa_path",    help = 'fasta file name')
+  parser.add_argument('-q'     , dest = "qual_path",  help = 'quality scores file name')
+  parser.add_argument('-o'     , dest = "fq_path" ,   help = 'fastq file name', nargs='?')
+  parser.add_argument('-v'     , '--verbose'          , action='store_true', help = 'VERBOSITY')
+
+  args = parser.parse_args()
+  if args.fq_path is None:
+    fq_path_default = os.path.splitext(args.fa_path)[0]    
+    args.fq_path = fq_path_default + ".fastq"
+
+  print "args"
+  print args
+  return args
+
 
 """
 TODO:
 args
-no qual (40)
-w qual
 """
 def make_a_dict(f_path):
   id_dict = {}
@@ -28,6 +47,23 @@ def make_a_dict(f_path):
     id_dict[id] = f_path.seq
   f_path.reset()
   return id_dict
+  
+  
+
+args = parse_arguments()
+fa_path   = args.fa_path
+qual_path = args.qual_path
+fq_path   = args.fq_path
+
+"""  
+TODO:
+if no qual - use fake and do not process qual_path
+File "fasta_to_fastq.py", line 60, in <module>
+    f_qual = fa.SequenceSource(qual_path)
+  File "/bioware/python-2.7.12-201701011205/lib/python2.7/site-packages/illumina_utils-1.4.8-py2.7.egg/IlluminaUtils/lib/fastalib.py", line 84, in __init__
+    self.file_pointer = open(self.fasta_file_path)
+TypeError: coercing to Unicode: need string or buffer, NoneType found
+"""
 
 f_input = fa.SequenceSource(fa_path)
 f_qual = fa.SequenceSource(qual_path)
@@ -58,45 +94,8 @@ def fake_qual_scores(seq):
 with open(fq_path, "w") as fastq:
   for id, seq in f_input_dict.items():
     q = convert_qual_scores(f_qual_dict[id])
-    q = fake_qual_scores(seq)
-    # q = "".join(40 * len(f_qual_dict[id]))
+    # q = fake_qual_scores(seq)
     line = "@%s\n%s\n+\n%s\n" % (id.strip(), seq.strip(), q.strip()) 
     fastq.write(line)
   
 
-
-#   print
-  # output.write(input.id + "#" + input.seq + "\n")
-
-
-"""    def process_Q_list(self):
-        if self.CASAVA_version == '1.8':
-            self.Q_list = [ord(q) - 33 for q in self.qual_scores]
-        else:
-            self.Q_list = [ord(q) - 64 for q in self.qual_scores]
- 
-        return self.Q_list
-"""
-
-# make fastq
-"""with open(fa_path, "r") as fasta, open(qual_path, "r") as qual, open(fq_path, "w") as fastq:
-    for record in SeqIO.parse(fasta, "fasta"):
-      print "record"
-      print record
-      for entry in qual:
-        if not entry.startswith(">"):
-          print entry
-          record.letter_annotations["phred_quality"] = [40] * len(record)
-          SeqIO.write(record, fastq, "fastq")
-  """      
-        
-"""
-def process_Q_list(self):
-  if self.CASAVA_version == '1.8':
-      self.Q_list = [ord(q) - 33 for q in self.qual_scores]
-  else:
-      self.Q_list = [ord(q) - 64 for q in self.qual_scores]
-
-  return self.Q_list
-
-"""
