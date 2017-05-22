@@ -48,8 +48,9 @@ class Reads():
 
     def compare_w_score(self, f_input, file_name, all_dirs):
       for _ in range(50):
-        f_input.next()
+        f_input.next(raw = True)
         e = f_input.entry
+        
         seq_len = len(e.sequence)
         qual_scores_len = len(e.qual_scores)
         try:
@@ -63,18 +64,22 @@ class Reads():
             raise
         # print e.header_line
         if (seq_len != qual_scores_len):
-          print "WARNING, sequence and qual_scores_line have different length in %s" % file_name
+          print "WARNING, sequence and qual_scores_line have different length in %s for %s" % (file_name, e.header_line)
+          print "seq_len = %s" % (seq_len)
+          print "qual_scores_len = %s" % (qual_scores_len)
+          
           all_dirs.add(fq_files[file_name][0])
 
 
     def get_seq_len(self, f_input, file_name, all_dirs):
       seq_lens = []
       for _ in range(50):
-        f_input.next()
+        f_input.next(raw = True)
         e = f_input.entry
         seq_len = len(e.sequence)
         seq_lens.append(seq_len)
         # print seq_len
+      print "sorted seq_lens:"
       print sorted(set(seq_lens))
 
 
@@ -136,5 +141,5 @@ if __name__ == '__main__':
         # print "Unexpected error:", sys.exc_info()[0]
         # next
 
-    print all_dirs
+    print "Directories: %s" % all_dirs
     
