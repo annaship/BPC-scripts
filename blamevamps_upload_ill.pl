@@ -98,7 +98,7 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500   96) #my $publicVAMPSHostName = "v
 e71f9464 (annaship 2013-01-03 13:05:51 -0500   98) #my $privateVAMPSHostName = "vampsdev.mbl.edu";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500   99) my $privateVAMPSHostName = "bpcweb7";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  100) # my $publicVAMPSHostName = "bpcweb7"; (dev)
-e71f9464 (annaship 2013-01-03 13:05:51 -0500  101) my $sourceHost = "newbpcdb2";
+e71f9464 (annaship 2013-01-03 13:05:51 -0500  101) my $sourceHost = "bpcdb1";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  102) my $sourceDB   = "env454";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  103) my $vampsHost  = ''; # user-specified below
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  104) my $vampsDB    = "vamps";
@@ -463,7 +463,7 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500  462)       # my $truncatePDCQuery_
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  463)       # $truncatePDCQuery_h->execute or warn print LOG "Unable to execute SQL statement: $truncatePDCQuery.  Error:     " . $truncatePDCQuery_h->errstr . " (" . (localtime) . ")\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  464)       print "q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  465)       print LOG "q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n";
-e71f9464 (annaship 2013-01-03 13:05:51 -0500  466)       ExecuteInsert_newbpcdb2($truncatePDCQuery);
+e71f9464 (annaship 2013-01-03 13:05:51 -0500  466)       ExecuteInsert_bpcdb1($truncatePDCQuery);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  467) 
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  468)       # Insert the regular 454 tag sequence counts
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  469)       # q 1)
@@ -495,7 +495,7 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500  494)
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  495)       print "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  496)       print LOG "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  497) 
-e71f9464 (annaship 2013-01-03 13:05:51 -0500  498)       ExecuteInsert_newbpcdb2($insert_project_datasets);
+e71f9464 (annaship 2013-01-03 13:05:51 -0500  498)       ExecuteInsert_bpcdb1($insert_project_datasets);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  499)       #
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  500)       # my $insert_project_datasets_h = $dbhSource->prepare($insert_project_datasets) or warn print LOG "Unable to prepare statement: $insert_project_datasets. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  501)       # $insert_project_datasets_h->execute or warn print LOG "Unable to execute SQL statement: $insert_project_datasets.  Error: " . $insert_project_datasets_h->errstr . " (" . (localtime) . ")\n";
@@ -519,7 +519,7 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500  518)       # $insert_project_datas
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  519)       print "q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  520)       print LOG "q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  521) 
-e71f9464 (annaship 2013-01-03 13:05:51 -0500  522)       # ExecuteInsert_newbpcdb2($insert_project_datasets_a);
+e71f9464 (annaship 2013-01-03 13:05:51 -0500  522)       # ExecuteInsert_bpcdb1($insert_project_datasets_a);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  523) 
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  524)     }
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  525) 
@@ -645,13 +645,13 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500  644)     # # 1) increase join_buff
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  645)     # # q 6-1)
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  646)     # my $join_buffer_increase_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_new;";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  647)     # &print_query_out("q 6-1) join_buffer_increase_temp", $sourceHost." ".$join_buffer_increase_temp);
-e71f9464 (annaship 2013-01-03 13:05:51 -0500  648)     # ExecuteInsert_newbpcdb2($join_buffer_increase_temp) unless ($test_only == 1);
+e71f9464 (annaship 2013-01-03 13:05:51 -0500  648)     # ExecuteInsert_bpcdb1($join_buffer_increase_temp) unless ($test_only == 1);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  649)     # q 6-2)
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  650)     # 2) drop vamps_sequences_transfer table on env454
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  651)     my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  652)     &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
-d927c5fa (annaship 2014-11-05 11:46:22 -0500  653)     # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-3fb56f83 (annaship 2014-11-17 15:43:55 -0500  654)     ExecuteInsert_newbpcdb2($drop_temp_seq);
+d927c5fa (annaship 2014-11-05 11:46:22 -0500  653)     # `mysql -h bpcdb1 env454 -e $drop_temp_seq` unless ($test_only == 1);
+3fb56f83 (annaship 2014-11-17 15:43:55 -0500  654)     ExecuteInsert_bpcdb1($drop_temp_seq);
 3fb56f83 (annaship 2014-11-17 15:43:55 -0500  655)     # ExecuteSelectTest($drop_temp_seq);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  656)     
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  657)     # q 6-3)
@@ -677,14 +677,14 @@ a0918830 (annaship 2014-11-18 11:06:04 -0500  676)             UNIQUE KEY `rep_i
 7af2a341 (annaship 2014-11-05 11:11:01 -0500  677)           )  ;
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  678)     ";
 d927c5fa (annaship 2014-11-05 11:46:22 -0500  679)     &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
-d927c5fa (annaship 2014-11-05 11:46:22 -0500  680)     # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-3fb56f83 (annaship 2014-11-17 15:43:55 -0500  681)     ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
+d927c5fa (annaship 2014-11-05 11:46:22 -0500  680)     # `mysql -h bpcdb1 env454 -e $drop_temp_seq` unless ($test_only == 1);
+3fb56f83 (annaship 2014-11-17 15:43:55 -0500  681)     ExecuteInsert_bpcdb1($create_temp_seq_table_query);
 3fb56f83 (annaship 2014-11-17 15:43:55 -0500  682)     # ExecuteSelectTest($create_temp_seq_table_query);
 7af2a341 (annaship 2014-11-05 11:11:01 -0500  683)     
 7af2a341 (annaship 2014-11-05 11:11:01 -0500  684)     # get data and put in the table
 7af2a341 (annaship 2014-11-05 11:11:01 -0500  685)     
 4ab99369 (annaship 2014-11-12 17:42:57 -0500  686)     my $chunk_size_seqs  = 1;  # dump data to transfer files 1 project records at a time FOR SEQS
-7af2a341 (annaship 2014-11-05 11:11:01 -0500  687)     # my $sourceHost = "newbpcdb2";
+7af2a341 (annaship 2014-11-05 11:11:01 -0500  687)     # my $sourceHost = "bpcdb1";
 d927c5fa (annaship 2014-11-05 11:46:22 -0500  688) 
 4ab99369 (annaship 2014-11-12 17:42:57 -0500  689)     print "2) selectCountProject_int = $selectCountProject_int\n";
 4ab99369 (annaship 2014-11-12 17:42:57 -0500  690)     print LOG "2) selectCountProject_int = $selectCountProject_int\n";
@@ -725,7 +725,7 @@ a0918830 (annaship 2014-11-18 11:06:04 -0500  724)       print LOG "START get_re
 a0918830 (annaship 2014-11-18 11:06:04 -0500  725)       
 a0918830 (annaship 2014-11-18 11:06:04 -0500  726)       my $start_get_reads_seq = time;
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  727)       # &insert_chunk();
-9e1cba2b (annaship 2014-11-19 18:13:18 -0500  728)       # ExecuteInsert_newbpcdb2_no_prepare()
+9e1cba2b (annaship 2014-11-19 18:13:18 -0500  728)       # ExecuteInsert_bpcdb1_no_prepare()
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  729)       $insert_select_chunck_seq_h->execute(($from_here, $chunk_size_seqs)) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  730)       
 a0918830 (annaship 2014-11-18 11:06:04 -0500  731)       my $end_get_reads_seq   = time;
@@ -759,7 +759,7 @@ a0918830 (annaship 2014-11-18 11:06:04 -0500  738)
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  759)     #               GROUP BY sequence_ill_id, project_id, dataset_id
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  760)     #   ";
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  761)     #   &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-9e1cba2b (annaship 2014-11-19 18:13:18 -0500  762)     #   my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+9e1cba2b (annaship 2014-11-19 18:13:18 -0500  762)     #   my $selectReads_h = ExecuteInsert_bpcdb1($insert_select_chunck_seq);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  763)     #   # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  764)     # }
 3fb56f83 (annaship 2014-11-17 15:43:55 -0500  765) 
@@ -775,7 +775,7 @@ d183bd5c (annaship 2013-12-20 17:59:29 -0500  772)     ";
 d183bd5c (annaship 2013-12-20 17:59:29 -0500  775)           
 81cd4f20 (annaship 2014-11-19 12:25:10 -0500  776)     &print_query_out("q 6-3a) UPDATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  777)     my $start_time = time;
-d183bd5c (annaship 2013-12-20 17:59:29 -0500  778)     ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
+d183bd5c (annaship 2013-12-20 17:59:29 -0500  778)     ExecuteInsert_bpcdb1($UPDATE_temp_seq);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  779)     my $end_time   = time;
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  780)     print "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  781)     print LOG "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
@@ -790,7 +790,7 @@ d183bd5c (annaship 2013-12-20 17:59:29 -0500  778)     ExecuteInsert_newbpcdb2($
 81cd4f20 (annaship 2014-11-19 12:25:10 -0500  790)           
 81cd4f20 (annaship 2014-11-19 12:25:10 -0500  791)     &print_query_out("q 6-3b) ALTER_temp_seq", $sourceHost." ".$ALTER_temp_seq);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  792)     $start_time = time;
-81cd4f20 (annaship 2014-11-19 12:25:10 -0500  793)     ExecuteInsert_newbpcdb2($ALTER_temp_seq);
+81cd4f20 (annaship 2014-11-19 12:25:10 -0500  793)     ExecuteInsert_bpcdb1($ALTER_temp_seq);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  794)     $end_time   = time;
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  795)     print "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500  796)     print LOG "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
@@ -799,10 +799,10 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500  798)     # # 4) decrease join_buff
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  799)     # # q 6-4)
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  800)     # my $join_buffer_decrease_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_old;";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  801)     # &print_query_out("q 6-4) join_buffer_decrease_temp", $sourceHost." ".$join_buffer_decrease_temp);
-e71f9464 (annaship 2013-01-03 13:05:51 -0500  802)     # ExecuteInsert_newbpcdb2($join_buffer_decrease_temp) unless ($test_only == 1);
+e71f9464 (annaship 2013-01-03 13:05:51 -0500  802)     # ExecuteInsert_bpcdb1($join_buffer_decrease_temp) unless ($test_only == 1);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  803)     # 5) dump vamps_sequences_transfer to a disc  
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  804)     # q 6-5)
-e71f9464 (annaship 2013-01-03 13:05:51 -0500  805)     my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
+e71f9464 (annaship 2013-01-03 13:05:51 -0500  805)     my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host bpcdb1 env454 vamps_sequences_transfer_temp > $seq_file_name";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  806)     &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  807)     unless ($test_only == 1)
 e71f9464 (annaship 2013-01-03 13:05:51 -0500  808)     {
@@ -1799,14 +1799,14 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500 1798) }
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1799) 
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1800) #######################################
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1801) #
-e71f9464 (annaship 2013-01-03 13:05:51 -0500 1802) # On newbpcdb2
+e71f9464 (annaship 2013-01-03 13:05:51 -0500 1802) # On bpcdb1
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1803) # Prepare and Execute INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("prepare" and "execute" only, no return)
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1804) #
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1805) #######################################
-e71f9464 (annaship 2013-01-03 13:05:51 -0500 1806) sub ExecuteInsert_newbpcdb2
+e71f9464 (annaship 2013-01-03 13:05:51 -0500 1806) sub ExecuteInsert_bpcdb1
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1807) {
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1808)   my $insertSQL = shift;
-e71f9464 (annaship 2013-01-03 13:05:51 -0500 1809)   print "EEE12: I'm in ExecuteInsert_newbpcdb2\n";
+e71f9464 (annaship 2013-01-03 13:05:51 -0500 1809)   print "EEE12: I'm in ExecuteInsert_bpcdb1\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1810)   # print "$insertSQL\n";
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1811)   # if ($test_only == 1);
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1812)   my $insertSQL_h = $dbhSource->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
@@ -1815,14 +1815,14 @@ e71f9464 (annaship 2013-01-03 13:05:51 -0500 1814) }
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1815) 
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1816) #######################################
 e71f9464 (annaship 2013-01-03 13:05:51 -0500 1817) #
-9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1818) # On newbpcdb2
+9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1818) # On bpcdb1
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1819) # Execute _only_ INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("execute" only, no prepare, no return)
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1820) #
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1821) #######################################
-9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1822) sub ExecuteInsert_newbpcdb2_no_prepare
+9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1822) sub ExecuteInsert_bpcdb1_no_prepare
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1823) {
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1824)   my $insertSQL = shift;
-9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1825)   print "EEE13: I'm in ExecuteInsert_newbpcdb2_no_prepare\n";
+9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1825)   print "EEE13: I'm in ExecuteInsert_bpcdb1_no_prepare\n";
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1826)   # print "$insertSQL\n";
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1827)   # if ($test_only == 1);
 9e1cba2b (annaship 2014-11-19 18:13:18 -0500 1828)   $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);

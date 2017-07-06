@@ -4,7 +4,7 @@ run_reg=$1
 echo "run_reg = $run_reg"
 
 
-mysql_cnt=`mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_$run_reg" | grep [0-9]`
+mysql_cnt=`mysql -h bpcdb1.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_$run_reg" | grep [0-9]`
 # +-------------------------+
 # | COUNT(distinct read_id) |
 # +-------------------------+

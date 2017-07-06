@@ -102,7 +102,7 @@ my $publicVAMPSHostName = "vampsdb";
 #my $privateVAMPSHostName = "vampsdev.mbl.edu";
 my $privateVAMPSHostName = "bpcweb7";
 # my $publicVAMPSHostName = "bpcweb7"; (dev)
-my $sourceHost = "newbpcdb2";
+my $sourceHost = "bpcdb1";
 my $sourceDB   = "env454";
 my $vampsHost  = ''; # user-specified below
 my $vampsDB    = "vamps";
@@ -467,7 +467,7 @@ if ($start eq "projectdataset")
       # print LOG "q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n";
       &print_query_out("q -1) truncatePDCQuery", $sourceHost." ".$truncatePDCQuery);
       
-      ExecuteInsert_newbpcdb2($truncatePDCQuery);
+      ExecuteInsert_bpcdb1($truncatePDCQuery);
 
       # Insert the regular 454 tag sequence counts
       # q 1)
@@ -500,7 +500,7 @@ if ($start eq "projectdataset")
       # print LOG "q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n";
       &print_query_out("q -1) insert_project_datasets", $sourceHost." ".$insert_project_datasets);
 
-      ExecuteInsert_newbpcdb2($insert_project_datasets);
+      ExecuteInsert_bpcdb1($insert_project_datasets);
       #
       # my $insert_project_datasets_h = $dbhSource->prepare($insert_project_datasets) or warn print LOG "Unable to prepare statement: $insert_project_datasets. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
       # $insert_project_datasets_h->execute or warn print LOG "Unable to execute SQL statement: $insert_project_datasets.  Error: " . $insert_project_datasets_h->errstr . " (" . (localtime) . ")\n";
@@ -525,7 +525,7 @@ if ($start eq "projectdataset")
       # print LOG "q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n";
       &print_query_out("q 1a) insert_project_datasets", $sourceHost." ".$insert_project_datasets_a);
 
-      # ExecuteInsert_newbpcdb2($insert_project_datasets_a);
+      # ExecuteInsert_bpcdb1($insert_project_datasets_a);
 
     }
 
@@ -657,13 +657,13 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # # q 6-1)
     # my $join_buffer_increase_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_new;";
     # &print_query_out("q 6-1) join_buffer_increase_temp", $sourceHost." ".$join_buffer_increase_temp);
-    # ExecuteInsert_newbpcdb2($join_buffer_increase_temp) unless ($test_only == 1);
+    # ExecuteInsert_bpcdb1($join_buffer_increase_temp) unless ($test_only == 1);
     # q 6-2)
     # 2) drop vamps_sequences_transfer table on env454
     my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
     &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
-    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-    ExecuteInsert_newbpcdb2($drop_temp_seq);
+    # `mysql -h bpcdb1 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    ExecuteInsert_bpcdb1($drop_temp_seq);
     # ExecuteSelectTest($drop_temp_seq);
     
     # q 6-3)
@@ -689,14 +689,14 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
           )  ;
     ";
     &print_query_out("q 6-3) create_temp_seq_table_query", $sourceHost." ".$create_temp_seq_table_query);
-    # `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-    ExecuteInsert_newbpcdb2($create_temp_seq_table_query);
+    # `mysql -h bpcdb1 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    ExecuteInsert_bpcdb1($create_temp_seq_table_query);
     # ExecuteSelectTest($create_temp_seq_table_query);
     
     # get data and put in the table
     
     my $chunk_size_seqs  = 1;  # dump data to transfer files 1 project records at a time FOR SEQS
-    # my $sourceHost = "newbpcdb2";
+    # my $sourceHost = "bpcdb1";
 
     # print "2) selectCountProject_int = $selectCountProject_int\n";
     # print LOG "2) selectCountProject_int = $selectCountProject_int\n";
@@ -747,7 +747,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       
       my $start_get_reads_seq = time;
       # &insert_chunk();
-      # ExecuteInsert_newbpcdb2_no_prepare()
+      # ExecuteInsert_bpcdb1_no_prepare()
       $insert_select_chunck_seq_h->execute($from_here) or warn print LOG "Unable to execute SQL statement: $insert_select_chunck_seq.  Error: " . $insert_select_chunck_seq_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);
       my $end_get_reads_seq   = time;
       print "The total time of insert_chunk $from_here is ", $end_get_reads_seq - $start_get_reads_seq, "\n";
@@ -780,7 +780,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     #               GROUP BY sequence_ill_id, project_id, dataset_id
     #   ";
     #   &print_query_out("q 6-4) insert_select_chunck_seq", $sourceHost." ".$insert_select_chunck_seq);      
-    #   my $selectReads_h = ExecuteInsert_newbpcdb2($insert_select_chunck_seq);
+    #   my $selectReads_h = ExecuteInsert_bpcdb1($insert_select_chunck_seq);
     #   # my $selectReads_h = ExecuteSelectTest($insert_select_chunck_seq);
     # }
     
@@ -795,7 +795,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
           
     # &print_query_out("q 6-3a) UPDATE_temp_seq", $sourceHost." ".$UPDATE_temp_seq);
     # my $start_time = time;
-    # ExecuteInsert_newbpcdb2($UPDATE_temp_seq);
+    # ExecuteInsert_bpcdb1($UPDATE_temp_seq);
     # my $end_time   = time;
     # print "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
     # print LOG "The total time of UPDATE_temp_seq is ", $end_time - $start_time, "\n";
@@ -809,7 +809,7 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
           
     &print_query_out("q 6-3b) ALTER_temp_seq", $sourceHost." ".$ALTER_temp_seq);
     $start_time = time;
-    ExecuteInsert_newbpcdb2($ALTER_temp_seq);
+    ExecuteInsert_bpcdb1($ALTER_temp_seq);
     $end_time   = time;
     print "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
     print LOG "The total time of ALTER_temp_seq is ", $end_time - $start_time, "\n";
@@ -818,10 +818,10 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
     # # q 6-4)
     # my $join_buffer_decrease_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_old;";
     # &print_query_out("q 6-4) join_buffer_decrease_temp", $sourceHost." ".$join_buffer_decrease_temp);
-    # ExecuteInsert_newbpcdb2($join_buffer_decrease_temp) unless ($test_only == 1);
+    # ExecuteInsert_bpcdb1($join_buffer_decrease_temp) unless ($test_only == 1);
     # 5) dump vamps_sequences_transfer to a disc  
     # q 6-5)
-    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
+    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host bpcdb1 env454 vamps_sequences_transfer_temp > $seq_file_name";
     &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
     unless ($test_only == 1)
     {
@@ -1853,14 +1853,14 @@ sub ExecuteInsert
 
 #######################################
 #
-# On newbpcdb2
+# On bpcdb1
 # Prepare and Execute INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("prepare" and "execute" only, no return)
 #
 #######################################
-sub ExecuteInsert_newbpcdb2
+sub ExecuteInsert_bpcdb1
 {
   my $insertSQL = shift;
-  print "EEE12: I'm in ExecuteInsert_newbpcdb2\n";
+  print "EEE12: I'm in ExecuteInsert_bpcdb1\n";
   # print "$insertSQL\n";
   # if ($test_only == 1);
   my $insertSQL_h = $dbhSource->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";
@@ -1869,14 +1869,14 @@ sub ExecuteInsert_newbpcdb2
 
 #######################################
 #
-# On newbpcdb2
+# On bpcdb1
 # Execute _only_ INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("execute" only, no prepare, no return)
 #
 #######################################
-# sub ExecuteInsert_newbpcdb2_no_prepare
+# sub ExecuteInsert_bpcdb1_no_prepare
 # {
 #   my $insertSQL = shift;
-#   print "EEE13: I'm in ExecuteInsert_newbpcdb2_no_prepare\n";
+#   print "EEE13: I'm in ExecuteInsert_bpcdb1_no_prepare\n";
 #   # print "$insertSQL\n";
 #   # if ($test_only == 1);
 #   my $insertSQL_h->execute or warn print LOG "Unable to execute SQL statement: $insertSQL.  Error: " . $insertSQL_h->errstr . " (" . (localtime) . ")\n" unless ($test_only == 1);

@@ -93,7 +93,7 @@ my $verbose = 0;
 
 #Runtime variables
 my $db_name       = "env454";
-my $db_host       = "newbpcdb2";
+my $db_host       = "bpcdb1";
 my $out_filename;
 my $sqlString;
 my $tableName;

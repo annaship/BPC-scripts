@@ -72,7 +72,7 @@ my $arg_count = 1;
 
 #Runtime variables
 my $run          = 0;
-my $db_host		   = "newbpcdb2";
+my $db_host		   = "bpcdb1";
 my $db_name		   = "env454";
 my $dbh          = &db_connect($db_host, $db_name);
 

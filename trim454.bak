@@ -1,0 +1,493 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# trim454: trim GS-FLX sequences on the cluster by removing low quality data and V6 primers
+# Old name - noclustertrim
+#
+# Author: Susan Huse, shuse@mbl.edu  
+# Date: 
+#
+# Keywords: 454 trim edit cluster
+# 
+# Assumptions: 
+#
+# Revisions: 
+#   
+#   VERSION6 - changed for new env454 db (by Anna Shipunova, ashipunova@mbl.edu)
+#
+#   VERSION5 - adapted for cluster
+#              
+#   VERSION4b - read primer and runkey information from database tables
+#               run forward and reverse, with multiple primers
+#
+#   VERSION4 - delete all sequences with N>0
+#              if no distal and < 100, delete
+#              if no distal and > 100, truncate
+#              flag for 3TAG experiment separation
+#              added commandline table specification
+#              
+#   VERSION3c -
+#			delete all sequences containing 1 or more Ns
+#			delete_reason may be xy (likely trimmed by hand)
+#
+#	VERSION3b - 
+#			added distal primer missing = delete, deleteReason=distal, 
+#			deleteReason = proximal (instead of primer) for missing proximal primer
+#			trims the flow and qual tables 
+#			option to run on individual blast/fuzznuc files depending on the run
+#              (important because 454 processing pipeline gives different sequence strings
+#              for the same read_id.
+#
+#   6/22/07 - SMH moved distal primer blastall -E1 to -E2 for blastaall 2.2.16 upgrade
+#
+# Programming Notes:
+#
+########################################
+
+use strict;
+use warnings;
+use Conjbpcdb;
+use Cwd;
+require 'pipeline_subs.pl'; #subroutines
+use Term::ANSIColor qw(:constants);
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+# old: -o    export table for trimmed data default: trimseq
+
+my $usage = 
+" Usage:   trim454 <-flags> 
+           -r    name of the run e.g., 20080709
+           -platform : specify if not 454, there is a different process for 'ion_torrent'
+           -d    database name, default: env454
+           -i    input table of untrimmed sequences, default: rawseq
+           -ot    export table for trimmed not deleted data [default: trimseq]
+           -od    export table for trimmed deleted data [default: trimseq_deleted]
+           -or    export table for trimming info data [default: trimming]           
+           -if   input table of untrimmed flowgrams, default: rawflow
+           -of   export table for trimmed flowgrams default: trimflow
+           -iq   input table of untrimmed quality scores, default: rawqual
+           -oq   export table for trimmed quality scores default: trimqual
+           -k    keys table for trimming parameters, default: run_info
+           -l    minimum length for a sequence to be maintained [default: 50]
+           -ml   maximum length, trimmed sequences are truncated to this length [default: none]
+           -nd   do not require the presence of distal primer [default: require distal]
+           -nf   do not check the length in flow space [default: check flowcount length]
+           -w    where statement for select from input table, 
+                 this is in addition to the run  e.g., -w \"where lane=1 and run=20091201\"
+           -n    number of nodes (default=100)
+           -ti   a titanium run, has different flow counts etc.
+           -fp   file prefix for starting after db2fasta or unique (e.g., rawseq.550)
+
+  Example:  trim454 -r 20081125
+\n";
+#           -start start point: db2fasta, unique, trim  ## Not working, need to coordinate the rand 3digit in fastaname
+
+my $scripthelp = "
+ trim454 - trims raw sequences 
+             1) searches for an exact match to run_key
+             2) searches for an exact match to proximal primer at 5' end
+             3) looks for a fuzzy match to the distal primer at the 3' end.
+             4) Uses blast and fuzznuc to find approximate distal primer at the 3' end.
+                if distal primer is not required, check that the read length is appropriate
+                to the flow count and hasn't been overly truncated by the FLX
+             5) removes any sequences shorter than minLength. 
+                Default value for trim length is 50.
+             6) removes any sequences with more than one N.
+             7) stores all trimmed sequences along with trim and delete information
+             8) stores the read orientation, whether an exact match is found 
+                to the reverse complement of the other primer, how many N's 
+                remain in the sequence, and sequence length.
+             9) trims the flowgram and quality records to match the trimmed sequences
+\n\n";
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+#my $argNum = 3;
+my $minargNum = 2;
+my $maxargNum = 4;
+my $verbose = 1;
+
+#Runtime variables
+my $run;
+my $run_id;
+my $platform      = "454";
+
+my $inSeqTable    = "rawseq"; 
+my $rawsequenceTable    = "rawsequence"; 
+my $inFlowTable   = "rawflow"; 
+my $inQualTable   = "rawqual"; 
+my $outTrimseqTable         = "trimseq"; 
+my $outTrimseq_deletedTable = "trimseq_deleted"; 
+my $outTrimmingTable        = "trimming"; 
+my $outFlowTable  = "trimflow"; 
+my $outQualTable  = "trimqual"; 
+
+# my $inSeqTable    = "rawseq_copy"; 
+# my $inFlowTable   = "rawflow_copy"; 
+# my $inQualTable   = "rawqual_copy"; 
+# my $outTrimseqTable = "trimseq_copy"; 
+# my $outTrimseq_deletedTable = "trimseq_deleted_copy"; 
+# my $outTrimmingTable  = "trimming_copy"; 
+# my $outFlowTable  = "trimflow_copy"; 
+# my $outQualTable  = "trimqual_copy"; 
+my $runTable      = "run";
+my $keysTable     = "run_info";
+
+my $id_field      = "read_id";
+my $lane_field    = "lane";
+my $run_field     = "run";
+my $sequence_field = "sequence_comp";
+
+my $trimLength;
+my $minLength = 50;
+my $maxLength = 0;
+my $requireDistal = 1;
+my $ignoreFlowCount = 0;
+my $reverseComplement=0;
+my $deletePrevious = 0;
+my $maxN = 0; #maximum number of N's that are acceptable in the sequence
+my $whereSQL = "";
+my $logFilename = "trim454.log";
+my $runFilename = "run_trimflx_nocluster";
+my $nodes = 50;
+my $trimmer = "trimflx";  # in case of alternate code versions
+# my $trimmer = "trimflx_it";  # in case of alternate code versions
+# my $trimmer = "trimflx_new";  # in case of alternate code versions
+my $start = "db2fasta";
+my $fasta_prefix = "";
+
+my $trimflx_cmd = join(" ", $0, @ARGV);
+my $current_dir = getcwd;
+
+my $db_name = "env454"; 
+my $db_host = "newbpcdb2";
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+if (! $ARGV[0] ) {
+	print $scripthelp;
+	print $usage;
+	exit -1;
+} 
+
+for (my $a = 0; $a <= $#ARGV; $a++)
+{
+	if ($ARGV[$a] eq "-n") { $nodes = $ARGV[$a + 1]; }
+}
+
+#print join (" ", @ARGV) . "\n"; 
+my $argString = "";
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+	if ($ARGV[0] =~ /-h/) {
+		print $scripthelp;
+		print $usage;
+		exit 0;
+	} elsif ($ARGV[0] eq "-d") {
+		shift @ARGV;
+		$db_name = shift @ARGV;
+		$argString .= " -d $db_name";
+	} elsif ($ARGV[0] eq "-i") {
+		shift @ARGV;
+		$inSeqTable = shift @ARGV;
+		$argString .= " -i $inSeqTable";
+	} elsif ($ARGV[0] eq "-ot") {
+		shift @ARGV;
+		$outTrimseqTable = shift @ARGV;
+		$argString .= " -o $outTrimseqTable";
+	} elsif ($ARGV[0] eq "-od") {
+		shift @ARGV;
+		$outTrimseq_deletedTable = shift @ARGV;
+		$argString .= " -o $outTrimseq_deletedTable";
+	} elsif ($ARGV[0] eq "-or") {
+		shift @ARGV;
+		$outTrimmingTable = shift @ARGV;
+		$argString .= " -o $outTrimmingTable";
+	} elsif ($ARGV[0] eq "-iq") {
+		shift @ARGV;
+		$inQualTable = shift @ARGV;
+		$argString .= " -iq $inQualTable";
+	} elsif ($ARGV[0] eq "-oq") {
+		shift @ARGV;
+		$outQualTable = shift @ARGV;
+		$argString .= " -oq $outQualTable";
+	} elsif ($ARGV[0] eq "-if") {
+		shift @ARGV;
+		$inFlowTable = shift @ARGV;
+		$argString .= " -if $inFlowTable";
+	} elsif ($ARGV[0] eq "-of") {
+		shift @ARGV;
+		$outFlowTable = shift @ARGV;
+		$argString .= " -of $outFlowTable";
+	} elsif ($ARGV[0] eq "-k") {
+		shift @ARGV;
+		$keysTable = shift @ARGV;
+		$argString .= " -k $keysTable";
+	} elsif ($ARGV[0] eq "-l") {
+		shift @ARGV;
+		$trimLength = shift @ARGV;
+		$argString .= " -l $trimLength";
+	} elsif ($ARGV[0] eq "-ml") {
+		shift @ARGV;
+		$maxLength = shift @ARGV;
+		$argString .= " -ml $maxLength";
+    } elsif ($ARGV[0] eq "-nd") {
+        shift @ARGV;
+        $requireDistal = 0;
+		$argString .= " -nd";
+    } elsif ($ARGV[0] eq "-nf") {
+        shift @ARGV;
+        $ignoreFlowCount = 1;
+		$argString .= " -nf";
+    } elsif ($ARGV[0] eq "-ti") {
+        shift @ARGV;
+		$argString .= " -ti";
+    } elsif ($ARGV[0] eq "-start") {
+        shift @ARGV;
+		$start = shift @ARGV;
+    } elsif ($ARGV[0] eq "-fp") {
+        shift @ARGV;
+		$fasta_prefix = shift @ARGV;
+	} elsif ($ARGV[0] eq "-w") {
+		shift @ARGV;
+		$whereSQL = $ARGV[0];
+        # where is used to create the fasta which is passed to trimflx
+        #         # so you don't need to pass the where clause along
+        #
+		#$argString .= " -w \"$whereSQL\"";
+		#shift @ARGV;
+	} elsif ($ARGV[0] eq "-r") {
+		shift @ARGV;
+		$run = shift @ARGV;
+		$argString .= " -r $run";    
+	} elsif ($ARGV[0] eq "-n") {
+        # clear it out, already used
+		shift @ARGV;
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-v") {
+		$verbose = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] eq "-platform") {
+		shift @ARGV;
+		$platform = shift @ARGV;		
+		$argString .= " -platform $platform";    		
+	} elsif ($ARGV[0] =~ /^-/) { 
+        #unknown parameter
+		print "Unknown parameter $ARGV[0]\n";
+        print "$usage\n";
+        exit;
+	}
+}
+$argString =~ s/>/\\>/g;
+$argString =~ s/</\\</g;
+
+# print "URA10: $argString\n"; 
+# exit;
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if ((! $db_name) || (! $inSeqTable) || (! $outTrimseqTable) || (! $outTrimseq_deletedTable) || (! $outTrimmingTable) || 
+(! $inFlowTable) || (! $outFlowTable) )
+{
+	print "Oops, Incorrect number of arguments.\n";
+	print "$db_name, $inSeqTable, $outTrimseqTable, $outTrimseq_deletedTable, $outTrimmingTable, $inFlowTable, $outFlowTable\n";
+	print "$usage\n";
+	exit;
+} 
+
+if ( (! $run) && (! $whereSQL) )
+{
+    print "Need to specify a run to trim or a where statement for selecting sequences\n";
+    print "$usage\n";
+    exit;
+}
+
+if ( ($start ne "db2fasta") && ($start ne "unique") && ($start ne "trim") )
+{
+    print "Start option must be in: \"db2fasta\", \"unique\", \"trim\"\n";
+    print "$usage\n";
+    exit;
+}
+
+if ($whereSQL) 
+{
+  $whereSQL =~ s/WHERE//i;
+  $whereSQL = "WHERE ( $whereSQL ) ";
+    if ($run) {$whereSQL .= " AND run = '" . $run . "'";}
+} else {
+  $whereSQL = "WHERE run= '" . $run . "'";
+}
+
+
+#######################################
+#
+# SQL connections and run_id 
+#
+#######################################
+
+my $dbh = &db_connect($db_host, $db_name);
+$run_id = &prep_exec_fetch_query($dbh, "SELECT run_id from $runTable where run='" . $run ."'");
+$argString .= " -ri $run_id";
+
+#######################################
+#
+# Set up LOG file
+#
+#######################################
+#my $rmError = system("rm -f trim454.log clusterize.log trimflx.log");
+#if ($rmError) {warn "Unable to refresh log files (trim454.log, clusterize.log, trimflx.log). $rmError.  Exiting.\n"; exit -1;}
+open (LOG, ">>$logFilename") || warn ("Unable to write to output log file: $logFilename.  Exiting. \n");
+system("chgrp g454 $logFilename");
+system("chmod g+w $logFilename");
+print LOG "$trimflx_cmd\n";
+
+#######################################
+#
+# Put date_trimmed into run table
+#
+#######################################
+
+my($day, $month, $year)=(localtime)[3,4,5];
+my $current_date = ($year+1900)."-".($month+1)."-".$day;
+print "URA3: current_date = $current_date\n";
+&prep_exec_query_w_arg($dbh, $current_date, "UPDATE $runTable SET date_trimmed = ? WHERE run_id = $run_id");
+
+
+#######################################
+#
+# Set up the fasta and names files
+#
+#######################################
+#
+# Create a fasta file of all sequences, but include the run date and lane in the defline for use later
+#
+if (! $fasta_prefix) 
+{
+    #my $rand_int = int(rand(999));
+    ###  Removed random number because not on cluster nodes, and writing locally 
+    #$fasta_prefix = "rawseq." . $rand_int;
+    $fasta_prefix = "rawseq" ;
+}
+my $fasta_filename = $fasta_prefix . ".fa";
+my $fasta_uniqs_filename = $fasta_prefix . ".unique.fa";
+my $names_filename = $fasta_prefix . ".names";
+
+if ($start eq "db2fasta")
+{
+    # my $select_raw_SQL = "SELECT concat_ws(' ', $id_field, $run_field, $lane_field) as id, $sequence_field as seq FROM $inSeqTable $whereSQL";
+    my $select_raw_SQL = "SELECT concat_ws(' ', $id_field, $run_field, $lane_field) as id, uncompress($sequence_field) as seq FROM $inSeqTable JOIN $rawsequenceTable using(rawsequence_id) JOIN $runTable USING(run_id) $whereSQL";
+    # print "SSS1: select_raw_SQL = $select_raw_SQL";
+    my $db2fasta_cmd = "db2fasta -d $db_name -id id -seq seq -sql \"$select_raw_SQL\" -o $fasta_filename";
+    # my $db2fasta_cmd = "db2fasta_new -d $db_name -id id -seq seq -sql \"$select_raw_SQL\" -o $fasta_filename";
+    print LOG "$db2fasta_cmd\n";
+    if ($verbose) {print "$db2fasta_cmd\n";}
+    system("$db2fasta_cmd");
+    
+    if (! -f $fasta_filename)
+    {
+        print LOG "Unable to create fasta file: $fasta_filename.\n";
+        exit;
+    }
+}
+
+#
+# Run mothur to create the unique fasta and names files
+#
+
+if ( ($start eq "db2fasta") || ($start eq "unique") )
+{
+    my $mothur_cmd = "mothur \"#unique.seqs(fasta=$fasta_filename);\"";
+    print LOG "$mothur_cmd\n";
+    if ($verbose) {print "Uniquing: $mothur_cmd\n";}
+    system("$mothur_cmd");
+}
+    
+#
+# print out what platform it is
+#
+
+print BOLD, BLUE, "======================\nPlatform = $platform\n======================\n", RESET;
+print LOG "======================\nPlatform = $platform\n======================\n";
+
+if (! -f $fasta_uniqs_filename)
+{
+    print LOG "Uniques fasta file: $fasta_uniqs_filename, is not created.\n";
+    exit;
+}
+
+if (! -f $names_filename)
+{
+    print LOG "Names file: $names_filename, is not created.\n";
+    exit;
+}
+
+# Fix permissions
+system("chgrp g454 $fasta_filename");
+system("chmod 666 $fasta_filename");
+system("chgrp g454 $fasta_uniqs_filename");
+system("chmod 666 $fasta_uniqs_filename");
+system("chgrp g454 $names_filename");
+system("chmod 666 $names_filename");
+system("chgrp g454 mothur.*ile");
+system("chmod 666 mothur.*ile");
+
+open (RUN, ">$runFilename") || die "Unable to write to $runFilename.\nExiting, sorry\n";
+print "opened run file $runFilename\n";
+
+#######################################
+#
+# Split up the rows and send to trimflx_anchor
+#
+#######################################
+
+my $totalRows = `wc -l $names_filename`;
+$totalRows =~ s/([0-9]+).*$/$1/;
+print "Total Rows = $totalRows\n";
+
+my $i = 0;
+my $j = int ($totalRows / $nodes) + 1;
+#print RUN "mysql -h jbpcdb $db_name -e \"alter table $outSeqTable disable keys\"\n";
+# print "HERE2: argString = $argString\n";
+
+foreach (my $n=1; $n <= $nodes; $n++)
+{
+    # my $run_cmd = "";
+    my $run_cmd = "$trimmer $argString -fp $fasta_prefix -limit $i,$j\n";
+    print LOG $run_cmd;
+    print RUN $run_cmd;
+	$i = $i + $j;
+}
+#print RUN "mysql -h jbpcdb $db_name -e \"alter table $outSeqTable enable keys\"\n";
+
+close(RUN);
+
+$runFilename = $current_dir . "/" . $runFilename;
+my $chgrpErr = system("chgrp g454 $runFilename");
+if ($chgrpErr) {print LOG "Unable to chgrp g454 $runFilename.  \n"; }
+my $chmodErr = system("chmod 775 $runFilename");
+if ($chmodErr) {print LOG "Unable to chmod $runFilename to executable.  \n"; }
+print LOG "clusterize $runFilename\n\n";
+# TODO: use this on production:
+# my $trimflxErr = system("clusterize $runFilename");
+my $trimflxErr = system("$runFilename");
+if ($trimflxErr) {print LOG "Unable to run $runFilename to trim sequences.  Exiting, sorry\n"; exit -1; }
+
+close(LOG);
+my $chgrpError = system("chgrp g454 $logFilename; chmod 664 $logFilename;");
+if ($chgrpError) {warn "Unable to chgrp and chmod $logFilename file.  Exiting.\n"; }
+
+

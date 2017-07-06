@@ -16,7 +16,7 @@ sub new
 	
 	# Set up defaults that will be used when called without a config file (.dbconf) and/or arguments.
 	$self->{DRIVER} = "mysql";
-	$self->{HOSTNAME} = "newbpcdb2";
+	$self->{HOSTNAME} = "bpcdb1";
 	$self->{PORT} = "3306";
 	$self->{DATABASE} = "env454";
 	$self->{USER} = "env454_ref_ro";

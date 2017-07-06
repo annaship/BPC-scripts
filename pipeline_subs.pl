@@ -116,7 +116,7 @@ sub prep_exec_fetch_query()
 sub insert_file_into_table()
 {
   # if some parameters are not provided, use default:
-  my %defaults     = (sqlImportCmd=>"/usr/local/mysql/bin/mysqlimport", replace=>"", db_host=>"newbpcdb2", db_name=>"env454");
+  my %defaults     = (sqlImportCmd=>"/usr/local/mysql/bin/mysqlimport", replace=>"", db_host=>"bpcdb1", db_name=>"env454");
   my %args         = (%defaults, @_);
   my $sqlImportCmd = $args{sqlImportCmd};  
   my $replace      = $args{replace};  

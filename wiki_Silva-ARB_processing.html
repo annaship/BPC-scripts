@@ -81,10 +81,10 @@ Create empty refssu and refssu_align tables by copying on the structure from the
 
 3. Import the clean aligned fasta file into refssu_align (~4 hours):
 
-     fasta2db -g newbpcdb2 -d env454 -i parc95.align.clean.fa -t refssu_align -id arb_id -seq seqssu_align
+     fasta2db -g bpcdb1 -d env454 -i parc95.align.clean.fa -t refssu_align -id arb_id -seq seqssu_align
 
 4.  Import the clean unaligned fasta file into a temp table: refssu_unalign.
-      fasta2db -g newbpcdb2 -d env454 -i parc95.unalign.fa -t refssu_unalign -id arb_id -seq sequence -len seqlength
+      fasta2db -g bpcdb1 -d env454 -i parc95.unalign.fa -t refssu_unalign -id arb_id -seq sequence -len seqlength
 
 5.  Run RDP
 
@@ -95,7 +95,7 @@ Create empty refssu and refssu_align tables by copying on the structure from the
 and import
 
      rdp2taxonomy -b 80 silva111.rdp > silva111.rdp.tax
-     mysql -h newbpcdb2 env454 -e 'LOAD DATA LOCAL INFILE "silva111.rdp.tax" INTO TABLE refssu111_rdp (arb_id, taxrdp, boots, rank);'
+     mysql -h bpcdb1 env454 -e 'LOAD DATA LOCAL INFILE "silva111.rdp.tax" INTO TABLE refssu111_rdp (arb_id, taxrdp, boots, rank);'
 
 6. Update table information:
 

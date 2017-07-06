@@ -72,7 +72,7 @@ my $verbose = 1;
 #Runtime variables
 my $run;
 my $db_name						  = "env454";
-my $db_host						  = "newbpcdb2";
+my $db_host						  = "bpcdb1";
 my $log_filename				= "gast_cleanup.log";
 my $vregion						  = "v6";
 my $outGastTable				= "gast";

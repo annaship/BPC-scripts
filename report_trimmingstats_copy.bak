@@ -1,0 +1,348 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# report_trimmingstats: export the primary import and trimming statistics for the 454 pipeline
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Thu Dec 11 10:12:44 EST 2008
+#
+# Copyright (C) 2008 Marine Biological Laborotory, Woods Hole, MA
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# For a copy of the GNU General Public License, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# or visit http://www.gnu.org/copyleft/gpl.html
+#
+# Keywords: trim import raw 454 stats
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Conjbpcdb;
+require 'pipeline_subs.pl'; #subroutines
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $script_help = "
+ report_trimmingstats - reports the sequence counts, run keys, dataset assignments,
+                        and deletions from the import and trimming of a 454 run
+                        This will create a file \"trimstats_rundate.txt\" in the current directory.
+\n";
+
+my $usage = "
+   Usage:  report_trimmingstats [-raw | -trim] run_date 
+      ex:  report_trimmingstats -raw 20081125
+           report_trimmingstats -trim 20081125 -kl 3
+
+ Options:  
+           -raw   reports statistics for raw sequences and estimated run key returns
+           -trim  reports statistics for trimmed sequences
+           -kl    set run key length [default: 5]
+\n";
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+my $arg_count = 1;
+#my $min_arg_count = 2;
+#my $max_arg_count = 4;
+#my $verbose = 0;
+
+#Runtime variables
+my $run          = 0;
+my $db_host		   = "newbpcdb2";
+my $db_name		   = "env454";
+my $dbh          = &db_connect($db_host, $db_name);
+
+my $run_table                 = "run";
+my $rawseq_table              = "rawseq_copy";
+# my $trimseq_not_deleted_table = "trimseq_temp";
+# my $trimseq_deleted_table     = "trimseq_deleted_temp";
+# my $trimming_table            = "trimming_temp";
+my $trimseq_not_deleted_table = "trimseq_copy";
+my $trimseq_deleted_table     = "trimseq_deleted_copy";
+my $trimming_table            = "trimming_copy";
+my $delete_reason_table       = "delete_reason";
+my $project_table             = "project";
+my $dataset_table             = "dataset";
+my $run_info_view             = "run_info_view";
+my $sequence_field            = "sequence_comp";
+
+my $sql_command  = "/usr/local/mysql/bin/mysql -h $db_host -D $db_name";
+my $stats        = "";
+my $key_length   = 5;
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) {
+	print $script_help;
+	print $usage;
+	exit -1;
+} 
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/)) {
+	if ($ARGV[0] =~ /-h/) {
+		print $script_help;
+		print $usage;
+		exit 0;
+	} elsif ($ARGV[0] eq "-raw") {
+        shift @ARGV;
+        if ($stats) {print "Can only use for -raw or -trim, but not for both\n$usage\n"; exit;}
+		$stats = "raw";
+	} elsif ($ARGV[0] eq "-trim") {
+        shift @ARGV;
+        if ($stats) {print "Can only use for -raw or -trim, but not for both\n$usage\n"; exit;}
+		$stats = "trim";
+	} elsif ($ARGV[0] eq "-kl") {
+        shift @ARGV;
+		$key_length = shift @ARGV;
+        if ($key_length !~ /[0-9]+/) {print "key length must be an integer value.\n$usage\n"; exit;}
+	} 
+#    elsif ($ARGV[0] eq "-v") {
+#		$verbose = 1;
+#		shift @ARGV;
+#	} 
+    elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+		print "Unknown commandline flag \"$ARGV[0]\".\n";
+		print $usage;
+		exit -1;
+	}
+}
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if ( (scalar @ARGV != $arg_count) || (! $stats) ) {
+#if ((scalar @ARGV < $min_arg_count) || (scalar @ARGV > $max_arg_count)) {
+#if ( (! $db_name) || (! $in_filename) ) {
+	print "Incorrect number of arguments.\n";
+	print "$usage\n";
+	exit;
+} 
+
+$run = $ARGV[0];
+if (! $run) 
+{
+    print "Incorrect number of arguments.\n";
+    print "$usage\n";
+    exit;
+}
+
+my $filename = "trimstats_$run".".txt";
+#open(OUT, ">$filename") || (die "Unable to write to output file name $filename\nExiting.\n\n");
+#$|++;  # reset perl variable to force a flush after every print statement
+
+#######################################
+#
+# Subroutine execute_select
+#
+#######################################
+sub execute_select
+{
+    my $q = shift;
+    my $cmd = "$sql_command -e \'$q\' >> $filename";
+    #print "$cmd\n";
+    my $sqlError = system($cmd);
+    if ($sqlError) {print "Error running mysql: $cmd.  \nExiting\n\n"; exit -1;}
+}
+
+sub echo_out
+{
+    my $str = shift;
+    my $echoCmd = "echo \"$str\" >> $filename";
+    my $echoError = system("$echoCmd");
+    if ($echoError) {print "Error running command: $echoCmd.  \nExiting\n\n"; exit -1;}
+}
+
+#######################################
+#
+# Set up the queries and their descriptions
+#
+#######################################
+# --------- get auxiliary info --------
+# &prep_exec_query_w_arg($dbh, $run, "INSERT IGNORE INTO $run_table (run) VALUES (?)");
+my $run_id = &prep_exec_fetch_query($dbh, "SELECT run_id from $run_table where run='" . $run ."'");
+
+my $trimseq_del     = &prep_exec_fetch_query($dbh, "SELECT count(distinct read_id) as trimseq_del from $trimseq_deleted_table WHERE run_id=$run_id;");
+my $trimseq_not_del = &prep_exec_fetch_query($dbh, "SELECT count(distinct read_id) as trimseq_not_del from $trimseq_not_deleted_table WHERE run_id=$run_id;");
+my $trimseq_all     = $trimseq_del+$trimseq_not_del;
+
+# ------ get auxiliary info end -----
+
+my %queries;
+my %prep_queries;
+my %titles_for;
+my $bar = "==============================================";
+my $temp_table_name = "rawseq_temp".$run;
+
+$titles_for{q1} = "";
+$queries{q1}    = "Drop table if exists $temp_table_name;";
+
+$titles_for{q2} = "";
+$queries{q2}    = "CREATE TABLE IF NOT EXISTS $temp_table_name
+  SELECT distinct substr(uncompress($sequence_field), 1, $key_length) AS seq_substr, r.lane, read_id   FROM $rawseq_table r   WHERE r.run_id=$run_id;";
+
+$titles_for{q3} = "";
+$queries{q3}    = "alter table $temp_table_name
+  add UNIQUE KEY `read_id` (`read_id`);";
+
+$titles_for{q4} = "\n\n$bar\nImported raw reads into database table: rawseq\n$bar\n";
+$queries{q4}    = "SELECT lane, count(read_id) as \"ReadCount\" FROM $temp_table_name GROUP BY lane ORDER BY lane;";
+
+$titles_for{q5} = "";
+$queries{q5} = "SELECT count(read_id) as \"Total\" FROM $temp_table_name;";
+
+$titles_for{q6} = "\n\n$bar\nComparing Run Keys found with Run Keys expected\n$bar\n";
+$queries{q6} = "SELECT r.lane as foundregion, count(r.read_id) as ReadCount, k.run_key as RunKey, 
+       k.lane as ExpectedRegion, dataset, (r.lane = k.lane) as SameRegion
+        FROM $temp_table_name as r 
+       LEFT JOIN $run_info_view as k 
+        on (seq_substr = k.run_key and k.lane=r.lane)
+       WHERE k.run=\"$run\"
+       GROUP BY seq_substr, r.lane
+       ORDER BY ReadCount desc;";
+
+$titles_for{q7} = "\n\n";
+$queries{q7} = "SELECT k.run_key as run_key, dataset, k.lane as expectedregion, count(r.read_id) as ReadCount,
+       r.lane as foundregion, (r.lane = k.lane) as same_region
+       FROM $temp_table_name as r 
+       LEFT JOIN $run_info_view as k 
+       on (seq_substr = k.run_key and k.lane=r.lane)
+       WHERE k.run=\"$run\"
+       GROUP BY seq_substr, r.lane
+       ORDER BY expectedregion, foundregion, dataset;";
+
+$titles_for{q8} = "\n\n$bar\nExpected Dataset counts based on untrimmed reads\n$bar\n";
+$queries{q8} = "SELECT k.run_key, k.lane, dataset, count(r.read_id) as ReadCount
+       FROM $run_info_view as k LEFT JOIN
+       $temp_table_name as r
+       on (seq_substr = k.run_key and k.lane=r.lane)
+       WHERE k.run=\"$run\"
+       and k.lane !=0
+       GROUP BY k.run_key, k.lane";
+
+$titles_for{q9} = "";
+$queries{q9}    = "Drop table if exists $temp_table_name;";
+
+# trim:
+$titles_for{q10} = "\n\n$bar\nCount of reads in database tables: trimseq deleted and not deleted\n$bar\n";
+$queries{q10} = "select $trimseq_all as ReadCount;";
+
+$titles_for{q11} = "\n\n$bar\nCount of Reads deleted and delete reasons from table trimseq\n$bar\n";
+$queries{q11} = "
+  select $trimseq_del/$trimseq_all*100 as PercentDeleted;
+";
+
+$titles_for{q12} = "";
+$queries{q12} = "SELECT delete_reason as \"Reason\", count(read_id) as ReadCount, (count(read_id) * 100 / $trimseq_all ) as percentage
+       FROM $trimming_table 
+       join $delete_reason_table using(delete_reason_id)
+       WHERE run_id=$run_id
+       GROUP by delete_reason;";
+
+$titles_for{q13} = "";
+$queries{q13} = "drop table if exists percent_deleted_temp;
+create table percent_deleted_temp
+SELECT project, dataset, 0 as deleted, count(read_id) as ReadCount
+         FROM $trimseq_not_deleted_table 
+         join $project_table using(project_id)
+         join $dataset_table using(dataset_id)
+         WHERE run_id=$run_id and dataset !=\"\"  and project !=\"\"
+         GROUP BY project, dataset
+union
+SELECT project, dataset, 1 as deleted, count(read_id) as ReadCount
+         FROM $trimseq_deleted_table 
+         join $project_table using(project_id)
+         join $dataset_table using(dataset_id)
+         WHERE run_id=$run_id and dataset !=\"\"  and project !=\"\"
+         GROUP BY project, dataset ORDER BY dataset, deleted;
+";
+
+$titles_for{q14} = "\n\n$bar\nCount of Reads deleted by dataset and project\n$bar\n";
+$queries{q14} = "select * from percent_deleted_temp;";
+         
+$titles_for{q15} = "\n\n$bar\nCount of Reads deleted because of distal by dataset and project\n$bar\n";
+$queries{q15} = "select project, dataset, count(read_id) from $trimming_table
+        join $trimseq_deleted_table using(read_id, run_id)      	
+        join $delete_reason_table using(delete_reason_id) 	
+        join $project_table using(project_id)	
+        join $dataset_table using(dataset_id)	
+        where run_id = $run_id and delete_reason = \"distal\"	
+        group by project, dataset;";
+
+$titles_for{q16} = "\n\n$bar\nPercent deleted and not deleted reads by project, dataset\n$bar\n";
+$queries{q16} = "SELECT DISTINCT project, dataset, ReadCount AS not_deleted, SUM(ReadCount) AS total, ReadCount/SUM(ReadCount)*100 AS percent_not_deleted, (100 - ReadCount/SUM(ReadCount)*100) AS percent_deleted
+        FROM percent_deleted_temp
+        GROUP BY project, dataset
+        ORDER BY project, dataset;";
+
+# todo: put all tables into variables
+# todo: create -tax round
+$titles_for{q17} = "\n\n$bar\nTaxonomy by project, dataset\n$bar\n";
+$queries{q17} = "select project, dataset, taxonomy, count(read_id) from `tagtax` JOIN taxonomy USING(taxonomy_id) JOIN `trimseq` using(`read_id`) JOIN `project` using(`project_id`) 
+  JOIN `dna_region` using(`dna_region_id`) JOIN dataset using(dataset_id) where run_id=$run_id group by project, dataset, taxonomy; ";
+
+
+#######################################
+#
+# Step through each query, print out the titles and the results
+#
+#######################################
+my $start = 1; # first query to run
+my $end   = 9; #last query to run
+my $headerCmd = "echo \"\n\nIMPORT RESULTS FOR RUN $run\n\n\" > $filename";
+
+if ($stats eq "trim") 
+{
+    $headerCmd = "echo \"\n\nTRIM RESULTS FOR RUN $run\n\n\" >> $filename";
+    # reset which queries to run if -trim
+    $start  = 10;
+    $end    = 16;
+}
+
+my $headerError = system("$headerCmd");
+if ($headerError) {print "Error $headerError running command: \"$headerCmd\".  \nExiting\n\n"; exit -1;}
+
+for (my $i = $start; $i <= $end; $i++)
+{
+    print "Running q$i: " . $queries{"q$i"} . "\n";
+    echo_out($titles_for{"q$i"});
+    execute_select($queries{"q$i"});   
+}
+
+
+#######################################
+#
+# Close the files
+#
+#######################################
+# $dbh->disconnect;

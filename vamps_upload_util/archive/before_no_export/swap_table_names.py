@@ -20,7 +20,7 @@ if (sys.argv[1] == "help" or sys.argv[1] == "-h"):
 # shared.my_conn = vamps_upload_util_class.MyConnection(server_name = 'bpcdb2')
 # shared.my_conn = vamps_upload_util_class.MyConnection(server_name = 'vampsdb')
 # shared.my_conn = vamps_upload_util_class.MyConnection('vampsdev', 'test')
-# shared.my_conn = vamps_upload_util_class.MyConnection('newbpcdb2', 'env454')
+# shared.my_conn = vamps_upload_util_class.MyConnection('bpcdb1', 'env454')
 # shared.my_conn = vamps_upload_util_class.MyConnection('vampsdb.mbl.edu', 'vamps')
 # shared.my_conn = vamps_upload_util_class.MyConnection('vampsdev', 'vamps2')
 # shared.my_conn = vamps_upload_util_class.MyConnection('vampsdev', 'vamps')

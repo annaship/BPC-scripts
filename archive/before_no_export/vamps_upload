@@ -98,7 +98,7 @@ my $publicVAMPSHostName = "vampsdb";
 #my $privateVAMPSHostName = "vampsdev.mbl.edu";
 my $privateVAMPSHostName = "bpcweb7";
 # my $publicVAMPSHostName = "bpcweb7"; (dev)
-my $sourceHost = "newbpcdb2";
+my $sourceHost = "bpcdb1";
 my $sourceDB   = "env454";
 my $vampsHost  = ''; # user-specified below
 my $vampsDB    = "vamps";
@@ -437,7 +437,7 @@ if ($start eq "projectdataset")
       # q 0b)
       my $truncatePDCQuery = "TRUNCATE $final_project_dataset_counts_table";
       PrintUpdate("q -1) truncatePDCQuery = $sourceHost.$truncatePDCQuery\n");
-      ExecuteInsert_newbpcdb2($truncatePDCQuery);
+      ExecuteInsert_bpcdb1($truncatePDCQuery);
 
       my $insert_project_datasets =
         "INSERT IGNORE INTO $final_project_dataset_counts_table (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info, project_id, dataset_id, rev_project_name)
@@ -456,7 +456,7 @@ if ($start eq "projectdataset")
 
       PrintUpdate("q 1) insert_project_datasets = $sourceHost.$insert_project_datasets\n");
 
-      ExecuteInsert_newbpcdb2($insert_project_datasets);
+      ExecuteInsert_bpcdb1($insert_project_datasets);
 
       # Insert the sequence counts for the additional full length taxonomy (tagtax_longs)
       # q 1a)
@@ -471,7 +471,7 @@ if ($start eq "projectdataset")
       ";
       PrintUpdate("q 1a) insert_project_datasets = $sourceHost.$insert_project_datasets_a\n");
 
-      ExecuteInsert_newbpcdb2($insert_project_datasets_a);
+      ExecuteInsert_bpcdb1($insert_project_datasets_a);
 
     }
 
@@ -767,13 +767,13 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     # # q 6-1)
     # my $join_buffer_increase_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_new;";
     # &print_query_out("q 6-1) join_buffer_increase_temp", $sourceHost." ".$join_buffer_increase_temp);
-    # ExecuteInsert_newbpcdb2($join_buffer_increase_temp) unless ($test_only == 1);
+    # ExecuteInsert_bpcdb1($join_buffer_increase_temp) unless ($test_only == 1);
     # q 6-2)
     # 2) drop vamps_sequences_transfer table on env454
     my $drop_temp_seq = "DROP table IF EXISTS $sourceDB.vamps_sequences_transfer_temp";
     &print_query_out("q 6-2) drop_temp_seq", $sourceHost." ".$drop_temp_seq);
-    `mysql -h newbpcdb2 env454 -e $drop_temp_seq` unless ($test_only == 1);
-    ExecuteInsert_newbpcdb2($drop_temp_seq);
+    `mysql -h bpcdb1 env454 -e $drop_temp_seq` unless ($test_only == 1);
+    ExecuteInsert_bpcdb1($drop_temp_seq);
     
     # q 6-3)
     # 3) create vamps_sequences_transfer table on env454 (5 h)
@@ -799,17 +799,17 @@ if ( ($start eq "projectdataset") || ($start eq "taxonomy") || ($start eq "seque
     
           
     &print_query_out("q 6-3) CREATE_temp_seq", $sourceHost." ".$CREATE_temp_seq);
-    ExecuteInsert_newbpcdb2($CREATE_temp_seq);
+    ExecuteInsert_bpcdb1($CREATE_temp_seq);
     
     
     # # 4) decrease join_buffer
     # # q 6-4)
     # my $join_buffer_decrease_temp = "SET GLOBAL join_buffer_size = $join_buffer_size_old;";
     # &print_query_out("q 6-4) join_buffer_decrease_temp", $sourceHost." ".$join_buffer_decrease_temp);
-    # ExecuteInsert_newbpcdb2($join_buffer_decrease_temp) unless ($test_only == 1);
+    # ExecuteInsert_bpcdb1($join_buffer_decrease_temp) unless ($test_only == 1);
     # 5) dump vamps_sequences_transfer to a disc  
     # q 6-5)
-    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host newbpcdb2 env454 vamps_sequences_transfer_temp > $seq_file_name";
+    my $dump_seq = "time mysqldump --skip-opt --disable-keys --lock-tables --extended-insert --quick --insert-ignore --host bpcdb1 env454 vamps_sequences_transfer_temp > $seq_file_name";
     &print_query_out("q 6-5) dump_seq", $sourceHost." ".$dump_seq);
     unless ($test_only == 1)
     {
@@ -1468,14 +1468,14 @@ sub ExecuteInsert
 
 #######################################
 #
-# On newbpcdb2
+# On bpcdb1
 # Prepare and Execute INSERT, DELETE, ALTER, TRUNCATE or CREATE Statements ("prepare" and "execute" only, no return)
 #
 #######################################
-sub ExecuteInsert_newbpcdb2
+sub ExecuteInsert_bpcdb1
 {
   my $insertSQL = shift;
-  PrintUpdate("EEE12: I'm in ExecuteInsert_newbpcdb2\n");
+  PrintUpdate("EEE12: I'm in ExecuteInsert_bpcdb1\n");
   # print "$insertSQL\n";
   # if ($test_only == 1);
   my $insertSQL_h = $dbhSource->prepare($insertSQL) or warn print LOG "Unable to prepare statement: $insertSQL. Error: " . $dbhSource->errstr . " (" . (localtime) . ")\n";

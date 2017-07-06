@@ -84,7 +84,7 @@ my $verbose = 0;
 #my $inFilename;
 #my $outFilename;
 my $dbName = "env454";
-my $db_host = "newbpcdb2";
+my $db_host = "bpcdb1";
 my $refTable = "refssu";
 my $refID_field = "refssu_name_id";
 my $refssu_name = "CONCAT_WS('_', accession_id, start, stop)";

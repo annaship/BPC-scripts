@@ -1,0 +1,402 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# uclust2mtx: converts the UClust otus *.uc file to a matrix
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Fri Aug 19 09:49:26 EDT 2011
+#
+# Copyright (C) 2011 Marine Biological Laborotory, Woods Hole, MA
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# For a copy of the GNU General Public License, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# or visit http://www.gnu.org/copyleft/gpl.html
+#
+# Keywords: otu otupipe uclust cluster matrix mtx
+# 
+# Assumptions: 
+#
+# Revisions:
+# Add illumina platform tables from env454. 2012-09-24 A Shipunova
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Conjbpcdb;
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $script_help = "
+ uclust2mtx - reads the UClust output *.uc file and 
+              creates a new matrix file mapping each otu to its occurrence in 
+              the available datasets.
+\n";
+
+my $usage = "
+   Usage:  uclust2mtx -platform [Illumina|454] readmap.uc > output.mtx
+   
+
+\n";
+# Options:  
+#           -i  the readmap.uc or equivalent output from otupipe.bash
+#           -o  new output otu - dataset matrix file
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+my $verbose = 0;
+my $self_cmd = join(" ", $0, @ARGV);
+
+#Runtime variables
+my $in_filename;
+my $out_filename;
+#my $db_host = "jbpcdb";
+my $db_host = "newbpcdb2";
+my $db_name = "env454";
+my $reads_table_454 = 'trimseq as t join dataset as d using(dataset_id) join project as p using(project_id)';
+my $reads_table_illumina = '
+run_info_ill 
+join dataset as d using(dataset_id) 
+join project as p using(project_id)
+join sequence_pdr_info_ill using (run_info_ill_id)';
+my $id_field_454 = 'read_id';
+my $id_field_illumina = 'sequence_pdr_info_ill_id';
+my $platform = "454";
+my $id_field;
+my $reads_table;
+
+#my $log_filename = "./" . $0 . ".log";
+my $log_filename = $0;
+$log_filename =~ s/^.*\///;
+$log_filename = "./" . $log_filename . ".log";
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) 
+{
+	print $script_help;
+	print $usage;
+	exit -1;
+} 
+
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/)) 
+{
+	if ($ARGV[0] =~ /-h/) 
+	{
+		print $script_help;
+		print $usage;
+		exit 0;
+#	} elsif ($ARGV[0] eq "-i") {
+#		shift @ARGV;
+#		$in_filename = shift @ARGV;
+#	} elsif ($ARGV[0] eq "-o") {
+#		shift @ARGV;
+#		$out_filename = shift @ARGV;
+	} elsif ($ARGV[0] eq "-d") {
+		shift @ARGV;
+		$db_name = shift @ARGV;
+	} elsif ($ARGV[0] eq "-platform") {
+		shift @ARGV;
+		$platform = shift @ARGV;
+	} elsif ($ARGV[0] eq "-v") {
+		$verbose = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+		print "Unknown commandline flag \"$ARGV[0]\".\n";
+		print $usage;
+		exit -1;
+	}
+}
+
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+$in_filename = $ARGV[0];
+# Test for both files specified
+if (! $in_filename) 
+{
+	print "Incorrect number of arguments.\n";
+	print "$usage\n";
+	exit;
+} 
+
+# Test validity of commandline arguments
+if ( ($in_filename ne "stdin") && (! -f $in_filename) ) 
+{
+	print "Unable to locate input otupipe.bash readmap.uc file: $in_filename.\n";
+	exit -1;
+}
+
+open(LOG, ">>$log_filename")  || warn "Unable to open log file, $log_filename, for writing.  Exiting...\n";
+print LOG "$self_cmd\n";
+
+$platform = lc($platform);
+# print "==============\nPlatform = $platform\n==============\n";
+
+#######################################
+#
+# Open the files
+#
+#######################################
+
+if ($in_filename eq "stdin")
+{
+    open(IN, "-") ;
+} else {
+    open(IN, "<$in_filename") || die("Unable to read input file: $in_filename.  Exiting.\n");
+}
+
+#######################################
+#
+# Connect to the database
+#
+#######################################
+
+my $condb = Conjbpcdb::new($db_host, $db_name);
+my $dbh = $condb->dbh();
+
+#######################################
+#
+# SQL statements
+#
+#######################################
+
+#Select
+if ($platform eq "illumina")
+{
+  $reads_table = $reads_table_illumina;
+  $id_field    = $id_field_illumina;
+}
+elsif ($platform eq "454")
+{
+  $reads_table = $reads_table_454;
+  $id_field    = $id_field_454;
+}
+else
+{
+  print "Please provide a platform: Illumina or 454\n";
+  exit;
+}
+my $select_query = "SELECT project, dataset FROM $reads_table WHERE $id_field = ?";
+my $select_query_h = $dbh->prepare($select_query) or die "Unable to prepare statement: $select_query. Error: " . $dbh->errstr . "\n";
+print LOG "localtime: ". localtime() ."\nselect_query = $select_query\n";
+
+#######################################
+#
+# Step through the hits and assign to OTUs
+#
+#######################################
+my %otu_counts; # otu counts by dataset dictionary
+my %closest_otu; # for each read the best matching OTU
+my %closest_otu_size; # for each read size of the best matching OTU (used for ties)
+my %best_similarity; # for each read, the highest percent similarity
+my %dataset_names;  # list of otu names
+my %seq_counts; # sequence counts for each read per project/dataset
+
+# Load the OTU assignments for each read
+# because reads can map to more than one OTU, 
+# we have to map all reads to a single OTU before we can tally by dataset
+while (my $line = <IN>) 
+{
+    #
+    # Parse the line
+    # 0 = H hit or N nonhit, 3 = pct identity, 8 = read id, 9 = OTU or Chimera name
+    #
+	chomp $line;
+    if ($line =~ /^#/) {next;}  # Skip comment lines at the top
+    my @line_data = split(/\t/, $line);
+
+    # Grab the read id and OTU#
+    my $read_id = $line_data[8];
+    $read_id =~ s/\|.*$//;
+    print LOG "OOO-1: read_id = $read_id\n";
+
+    my $otu = $line_data[9];
+    if ( ($line_data[0] eq "H") && ($otu =~ /^CHIMERA/) )
+    {
+        $otu = "ZZChimeras";  # To force to the bottom of the matrix
+    } elsif ($line_data[0] eq "N") {
+        $otu = "Unclustered";
+    } else {
+        $otu =~ s/;.*//;
+    }
+    print LOG "OOO1: otu = $otu\n";
+#    if ($otu =~ /Cluster1021/) {warn "$line\n";}
+
+    my $otu_size = $line_data[9];
+    $otu_size =~ s/^.*;size=//;
+    print LOG "OOO2: otu_size = $otu_size\n";
+    my $similarity = $line_data[3];
+    print LOG "OOO3: similarity = $similarity\n";
+
+    # Need to account for parallel mapping of reads to multiple OTUs, 
+    # Map each read to the closest OTU, in case of ties, map it to the purported largest otu
+    
+    if (exists $best_similarity{$read_id}) 
+    {
+        if ($similarity > $best_similarity{$read_id})
+        {
+            $closest_otu{$read_id} = $otu;
+            $closest_otu_size{$read_id} = $otu_size;
+            $best_similarity{$read_id} = $similarity;
+        } elsif ($similarity == $best_similarity{$read_id}) {
+            if ($otu_size > $closest_otu_size{$read_id}) 
+            {
+                $closest_otu{$read_id} = $otu;
+                $closest_otu_size{$read_id} = $otu_size;
+            }
+        }
+    } else {
+        $closest_otu{$read_id} = $otu;
+        $closest_otu_size{$read_id} = $otu_size;
+        $best_similarity{$read_id} = $similarity;
+    }
+    print LOG "OOO4: \$closest_otu{\$read_id} = $closest_otu{$read_id}; \$closest_otu_size{\$read_id} = $closest_otu_size{$read_id}\n";
+    if ($platform eq "illumina")
+    {
+      my $seq_count      = &get_seq_count($line_data[8]);
+      my $ill_pr_dataset = &get_project_dataset($line_data[8]);
+      print LOG "SSS10: seq_count = $seq_count\n";      
+      # $seq_count    =~ s/^.*\|//;
+      print LOG "SSS20: ill_pr_dataset = $ill_pr_dataset\n";      
+      $seq_counts{$read_id} = $seq_count;
+    }
+}
+
+#
+# Close the files, release the hashes
+#
+if ($in_filename ne "stdin") {close(IN);}
+undef %best_similarity; #not needed anymore, can be quite large
+undef %closest_otu_size;
+
+#######################################
+#
+# Tally the OTU Counts by Dataset
+#
+#######################################
+foreach my $read_id (keys %closest_otu)
+{
+    my $otu = $closest_otu{$read_id};
+    print  LOG "TTT1: in Tally the OTU Counts by Dataset otu = $otu; read_id = $read_id\n";
+
+    #
+    # look up project and dataset for each read
+    #
+    my $project_dataset;
+    $select_query_h->execute($read_id) or die "Unable to execute SQL statement: $select_query.  Error: " . $select_query_h->errstr . "\n";
+    if ($select_query_h->rows == 0) 
+    {
+        my $warning = "Read $read_id was not found in the database, and was included in the matrix as dataset \"Unknown\"\n";
+        warn $warning;
+        print LOG $warning;
+        $project_dataset = "Unknown--Unknown";
+    } else {
+        my ($project, $dataset) = $select_query_h->fetchrow();
+        $project_dataset = $project . "--" . $dataset;
+        print LOG "TTT2: in Tally the OTU Counts by Dataset project_dataset = $project_dataset\n";        
+    }
+        
+    if ($platform eq "illumina")
+    {
+      $otu_counts{$otu}{total} += $seq_counts{$read_id};
+      $otu_counts{$otu}{$project_dataset} += $seq_counts{$read_id};
+      print  LOG "TTT3: in Tally the OTU Counts by Dataset \$otu_counts{\$otu}{total} = $otu_counts{$otu}{total}; 
+                  \$seq_counts{\$read_id} = $seq_counts{$read_id};
+                  otu = $otu;
+                  \$otu_counts{\$otu}{\$project_dataset} = $otu_counts{$otu}{$project_dataset}; project_dataset = $project_dataset\n";
+    }
+    else
+    {
+      $otu_counts{$otu}{total}++;
+      $otu_counts{$otu}{$project_dataset}++;
+    }
+    $dataset_names{$project_dataset}++;
+}
+
+
+#######################################
+#
+# Print out the results
+#
+#######################################
+if ($verbose) {exit;}
+
+# Print out the header
+print join("\t", "Cluster ID", "Total", "Count", sort keys %dataset_names) . "\n";
+foreach my $o (sort keys %otu_counts) 
+{
+    my $count_of_datasets = (scalar keys %{$otu_counts{$o}} ) - 1;
+    print LOG "PPP1: Print out the results o = $o, \$otu_counts{\$o}{total} = $otu_counts{$o}{total}; count_of_datasets = $count_of_datasets\n";        
+    if ($o eq "ZZChimeras") 
+    {
+        print join("\t", "Chimeras", $otu_counts{$o}{total}, $count_of_datasets); 
+    } else {
+        print join("\t", $o, $otu_counts{$o}{total}, $count_of_datasets); 
+    }
+
+    foreach my $pd (sort keys %dataset_names)
+    {
+        if (exists $otu_counts{$o}{$pd}) 
+        {
+          print LOG "PPP2: Print out the results pd = $pd, \$otu_counts{\$o}{\$pd} = $otu_counts{$o}{$pd}\n";        
+            print "\t" . $otu_counts{$o}{$pd} ;
+        } else {
+            print "\t0";
+            print LOG "PPP2: Print out the results pd = $pd, \$otu_counts{\$o}{\$pd} = ?\n";        
+        }
+    }
+    print "\n";
+}
+#######################################
+# Sub
+#######################################
+sub get_seq_count()
+{
+  my $line = shift;
+  print LOG "SSS1: line = $line\n";      
+  $line    =~ s/^.*\|//;
+  return $line;
+}
+
+sub get_project_dataset()
+{
+  my $line = shift;
+  my $substring;
+  print LOG "SSS2: line = $line\n";     
+  if( $line =~ /^.+?\|(.+?)\|(.+?)\|.+/i )
+  {
+    $substring = $1 . "--" . $2;
+  } 
+  print LOG "SSS3: substring = $substring\n";     
+  return $substring;
+}
+

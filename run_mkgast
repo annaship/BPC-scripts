@@ -16,7 +16,7 @@
 #db2fasta -g jbpcdb -d env454 -o refssu.fa -id id -sql "SELECT refssu_id as id, sequence FROM refssu WHERE deleted=0 ORDER BY refssu_id"
 
 # New database
-db2fasta -g newbpcdb2 -d env454 -o ref$1.fa -id refhvr_id -sql "SELECT DISTINCT refhvr_id, sequence FROM refhvr_$1 ORDER BY refhvr_id" &
+db2fasta -g bpcdb1 -d env454 -o ref$1.fa -id refhvr_id -sql "SELECT DISTINCT refhvr_id, sequence FROM refhvr_$1 ORDER BY refhvr_id" &
 
 
 ##########
@@ -31,7 +31,7 @@ db2fasta -g newbpcdb2 -d env454 -o ref$1.fa -id refhvr_id -sql "SELECT DISTINCT 
 #mysql -h jbpcdb env454 -e "SELECT refssu_id, taxonomy, count(*) as cnt FROM refssu group by refssu_id, taxonomy order by refssu_id, taxonomy" > refssu.tax
 
 # New database
-mysql -h newbpcdb2 env454 -e "SELECT refhvr_id, taxonomy, count(refssu_name_id) as cnt FROM refhvr_$1 join taxonomy using(taxonomy_id) group by refhvr_id order by refhvr_id" > ref$1.tax &
+mysql -h bpcdb1 env454 -e "SELECT refhvr_id, taxonomy, count(refssu_name_id) as cnt FROM refhvr_$1 join taxonomy using(taxonomy_id) group by refhvr_id order by refhvr_id" > ref$1.tax &
 
 ##########
 #

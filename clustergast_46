@@ -92,7 +92,7 @@ my $verbose = 0;
 #Runtime variables
 my $run					  = "";
 my $db_name				= "env454";
-my $db_host       = "newbpcdb2";
+my $db_host       = "bpcdb1";
 # my $trim_table    = "trimseq_temp";
 my $trim_table		= "trimseq";
 my $trimsequence_table = "trimsequence";

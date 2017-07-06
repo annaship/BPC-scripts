@@ -1,0 +1,48 @@
+#!/bin/sh
+usage() {
+ cat<<HERE
+
+ gast_check performs a series of SQL queries to report counts FROM the gast tables.
+ Results are sent to the screen.
+
+ Usage: `basename $0` rundate region [gast_table gast_concat_table]
+ i.e. gast_check 20101119 v6v4
+      gast_check 20091021 v3v1 gast_119 gast_concat_119
+ 
+
+HERE
+}
+
+if [ -z $1 ]; then
+  usage
+  exit
+fi
+
+if [ $# == 4 ]; then
+  gast=$3
+  gast_concat=$4
+else
+  gast="gast"
+  gast_concat="gast_concat"  
+fi
+
+
+# mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(distinct read_id) FROM gast_$1_$2 WHERE refhvr_id = '0' AND distance = '1'" 
+# mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(read_id) FROM trimseq_not_deleted JOIN run using(run_id) JOIN source using(source_id) WHERE run = '$1' AND source = '$2'" 
+# mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(distinct read_id) FROM gast_$1_$2"
+# mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(distinct gast.read_id) FROM gast JOIN trimseq_not_deleted using(read_id) JOIN run using(run_id) JOIN source using(source_id) WHERE run = '$1' AND source = '$2'"
+# mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(gast_concat.read_id) FROM gast_concat JOIN trimseq_not_deleted using(read_id) JOIN run using(run_id) JOIN source using(source_id) WHERE run = '$1' AND source = '$2'"
+
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(distinct read_id) as no_hit FROM gast_$1_$2 WHERE refhvr_id = '0' AND distance = '1'" 
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(read_id) as total_trimseq FROM trimseq JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '$1' AND dna_region = '$2'" 
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(distinct read_id) as total_gast_$1_$2 FROM gast_$1_$2"
+
+echo "SELECT count(distinct $gast.read_id) as total_gast_trimseq FROM $gast JOIN trimseq using(read_id) JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '$1' AND dna_region = '$2'"
+
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(distinct $gast.read_id) as total_gast_trimseq FROM $gast JOIN trimseq using(read_id) JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '$1' AND dna_region = '$2'"
+
+echo "SELECT count($gast_concat.read_id) as total_gast_concat_trimseq FROM $gast_concat JOIN trimseq using(read_id) JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '$1' AND dna_region = '$2'" 
+
+mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count($gast_concat.read_id) as total_gast_concat_trimseq FROM $gast_concat JOIN trimseq using(read_id) JOIN run using(run_id) JOIN dna_region using(dna_region_id) WHERE run = '$1' AND dna_region = '$2'"
+
+exit

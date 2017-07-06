@@ -70,7 +70,7 @@ my $usage = "
 my $argNum = 1;
 
 #Runtime variables
-my $db_host = "newbpcdb2";
+my $db_host = "bpcdb1";
 my $dbName = "env454";
 
 # Reference (silva) tables to pull from

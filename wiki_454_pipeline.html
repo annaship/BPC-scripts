@@ -90,7 +90,7 @@ Each command takes about an hour.
       <li>determine the number of reads that made it into the database:
 
 <div class="comm_line">
-mysql -h newbpcdb2.mbl.edu env454 -e "SELECT lane, count(rawseq_id) as seqcnt FROM rawseq
+mysql -h bpcdb1.mbl.edu env454 -e "SELECT lane, count(rawseq_id) as seqcnt FROM rawseq
 JOIN run using(run_id) 
 WHERE run='<i>rundate</i>' group by lane order by lane"
 </div>  
@@ -239,8 +239,8 @@ When the cluster processes have completed, log on to a bioware machine and confi
       <li>
         Using mysql check the number of reads that were loaded:
         <div class="comm_line">     
-mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4</i>"<br/> 
-mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4a</i>" 
+mysql -h bpcdb1.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4</i>"<br/> 
+mysql -h bpcdb1.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4a</i>" 
         </div>            
       </li>
       <li>
@@ -254,7 +254,7 @@ cat /xraid2-2/g454/gast/<i>rundate_v6v4</i>a/gast_<i>rundate_v6v4</i>a.*.txt | c
           If this does not equal the number of reads in the gast_run table you will need to manually load the remaining data:
         <div class="comm_line">cd $g454/gast/<i>rundate_v6v4</i><br/>
 
-for i in gast_<i>rundate_v6v4</i>.*.txt; do mysqlimport -i -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h newbpcdb2 env454 $i; done;       
+for i in gast_<i>rundate_v6v4</i>.*.txt; do mysqlimport -i -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h bpcdb1 env454 $i; done;       
         </div>
 Check the count in the gast_<i>rundate_v6v4</i> table again.  It should now match the results in the directory.          
       </li>
@@ -268,7 +268,7 @@ Check the count in the gast_<i>rundate_v6v4</i> table again.  It should now matc
     Example:<br/>
 
 <span class="comm_line">facount /xraid2-2/g454/gast/<i>rundate_v6v4</i>/<i>rundate_v6v4</i>.unique.fa</span> = 481,034<br/>      
-<span class="comm_line">mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4</i>"</span> = 471,803<br/>
+<span class="comm_line">mysql -h bpcdb1.mbl.edu env454 -e "SELECT COUNT(distinct read_id) FROM gast_<i>rundate_v6v4</i>"</span> = 471,803<br/>
     
 481,034 / 471,803 ~= 1.02, or 2% larger.  
   <br/>
@@ -283,7 +283,7 @@ Check the count in the gast_<i>rundate_v6v4</i> table again.  It should now matc
 <div class="comm_line">
 grep -c ">" <i>rundate_v6v4</i>/*.fa
 </div><div class="comm_line">
-mysql -h newbpcdb2.mbl.edu env454 -e "SELECT COUNT(DISTINCT trimsequence_id) FROM trimseq<br/> 
+mysql -h bpcdb1.mbl.edu env454 -e "SELECT COUNT(DISTINCT trimsequence_id) FROM trimseq<br/> 
 JOIN run using(run_id)<br/>
 JOIN dna_region using(dna_region_id)<br/>
 WHERE run = '<i>rundate</i>' AND dna_region = '<i>v6v4</i>'"
@@ -335,7 +335,7 @@ To verify, count the reads in the tagtax table from your run.
       <ol type="a">
       <li>
 <div class="comm_line">
-mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(read_id) from tagtax<br/>
+mysql -h bpcdb1.mbl.edu env454 -e "SELECT count(read_id) from tagtax<br/>
 JOIN trimseq using(read_id)<br/>
 JOIN run using(run_id)<br/>
 WHERE run='<i>rundate</i>'"
@@ -373,14 +373,14 @@ For example, you have the following result of <span class="script_name">gast_che
 ...  
 <br/>
 
-Then sum of "total_trimseq" should be equal to a result of the last command (i.e. "<span class="comm_line">mysql -h newbpcdb2.mbl.edu env454 -e "SELECT count(read_id) from tagtax JOIN trimseq using(read_id) JOIN run using(run_id) WHERE run='<i>rundate</i>'</span>"). E.g.: 166400 + 83639 = 250039.
+Then sum of "total_trimseq" should be equal to a result of the last command (i.e. "<span class="comm_line">mysql -h bpcdb1.mbl.edu env454 -e "SELECT count(read_id) from tagtax JOIN trimseq using(read_id) JOIN run using(run_id) WHERE run='<i>rundate</i>'</span>"). E.g.: 166400 + 83639 = 250039.
       </li>
     </li>
 
     <li>You can get some summary information about the taxonomic diversity of your run with this query:
 
 <div class="comm_line">
-mysql -h newbpcdb2.mbl.edu env454 -e "SELECT taxonomy, count(read_id) as count_all from tagtax JOIN taxonomy USING(taxonomy_id)<br/>
+mysql -h bpcdb1.mbl.edu env454 -e "SELECT taxonomy, count(read_id) as count_all from tagtax JOIN taxonomy USING(taxonomy_id)<br/>
 JOIN trimseq using(read_id)<br/>
 JOIN run using(run_id)<br/> 
 WHERE run='<i>rundate</i>' group by taxonomy"
@@ -391,7 +391,7 @@ The number of "Unknown" is usually equal to the sum of "no_hit" from the <span c
     <li>
     You might want to check taxonomy by project and dataset:
       <div class="comm_line">
-mysql -h newbpcdb2.mbl.edu env454 -e "SELECT project, dataset, taxonomy, count(read_id) from tagtax<br/> 
+mysql -h bpcdb1.mbl.edu env454 -e "SELECT project, dataset, taxonomy, count(read_id) from tagtax<br/> 
 JOIN taxonomy USING(taxonomy_id)<br/>
 JOIN trimseq using(read_id)<br/>
 JOIN project using(project_id)<br/>

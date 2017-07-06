@@ -88,7 +88,7 @@ my $listFilename;
 my $width;
 my $field = "dataset";
 my $dbName = "env454";
-my $db_host = "newbpcdb2";
+my $db_host = "bpcdb1";
 ##my $readsTable = "trimseq as i";  #### if you are being fancy and using join reads table, be sure 
 #my $readsTable = "trimseq_view as i";  #### if you are being fancy and using join reads table, be sure 
 #                                     ## to set the table with the read id to "i";

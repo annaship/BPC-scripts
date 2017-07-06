@@ -1,0 +1,624 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# import_flxruninfo: Import run, run keys, dataset and project info for FLX runs
+#
+# Author: Susan Huse, shuse@mbl.edu
+#     Modified by Andrew Voorhis for error checking 2011-03-04
+#     Modified by Anna Shipunova for using the VAMPS db instead of a CSV file 2011-09-16
+#
+# Date: Wed Feb 14 10:33:17 EST 2007
+#
+# Keywords: 454 import database flx
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Bio::Seq;
+use Bio::SeqIO;
+use IO::String;
+use Conjbpcdb;
+use File::Basename;
+require 'pipeline_subs.pl'; #subroutines
+use Term::ANSIColor qw(:constants);
+
+#######################################
+# ---- Table of Content -----
+# Set up usage statement
+# Definition statements
+# Test for commandline arguments
+# Parse commandline arguments, ARGV
+# Prepare SQL queries
+# ----- take primers info
+# Take info from vamps db
+# ----- take info from vamps_submissions_tubes by runtime
+# ----- populate %tub_info hash by rundate as a key
+# ----- in a loop by all rundates from the first result take all info from the $vamps_submissionsTable (= vamps_submissions) by "submit_code"
+# ----- populate variables from the first result
+# ----- take info from the second vamps table
+# ----- populate variables from the second result in a loop by the first hash
+# Enter Data in tables
+#
+# Subroutines:
+# db connection 
+# Prepare queries to select from vamps
+# Prepare queries to insert into env454
+# Remove leading and trailing white space from a string
+# Get primer by primer suite
+#######################################
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $scriptHelp = "
+ import_flxruninfo - Get run information for trimming 454 sequences from Vamps submission forms into env454 db.
+ \n";
+
+my $usage = "
+   Usage:  import_flxruninfo -r run
+      Ex:  import_flxruninfo -r 20081125 -checkonly
+
+ Options:  
+           -r   run date
+           -checkonly  do NOT write data to database
+               without this flag it will check and (on error) give you a choice (y/n)
+               to write the data to the database
+\n";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+my $verbose_only = 0;
+my $checkonly = 0;
+
+#Runtime variables
+
+my $contactTable		= "contact";
+my $datasetTable		= "dataset";
+my $projectTable		= "project";
+my $primerSeqTable  = my $primerTable     = "primer";
+my $keysTable				= my $run_infoTable		= "run_info";
+my $primersTable		= my $run_primerTable	= "run_primer";
+my $runTable				= "run";
+my $run_keyTable		= "run_key";
+my $dna_regionTable	= "dna_region";
+my $quant_methodTable	 = "quant_method";
+# my $amplicon_emulTable = "amplicon_emul"
+my $ref_primer_suite_primerTable = "ref_primer_suite_primer";
+
+my $adaptor       = '';
+my $amp_operator  = '';
+my $barcode       = '';
+my $contact       = '';
+my $dataset       = '';
+my $project_description = '';
+my $dataset_description = '';
+my $direction     = "F";
+my $dna_region    = '';
+my $domain        = '';
+my $email         = '';
+my $empcr_operator = '';
+my $env_sample_source_id = 0;
+my $funding       = '';
+my $institution   = '';
+my $lane          = '';
+my $platform      = '';
+my $pool          = '';
+my $primer        = '';
+my $primer_suite  = '';
+my $project       = '';
+my $run           = '';
+my $run_key       = '';
+my $seq_operator  = '';
+my $title         = '';
+my $tubelabel     = '';
+my $concentration = '';
+my $quant_method  = '';
+my $vamps_name    = '';
+
+my %user_run_info;
+my $go_back_warn  = "Please go back to the submission form on VAMPS and add the missing information. 
+                     You can check that the submission is complete by clicking the \"Validate\" button on the submission form. 
+                     Then run import_flxruninfo again.\n";
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) 
+{
+	print $scriptHelp;
+	print $usage;
+	exit -1;
+} 
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+	if ($ARGV[0] =~ /-h/) {
+		print $scriptHelp;
+		print $usage;
+		exit 0;
+	} elsif ($ARGV[0] eq "-checkonly") {
+		shift @ARGV;
+		$checkonly = 1;
+	} elsif ($ARGV[0] eq "-r") {
+		shift @ARGV;
+		$run = shift @ARGV;
+	} elsif ($ARGV[0] eq "-rk") {
+		shift @ARGV;
+		$keysTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-rp") {
+		shift @ARGV;
+		$primersTable = shift @ARGV;
+	} elsif ($ARGV[0] eq "-v") {
+		$verbose_only = 1;
+		shift @ARGV;
+	} elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+		shift @ARGV;
+	}
+}
+
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if ( (! $run) )
+{
+	print "Incorrect number of arguments.\n";
+	print "$usage\n";
+	exit;
+} 
+
+#######################################
+#
+# Prepare SQL queries
+#
+#######################################
+
+my $vamps_submissionsTable       = "vamps_submissions"; 
+my $vamps_submissions_tubesTable = "vamps_submissions_tubes";
+my ($selectFirstInfoSQL, $selectFirstInfo_h, $selectSecondInfoSQL, $selectSecondInfo_h, $vdbh, $selectPrimerSQL, $selectPrimerSQL_h);
+
+prep_vamps_SQL();
+
+my ($dbh, $insertContact, $insertContact_h, $insertDataset, $insertDataset_h, $insertNew_run, $insertNew_run_h, $insertPrimer, $insertPrimer_h, $insertProject, $insertProject_h, $insertRun_info, $insertRun_info_h, $insertRun_key, 
+  $insertRun_key_h, $insertRun_primer, $insertRun_primer_h, $insertDna_region, $insertDna_region_h, $insertQuant_method, $insertQuant_method_h, $take_contact_id, $take_contact_id_h, $update_vamps_name, $update_vamps_name_h);
+
+$dbh = &db_connect("newbpcdb2", "env454");
+
+prep_env454_SQL();
+
+#  ---- take primers info ----
+my %primer_suite_hash = &get_primer_hash();
+
+# # print out primer suite hash
+# print "-----\n";
+# for my $k1 ( keys %primer_suite_hash ) {
+#     print "$k1 => ";
+#     for my $k2 ( $primer_suite_hash{ $k1 } ) {
+#         print "@{$k2}\n";
+#         # print join(" ", $primer_suite_hash{ $k1 }, )
+#     }
+# }
+# print "-----\n";
+
+
+#######################################
+#
+# Take info from vamps db
+#
+#######################################
+
+my @selectFirstInfo;
+my @selectSecondInfo;
+
+my $rundate = $run;
+my $submit_code = '';
+
+# ----- take info from vamps_submissions_tubes by runtime -------
+
+$selectFirstInfo_h->execute($rundate) || die "Unable to execute query: $selectFirstInfoSQL. Error: " . $vdbh->errstr . "\n";
+
+my %tub_info;
+my $i = my $data_number = 0;
+
+# TODO: tace href and call by names
+# ----- populate %tub_info hash by rundate as a key
+while(my ($submit_code, $tube_number, $tube_label, $tube_description, $duplicate, $domain, $primer_suite, $dna_region, $project_name, $dataset_name, 
+  $runkey, $barcode, $pool, $lane, $direction, $platform, $op_amp, $op_seq, $op_empcr, $enzyme, $rundate, $adaptor, $date_initial, $date_updated, $sample_received, $concentration, $quant_method
+) = $selectFirstInfo_h->fetchrow()) 
+{  
+  $tub_info{$rundate}[$i]{'adaptor'}			= &trim($adaptor);
+  $tub_info{$rundate}[$i]{'barcode'}			= &trim($barcode);
+  $tub_info{$rundate}[$i]{'dataset_name'}	= &trim($dataset_name);
+  $tub_info{$rundate}[$i]{'dataset_description'} = &trim($tube_description);
+  $tub_info{$rundate}[$i]{'date_initial'}	= &trim($date_initial);
+  $tub_info{$rundate}[$i]{'date_updated'}	= &trim($date_updated);
+  $tub_info{$rundate}[$i]{'direction'}		= &trim($direction);
+  $tub_info{$rundate}[$i]{'domain'}				= &trim($domain);
+  $tub_info{$rundate}[$i]{'duplicate'}		= &trim($duplicate);
+  $tub_info{$rundate}[$i]{'enzyme'}				= &trim($enzyme);
+  $tub_info{$rundate}[$i]{'lane'}					= &trim($lane);
+  $tub_info{$rundate}[$i]{'op_amp'}				= &trim($op_amp);
+  $tub_info{$rundate}[$i]{'op_empcr'}			= &trim($op_empcr);
+  $tub_info{$rundate}[$i]{'op_seq'}				= &trim($op_seq);
+  $tub_info{$rundate}[$i]{'platform'}	    = &trim($platform);
+  $tub_info{$rundate}[$i]{'pool'}					= &trim($pool);
+  $tub_info{$rundate}[$i]{'primer_suite'}	= &trim($primer_suite);
+  $tub_info{$rundate}[$i]{'project_name'}	= &trim($project_name);
+  $tub_info{$rundate}[$i]{'rundate'}			= &trim($rundate);
+  $tub_info{$rundate}[$i]{'runkey'}				= &trim($runkey);
+  $tub_info{$rundate}[$i]{'sample_received'} = &trim($sample_received);
+  $tub_info{$rundate}[$i]{'dna_region'}		= &trim($dna_region);
+  $tub_info{$rundate}[$i]{'submit_code'}	= &trim($submit_code);
+  $tub_info{$rundate}[$i]{'tube_label'}		= &trim($tube_label);
+  $tub_info{$rundate}[$i]{'tube_number'}	= &trim($tube_number);
+  $tub_info{$rundate}[$i]{'concentration'} = &trim($concentration);
+  $tub_info{$rundate}[$i]{'quant_method'}	= &trim($quant_method);
+  $i++;
+  # if ($tub_info{$rundate}[$i]{'concentration'}) {print "PPP4: ".'$tub_info{$rundate}[$i]{\'concentration\'} = '."$tub_info{$rundate}[$i]{'concentration'}\n";}
+  # if ($tub_info{$rundate}[$i]{'quant_method'}) {print "PPP5: ".'$tub_info{$rundate}[$i]{\'quant_method\'} = '."$tub_info{$rundate}[$i]{'quant_method'}\n";}
+}
+$data_number = $i;
+
+# ===== 2 ======
+# ----- in a loop by all rundates from the first result take all info from the $vamps_submissionsTable (= vamps_submissions) by "submit_code" -----
+
+my $ref_tub_info = \%tub_info;
+for ($i = 0; $i < $data_number; $i++) 
+{
+ for my $rundate ( sort keys %$ref_tub_info ) 
+ {
+    # ----- populate variables from the first result -----
+    $submit_code	= $tub_info{$rundate}[$i]{'submit_code'};
+    $adaptor			= $tub_info{$rundate}[$i]{'adaptor'};
+    $empcr_operator	= $tub_info{$rundate}[$i]{'op_empcr'};
+    $amp_operator	= $tub_info{$rundate}[$i]{'op_amp'};
+    $barcode			= $tub_info{$rundate}[$i]{'barcode'};
+    $dataset			= $tub_info{$rundate}[$i]{'dataset_name'};
+    $dataset_description = $tub_info{$rundate}[$i]{'dataset_description'};
+    $direction		= $tub_info{$rundate}[$i]{'direction'};
+    $domain       = $tub_info{$rundate}[$i]{'domain'};
+    $lane			    = $tub_info{$rundate}[$i]{'lane'};
+    $pool			    = $tub_info{$rundate}[$i]{'pool'};
+    $primer_suite	= $tub_info{$rundate}[$i]{'primer_suite'};
+    $platform			= $tub_info{$rundate}[$i]{'platform'};
+    $project			= $tub_info{$rundate}[$i]{'project_name'};
+    $run_key			= $tub_info{$rundate}[$i]{'runkey'};
+    $seq_operator	= $tub_info{$rundate}[$i]{'op_seq'};
+    $dna_region		= $tub_info{$rundate}[$i]{'dna_region'};
+    $tubelabel		= $tub_info{$rundate}[$i]{'tube_label'};
+    $concentration= $tub_info{$rundate}[$i]{'concentration'};
+    $quant_method	= $tub_info{$rundate}[$i]{'quant_method'};
+    
+    # print "PPP1: concentration = $concentration; quant_method = $quant_method\n";
+  
+    # ----- take info from the second vamps table -----
+    $selectSecondInfo_h->execute($submit_code) || die "Unable to execute query: $selectSecondInfoSQL. Error: " . $vdbh->errstr . "\n";
+
+    while(my ($user, $last_name, $first_name, $email, $institution, $temp_project, $title, $project_description, $environment, $env_sample_source_id, $funding, $num_of_tubes, 
+              $date_initial, $date_updated, $platform) = $selectSecondInfo_h->fetchrow()) 
+    {  
+      $user_run_info{$submit_code}{'user'}				  = &trim($user);
+      $user_run_info{$submit_code}{'last_name'}			= &trim($last_name);
+      $user_run_info{$submit_code}{'first_name'}		= &trim($first_name);
+      $user_run_info{$submit_code}{'email'}				  = &trim($email);
+      $user_run_info{$submit_code}{'institution'}		= &trim($institution);
+      $user_run_info{$submit_code}{'temp_project'}  = &trim($temp_project);
+      $user_run_info{$submit_code}{'title'}				  = &trim($title);
+      $user_run_info{$submit_code}{'project_description'}		= &trim($project_description);
+      $user_run_info{$submit_code}{'environment'}		= &trim($environment);
+      $user_run_info{$submit_code}{'env_sample_source_id'}	= &trim($env_sample_source_id);
+      $user_run_info{$submit_code}{'funding'}				= &trim($funding);
+      $user_run_info{$submit_code}{'num_of_tubes'}	= &trim($num_of_tubes);
+      $user_run_info{$submit_code}{'date_initial'}	= &trim($date_initial);
+      $user_run_info{$submit_code}{'date_updated'}	= &trim($date_updated);
+    }
+  
+    # ----- populate variables from the second result in a loop by the first hash -----
+    $contact				= $user_run_info{$submit_code}{'first_name'}." ".$user_run_info{$submit_code}{'last_name'};
+    $project_description = $user_run_info{$submit_code}{'project_description'};
+    $email				  = $user_run_info{$submit_code}{'email'};
+    $env_sample_source_id  = $user_run_info{$submit_code}{'env_sample_source_id'};
+    $funding				= $user_run_info{$submit_code}{'funding'};
+    $institution		= $user_run_info{$submit_code}{'institution'};
+    $title					= $user_run_info{$submit_code}{'title'};
+    $vamps_name			= $user_run_info{$submit_code}{'user'};
+  
+    my $go_back_warn = "Please go back to the submission form on Vamps and add the missing information\n";
+    if ($user_run_info{$submit_code}{'last_name'} eq "" or $user_run_info{$submit_code}{'first_name'} eq "" or $user_run_info{$submit_code}{'institution'} eq "")
+    {
+      print BOLD, RED, "There is not enough contact information:\t'last_name' = $user_run_info{$submit_code}{'last_name'};\t'first_name' = $user_run_info{$submit_code}{'first_name'};\t'email'
+                        = $email;\t'institution' = $user_run_info{$submit_code}{'institution'}\n$go_back_warn", RESET;      
+    }
+
+    &check_for_info();
+  
+    if ($verbose_only)
+    {
+        print "$insertContact: $contact, $email, $institution, $vamps_name\n";
+        print "$insertProject: $project, $title, $project_description, $project, $funding, $env_sample_source_id, $contact\n";
+        print "$insertRun_key: $run_key\n";
+        print "$insertNew_run: $run\n";
+        print "$insertDataset: $dataset, $dataset_description\n";
+        print "$insertDna_region: $dna_region\n";
+        print "$insertQuant_method: $quant_method\n";        
+        print "$insertRun_info: $run_key, $run, $lane, $direction, $dataset, $project, $tubelabel, $barcode, $adaptor, $pool, $dna_region, $amp_operator, $seq_operator, $empcr_operator, $platform, $concentration, $quant_method\n";
+        print "$insertRun_primer: $run_key, $run, $lane, @{$primer_suite_hash{ $primer_suite }}\n";
+
+    } 
+    elsif ($checkonly)
+    {
+    	print "\n===================================================================================================================================\n";
+      print "Researcher info:\t $contact,\t$email,\t$institution,\tVAMPS username = $vamps_name\n";
+      print "Project info::\t project_name = $project,\tproject_title = $title,\tproject_description = $project_description,\tfunding = $funding,\tenv_sample_source_id = $env_sample_source_id\n";
+      print "Run info::\t run = $run,\tdirection = $direction,\tdataset = $dataset,\tdataset_description=$dataset_description,\tproject = $project,\ttubelabel = $tubelabel,\tbarcode = $barcode,\tadaptor = $adaptor,\tpool = $pool,
+            \tdna_region = $dna_region,\tamp_operator = $amp_operator,\tseq_operator = $seq_operator,\tempcr_operator = $empcr_operator,\t$platform,\tconcentration = $concentration,\tquant_method = $quant_method\n";
+      print "Run_key info::\t $run_key,\tlane = $lane,\tprimers = " . join(', ', @{$primer_suite_hash{ $primer_suite }}). "\n";
+      print "---------------------------------------------\n";
+     print "HERE1: \$contact = $contact; email = $email; institution = $institution; vamps_name = $vamps_name\n";
+     if ($checkonly)
+     {
+       print "HERE3: 
+       project = $project, 
+       title = $title, 
+       project_description = $project_description, 
+       project = $project, 
+       funding = $funding, 
+       env_sample_source_id = $env_sample_source_id\n";
+     }
+     print "==================================================================================================================================\n";
+     
+    }
+    else 
+    {
+      # #################################################
+      # #         Enter Data in tables
+      # #################################################
+
+      $insertContact_h->execute($contact, $email, $institution, $vamps_name)  || die "Unable to insert project information into table: $contactTable. Error: " . $dbh->errstr . "\n";
+      $take_contact_id_h->execute($contact, $email, $institution, $vamps_name)  || die "Unable to take contact_id. Error: " . $dbh->errstr . "\n";
+      my $contact_id = $take_contact_id_h->fetchrow();
+  
+      unless ($contact_id)
+      {
+        $update_vamps_name_h->execute($vamps_name, $contact, $email, $institution)  || die "Unable to update vamps_name. Error: " . $dbh->errstr . "\n";
+        $take_contact_id_h->execute($contact, $email, $institution, $vamps_name)  || die "Unable to take contact_id. Error: " . $dbh->errstr . "\n";
+        $contact_id = $take_contact_id_h->fetchrow();        
+      }
+      
+      $insertProject_h->execute($project, $title, $project_description, $project, $funding, $env_sample_source_id, $contact_id)  || die "Unable to insert project information into table: $projectTable. Error: " . $dbh->errstr . "\n";
+      $insertRun_key_h->execute($run_key)  || die "Unable to insert project information into table: $run_keyTable. Error: " . $dbh->errstr . "\n";
+      $insertNew_run_h->execute($run)  || die "Unable to insert project information into table: $runTable. Error: " . $dbh->errstr . "\n";
+      $insertDataset_h->execute($dataset, $dataset_description) || die "Unable to insert project information into table: $datasetTable. Error: " . $dbh->errstr . "\n";
+      $insertDna_region_h->execute($dna_region) || die "Unable to insert project information into table: $dna_regionTable. Error: " . $dbh->errstr . "\n";
+      $insertQuant_method_h->execute($quant_method) || die "Unable to insert project information into table: $quant_methodTable. Error: " . $dbh->errstr . "\n";
+      $insertRun_info_h->execute($run_key, $run, $lane, $direction, $dataset, $project, $tubelabel, $barcode, $adaptor, $pool, $dna_region, $amp_operator, $seq_operator, $empcr_operator, $platform, $concentration, $quant_method)  || die "Unable to insert project information into table: $run_infoTable. Error: " . $dbh->errstr . "\n";
+
+      foreach $primer ( @{$primer_suite_hash{ $primer_suite }} )
+      {
+        $insertRun_primer_h->execute($run_key, $run, $lane, $primer)  || die "Unable to insert project information into table: $run_primerTable. Error: " . $dbh->errstr . "\n";          
+      }
+    }  
+  } #for my $rundate
+} #for ($i = 0; $i < $data_number; $i++) 
+
+# print "=== the first hash ===\n";
+# for my $sc ( sort keys %$ref_tub_info ) {
+#   for ($i = 0; $i < $data_number; $i++) {
+#     for my $k2 ($tub_info{$sc}[$i])
+#     {
+#       print "\n-----\n";      
+#       for my $k3 ( keys %{$k2} ) {
+#           print "$k3 => $tub_info{$sc}[$i]{$k3}\n";
+#       }
+#     }    
+#   }
+# }
+# 
+# print "=== the second hash ===\n";
+# print "-----\n";
+# my $ref_user_run_info = \%user_run_info;
+# 
+# # print join("\t", %user_run_info);
+# # print out the second hash
+# for my $k1 ( keys %$ref_user_run_info ) {
+#   print "-----\n";
+#     print "k1: $k1\n";
+#     for my $k2 ( keys %{$ref_user_run_info->{ $k1 }} ) {
+#         print "k2: $k2 => $ref_user_run_info->{ $k1 }{ $k2 }\n";
+#     }
+# }
+# 
+# print "-----\n";
+
+#   ----------- Subroutines ----------
+
+#######################################
+#
+# Prepare queries to select from vamps
+#
+#######################################
+
+sub prep_vamps_SQL 
+{
+  $vdbh = &db_connect("vampsdb", "vamps");
+  # $vdbh = &db_connect("vampsdev", "vamps");
+  $selectFirstInfoSQL = "SELECT distinct submit_code, tube_number, tube_label, tube_description, duplicate, domain, primer_suite, 
+    dna_region, project_name, dataset_name, runkey, barcode, pool, lane, direction, platform, op_amp, op_seq, op_empcr, enzyme, rundate, 
+    adaptor, date_initial, date_updated, sample_received, concentration, quant_method FROM $vamps_submissions_tubesTable where rundate=?";
+
+  $selectFirstInfo_h = $vdbh->prepare($selectFirstInfoSQL) || die "Unable to prepare query: $selectFirstInfoSQL. Error: " . $vdbh->errstr . "\n";
+
+  $selectSecondInfoSQL = "SELECT distinct user, last_name, first_name, email, institution, temp_project, title, 
+  project_description, environment, env_source_id, funding, num_of_tubes, date_initial, date_updated FROM $vamps_submissionsTable where submit_code = ?";
+  $selectSecondInfo_h = $vdbh->prepare($selectSecondInfoSQL) || die "Unable to prepare query: $selectSecondInfoSQL. Error: " . $vdbh->errstr . "\n";
+}
+
+#######################################
+#
+# Prepare queries to insert into env454
+#
+#######################################
+sub prep_env454_SQL 
+{
+
+  # ----- look-up tables -------
+
+  # 1) contact
+  # $contact, $vamps_name
+  $insertContact   = "INSERT IGNORE INTO $contactTable (contact, email, institution, vamps_name) VALUES (?, ?, ?, ?);";
+  $insertContact_h = $dbh->prepare($insertContact);
+  
+  # 1a) take contact id
+  $take_contact_id   = "SELECT contact_id FROM contact WHERE contact = ? AND email = ? AND institution = ? AND vamps_name = ?;";
+  $take_contact_id_h = $dbh->prepare($take_contact_id);
+
+  # 1b) update vamps_name
+  $update_vamps_name = "UPDATE $contactTable SET vamps_name = ? WHERE contact = ? AND email = ? AND institution = ?";
+  $update_vamps_name_h = $dbh->prepare($update_vamps_name);
+  
+  # 2) project
+  # $project, $title, $project_description, REVERSE($project), $funding, $env_sample_source_id, $contact
+  $insertProject   = "INSERT IGNORE INTO $projectTable (project, title, project_description, rev_project_name, funding, env_sample_source_id, contact_id) VALUES (?, ?, ?, REVERSE(?), ?, ?, ?);";
+  $insertProject_h = $dbh->prepare($insertProject);
+
+# NO! Insert manually beforehend 
+  # # 3) primer
+  # # $primer, $direction, $sequence, $dna_region, $original_seq, $domain
+  # # !!! Add $primerSeqTable for the sake of all other places it's used
+  # $insertPrimer = "INSERT IGNORE INTO $primerTable (primer, direction, sequence, dna_region, original_seq, domain) VALUES (?, ?, ?, ?, ?, ?);";
+  # $insertPrimer_h = $dbh->prepare($insertPrimer);
+
+  # 4) run_key
+  # $run_key 
+  $insertRun_key = "INSERT IGNORE INTO $run_keyTable (run_key) VALUES (?);";
+  $insertRun_key_h = $dbh->prepare($insertRun_key);
+
+  # 5) run
+  # $amp_operator, $seq_operator, $platform, $run
+  $insertNew_run = "INSERT IGNORE INTO $runTable (run) VALUES (?);";
+  $insertNew_run_h = $dbh->prepare($insertNew_run);
+
+  # 6) dataset
+  # $dataset
+  $insertDataset = "INSERT IGNORE INTO $datasetTable (dataset, dataset_description) VALUES (?, ?);";
+  $insertDataset_h = $dbh->prepare($insertDataset);
+
+  # 7) dna_region
+  # $dna_region
+  $insertDna_region = "INSERT IGNORE INTO $dna_regionTable (dna_region) VALUES (?);";
+  $insertDna_region_h = $dbh->prepare($insertDna_region);
+
+  # 8a) quant_method
+  # $quant_method
+  $insertQuant_method = "INSERT IGNORE INTO $quant_methodTable (quant_method) VALUES (?);";
+  $insertQuant_method_h = $dbh->prepare($insertQuant_method);
+
+  # 8) run_info
+  # ($run_key, $run, $lane, $direction, $dataset, $project, $tubelabel, $barcode, $adaptor, $pool, $dna_region)
+  # !!! Add $keysTable for the sake of all other places it's used
+  # $insertRun_info = "INSERT IGNORE INTO $run_infoTable (run_key_id, run_id, lane, direction, dataset_id, project_id, tubelabel, barcode, adaptor, pool, dna_region_id, amp_operator, seq_operator, empcr_operator, platform, concentration, quant_method_id) 
+  #                     VALUES ((SELECT run_key_id FROM run_key WHERE run_key=?), (SELECT run_id FROM run WHERE run=?), ?, ?, (SELECT dataset_id FROM dataset WHERE dataset=?), (SELECT project_id FROM project WHERE project=?), ?, ?, ?, ?, 
+  #                     (SELECT dna_region_id FROM dna_region WHERE dna_region=?), ?, ?, ?, ?, ?, (SELECT quant_method_id FROM quant_method WHERE quant_method=?));"; 
+  $insertRun_info = "REPLACE INTO $run_infoTable (run_key_id, run_id, lane, direction, dataset_id, project_id, tubelabel, barcode, adaptor, pool, dna_region_id, amp_operator, seq_operator, empcr_operator, platform, concentration, quant_method_id) 
+                      VALUES ((SELECT run_key_id FROM run_key WHERE run_key=?), (SELECT run_id FROM run WHERE run=?), ?, ?, (SELECT dataset_id FROM dataset WHERE dataset=?), (SELECT project_id FROM project WHERE project=?), ?, ?, ?, ?, 
+                      (SELECT dna_region_id FROM dna_region WHERE dna_region=?), ?, ?, ?, ?, ?, (SELECT quant_method_id FROM quant_method WHERE quant_method=?));"; 
+  $insertRun_info_h = $dbh->prepare($insertRun_info);
+
+  # 9) run_primer
+  # $run_key, $run, $lane, $primer
+  # !!! Add $primersTable for the sake of all other places it's used
+  $insertRun_primer = "INSERT IGNORE INTO $run_primerTable (run_key_id, run_id, lane, primer_id) VALUES ((SELECT run_key_id FROM run_key WHERE run_key=?), \ 
+    (SELECT run_id FROM run WHERE run=?), ?, (SELECT primer_id FROM $primerTable WHERE primer=?));";
+  $insertRun_primer_h = $dbh->prepare($insertRun_primer);
+}
+
+#######################################
+#
+# Remove leading and trailing white space from a string
+#
+#######################################
+
+sub trim($)
+{
+	my $string = shift;
+	$string =~ s/^\s+//;
+	$string =~ s/\s+$//;
+	return $string;
+}
+
+#######################################
+#
+# Get primer by primer suite
+#
+#######################################
+
+sub get_primer_hash
+{
+  $selectPrimerSQL = "SELECT primer_suite, primer FROM $ref_primer_suite_primerTable  
+  	JOIN `primer_suite` USING(`primer_suite_id`) 
+  	JOIN `primer` USING(`primer_id`)";
+  $selectPrimerSQL_h = $dbh->prepare($selectPrimerSQL) || die "Unable to prepare query: $selectPrimerSQL. Error: " . $vdbh->errstr . "\n";
+  $selectPrimerSQL_h->execute() || die "Unable to execute query: $selectPrimerSQL. Error: " . $vdbh->errstr . "\n";
+
+  while(my ($primer_suite, $primer) = $selectPrimerSQL_h->fetchrow()) 
+  {  
+    push(@{$primer_suite_hash{$primer_suite}}, $primer);
+  }
+  return %primer_suite_hash;
+}
+
+#######################################
+#
+# Submission info validation
+#
+#######################################
+
+sub check_for_info()
+{  
+  my %var_names = (
+  'project'		 => $project,
+  'dataset'		 => $dataset,
+  'run'			   => $run,
+  'run_key'		 => $run_key,
+  'lane'			 => $lane,
+  'direction'  => $direction,
+  'dna_region' => $dna_region,
+  'platform'   => $platform);
+
+  my $smth_missing = 0;
+  while ( my ($key, $var_name) = each(%var_names) ) {
+    # print "$key => $var_name\n";
+    unless ($var_name)
+    {
+      print BOLD, RED, "There is no information about $key\n", RESET;      
+      $smth_missing = 1;
+    }      
+  }
+
+  if ($smth_missing)
+  {
+    print BOLD, RED, "$go_back_warn"."===================\n", RESET;      
+    exit;
+  }  
+}
+
+# sub info_validation()

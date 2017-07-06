@@ -168,7 +168,7 @@ my $trimflx_cmd = join(" ", $0, @ARGV);
 my $current_dir = getcwd;
 
 my $db_name = "env454"; 
-my $db_host = "newbpcdb2";
+my $db_host = "bpcdb1";
 
 #######################################
 #

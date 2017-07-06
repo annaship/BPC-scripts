@@ -1,0 +1,684 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# import_sfftxt: import sff.txt (454 GS20) files to a database
+#
+# Author: Susan Huse, shuse@mbl.edu  
+# Date: 
+#
+# Keywords: convert import 454
+# 
+# Assumptions: 
+#
+# Revisions: removed requirement for expTable and ImagePipeVersion
+#            added optional import of flow indices (for homopolymer calculations)
+#
+# Programming Notes:
+#
+########################################
+
+use strict;
+use warnings;
+use Conjbpcdb;
+require 'pipeline_subs.pl'; #subroutines
+
+########################################
+# ---------- Table of Content ---------
+# Set up usage statement
+# Definition statements
+# --- Commandline parsing
+# --- Runtime variables
+# --- Connect info
+# --- Experiment information
+# --- Sequence information
+# Test for commandline arguments
+# Parse commandline arguments, ARGV
+# --- Test validity of commandline arguments
+# Open the files
+# --- get the lane from the sff filename
+# --- files must start with the table name to work.
+# SQL statements and db connect
+# --- get run_id
+# --- get run_id end
+# Read the file and load the hashes
+# --- File vars
+# --- Read in the sequences definition information
+# --- Correct with Clip Qual Left, Clip Adap...
+# --- Read in the data
+# Trim the data and write to the files
+# --- Parse the read data
+# --- Parse the flow data
+# --- Parse the quality data
+# --- insert raw sequence into rawsequence table
+# --- take_rawsequence_id
+# --- Reset the variable to begin collecting new data for the next read
+# Load the data from files into the database
+# --- Create a hash to load the files into the database
+# --- Load the data
+########################## SUBROUTINES #######################################
+# reset_vars
+#######################################
+
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $usage = "
+ Usage:  import_sfftxt [-db -f] in.sff.txt
+    ex:  import_sfftxt -f in.sff.txt
+         import_sfftxt -db env454 -seq rawseq -flow rawflow -index rawflowindex 
+                       -qual quality -exp experiments -run 2006dec28 -reg 1
+                       -desc in.sff.txt
+       
+ Flags:  
+         -f filename       sff.txt file to import
+         -db db_name        database to import into [default: env454]
+         -seq seqTable     table name of for sequences [default: rawseq]
+         -flow flowTable   table name for flowgram data  [default: rawflow]
+         -qual qualTable   table name for quality scores [default: rawqual]
+         -index indexTable table name for flow indices [default: rawflowindex]
+         -run run_name     specifies the name of the GS-FLX run to which the sequences belong
+         -reg lane       the plate lane for this sff.txt file [default: read from sff.txt name]
+         -mid              the 454 stripped off the mids, put them back in.
+\n";
+
+my $scripthelp = "
+ import_sfftxt - takes a 454 *.sff.txt file, parses it and creates list of the bases, the
+             flowgram and the quality data.  The data are either exported to flat files
+             (named in.fa, in.fg and in.qual), or sent to the database in the specified
+             tables and fields.\n
+";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+my $argNum          = 1;
+my $minargNum       = 2;
+my $maxargNum       = 4;
+my $verbose_only    = 0;
+my $log_filename    = "import_sfftxt.log";
+my $mysqlimportlog  = "mysqlimport.log";
+my $test_only       = 0;
+
+#Runtime variables
+my $inFilename;
+my $my_run_prefix   = "";
+
+# Connect info
+my $db_host   = "newbpcdb2";
+my $db_name   = "env454";
+
+my $tmpdir    = "/usr/local/tmp/";
+
+# my $seqTable  = "rawseq_copy";
+# my $qualTable = "rawqual_copy";
+# my $flowTable = "rawflow_copy";
+# my $flowIndexTable = "rawflowindex_copy";
+
+my $rawsequenceTable  = "rawsequence"; #unique sequences
+my $seqTable  = "rawseq"; #sequence id and additional info
+my $flowTable = "rawflow";
+my $qualTable = "rawqual";
+my $flowIndexTable = "rawflowindex";
+my $expTable  = "runstats";
+my $runTable  = "run";
+my $readid_table = "readid";
+my $read_id_chimeric_table = "read_id_chimeric";
+
+my $sequence_field  = "sequence_comp";
+my $quality_field   = "quality_comp";
+my $flow_field      = "flow_comp";
+my $flowindex_field = "flowindex_comp";
+
+my $replace = "";
+
+my $run;
+my $dataset;
+my $lane;
+my $x_coord;
+my $y_coord;
+
+#Experiment information
+my $number_reads;  #total number of reads in the .sff.txt file
+my $key_sequence;    #key sequence - first 4 bases to be recognized
+my $flow_sequence;   #order of the bases flowed through the sequencer
+my $number_flows;  #number of bases flowed (number_flows / 4 = num cycles)
+my $run_date;   #date 454 machine was run, parsed from Run Prefix
+my $run_name = "";  #name of run, stored with sequence, but same for entire sff.txt
+my $platform = "454";
+
+#Sequence information
+my $read_id;  #holds current seq name as hash index
+my @seqArray; #to maintain the sequence order to the output
+my $flow;
+my $flow_index;
+my $bases;
+my $qual;
+my $run_prefix;
+my $xy_location;
+my $seq_length;
+my $clip_qual_left;
+my $clip_qual_right;
+my $export_read  = 0;
+my $clip_qual_left_tag_only = 5;
+my $recover_mids = 0;
+
+my $seq_counter  = 0;
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) {
+  print $scripthelp;
+  print $usage;
+  exit -1;
+} 
+
+my $importsff_cmd = join(" ", $0, @ARGV);
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+  if ($ARGV[0] =~ /-h/) {
+    print $scripthelp;
+    print $usage;
+    exit 0;
+  } elsif ($ARGV[0] eq "-db") {
+    shift @ARGV;
+    $db_name = shift @ARGV;
+  } elsif ($ARGV[0] eq "-seq") {
+    shift @ARGV;
+    $seqTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-exp") {
+    shift @ARGV;
+    $expTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-flow") {
+    shift @ARGV;
+    $flowTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-index") {
+    shift @ARGV;
+    $flowIndexTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-qual") {
+    shift @ARGV;
+    $qualTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-reg") {
+    shift @ARGV;
+    $lane = shift @ARGV;
+  } elsif ($ARGV[0] eq "-mid") {
+    shift @ARGV;
+        $recover_mids = 1;
+        $clip_qual_left = $clip_qual_left_tag_only;
+  } elsif ($ARGV[0] eq "-run") {
+    shift @ARGV;
+    $run = shift @ARGV;
+  } elsif ($ARGV[0] eq "-platform") {
+    shift @ARGV;
+    $platform = shift @ARGV;
+  } elsif ($ARGV[0] eq "-v") {
+    $verbose_only = 1;
+    shift @ARGV;
+  } elsif ($ARGV[0] eq "-test")
+  {
+    shift @ARGV;
+    $test_only = 1;    
+  } elsif ($ARGV[0] eq "-") { #unknown parameter, just get rid of it
+    shift @ARGV;
+  }
+}
+
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+#Test validity of commandline arguments
+$inFilename = $ARGV[0];
+
+print "URA0: inFilename = $inFilename\n";
+
+if ($inFilename !~ /\.sff\.txt/) {
+  print "Expected input filename to end in .sff.txt.\n";
+  exit;
+}
+
+if (! -f $inFilename) {
+  print "Unable to locate input sff.txt file: $inFilename.\n";
+  exit;
+}
+
+if (! $run) {
+  print "Please specify the run date.\n";
+  exit -1;
+}
+
+if (! $inFilename) {
+  print "Please specify the input sff filename.\n";
+  exit -1;
+}
+
+# if ($verbose_only) {print "Running import_sfftxt on $inFilename writing to $outFilename, using options: $arg1\n"};
+
+#######################################
+#
+# Open the files
+#
+#######################################
+
+open (IN, "<$inFilename") || die ("Unable to read input file: $inFilename.  Exiting.\n");
+if (! $lane) {
+    # get the lane from the sff filename
+    $lane = $inFilename;
+    $lane =~ s/\.sff$//;
+    $lane =~ substr($lane, -2);
+    if ($lane =~ /0./) {$lane =~ s/^0//;}
+}
+
+# files must start with the table name to work.
+my $seqFile       = $tmpdir . $seqTable . "." . $run . "." . "$lane.txt";
+my $qualFile      = $tmpdir . $qualTable . "." . $run . "." . "$lane.txt";
+my $flowFile      = $tmpdir . $flowTable . "." . $run . "." . "$lane.txt";
+my $flowIndexFile = $tmpdir . $flowIndexTable . "." . $run . "." . "$lane.txt";
+my %file_hash;
+
+$file_hash{seq}       = $seqFile;
+$file_hash{qual}      = $qualFile;
+$file_hash{flow}      = $flowFile;
+$file_hash{flowindex} = $flowIndexFile;
+
+open (SEQ, ">$seqFile")             || die ("Unable to write to raw sequences output file: $seqFile.  Exiting.\n");
+open (FLOW, ">$flowFile")           || die ("Unable to write to raw flowgrams output file: $seqFile.  Exiting.\n");
+open (QUAL, ">$qualFile")           || die ("Unable to write to raw quality output file: $seqFile.  Exiting.\n");
+open (FLOWINDEX, ">$flowIndexFile") || die ("Unable to write to raw flowgram indices output file: $seqFile.  Exiting.\n");
+  
+#######################################
+#
+# SQL statements and db connect
+#
+#######################################
+# my $dbh = "";
+my $dbh = &db_connect($db_host, $db_name);
+
+my $mbl;
+open(LOG, ">$log_filename") or die "Unable to open log file, $log_filename, for writing.\n";
+print LOG "$importsff_cmd\n";
+
+# --------- get run_id --------
+my $run_id = &prep_exec_fetch_query($dbh, "SELECT run_id from $runTable where run=$run");
+
+# &prep_exec_query_w_arg($dbh, $run, "INSERT IGNORE INTO $runTable (run) VALUES (?)");
+# print "run_id = $run_id\n";
+# ------ get run_id end -----
+
+print "PPP1: \$test_only = $test_only\n";
+
+# ------- prepare queries -------
+my $insert_sequence_h    = $dbh->prepare("INSERT IGNORE INTO $rawsequenceTable (sequence_comp) VALUES (compress(?))");
+my $select_sequence_id   = "SELECT rawsequence_id from $rawsequenceTable where sequence_comp=compress(?)";
+my $select_sequence_id_h = $dbh->prepare($select_sequence_id) || die "Unable to prepare query: $select_sequence_id\nError: " . $dbh->errstr . "\n";    
+
+
+
+#######################################
+#
+# Read the file and load the hashes
+#
+#######################################
+
+my $insert_readid_h     = &prep_query($dbh, "INSERT IGNORE INTO $readid_table (read_id) VALUES (?)") unless ($test_only == 1);
+my $select_readid_id_h  = &prep_query($dbh, "SELECT distinct readid_id from $readid_table where read_id=?");
+my $insert_readid_chimeric_h = &prep_query($dbh, "INSERT IGNORE INTO $read_id_chimeric_table (readid_id) VALUES (?)") unless ($test_only == 1);
+
+while (my $line = <IN>)
+{
+  chomp $line;
+  $line =~ s/^\s+//;
+  $line =~ s/\s+$//;
+
+  #File vars
+  if ($line =~ /^# of Reads:/)
+  {
+    $number_reads = $line;
+    $number_reads =~ s/^.*:\s+//;
+    print "Number of reads is: $number_reads\n";
+    print LOG "Number of reads is: $number_reads\n";
+  } elsif ($line =~ /^Key Sequence:/) {
+    $key_sequence = $line;
+    $key_sequence =~ s/^.*:\s+//;
+    print "Key Sequence is: $key_sequence\n";
+    print LOG "Key Sequence is: $key_sequence\n";
+  } elsif ($line =~ /^Flow Chars:/) {
+    $flow_sequence = $line;
+    $flow_sequence =~ s/^.*:\s+//;
+    $flow_sequence = substr($flow_sequence, 0, 4);
+    print "Flow Chars: $flow_sequence\n";
+    print LOG "Flow Chars: $flow_sequence\n";
+  } elsif ($line =~ /^# of Flows:/) {
+    $number_flows = $line;
+    $number_flows =~ s/^.*:\s+//;
+    print LOG "Number of flows is: $number_flows\n";
+
+  #Read in the sequences definition information
+  } elsif ($line =~ /^>/) {
+    $read_id = $line;
+    $read_id =~ s/^>//;
+
+  } elsif ( ($line =~ /Run Prefix:/) && (! $run_date) && (! $run_prefix) ) {
+    $line =~ s/^.*:\s+//;
+    $run_prefix = $line;
+    $run_date = $run_prefix;
+
+    $run_date =~ s/^R_(\d+_\d+_\d+)_.*$/$1/;
+    $run_date =~ s/_/-/g;
+  } elsif ( ($line =~ /Run Name:/) && (! $run_name) ) {
+    $run_name =~ s/^.*:\s+//;
+    $run_name = $line;
+  } elsif ($line =~ /Region #:/) {
+    $line =~ s/^.*:\s+//;
+    $lane = $line;
+  } elsif ($line =~ /XY Location:/) {
+    $line =~ s/^.*:\s+//;
+    $xy_location = $line;
+        
+  ## Correct with Clip Qual Left, Clip Adap...
+  } elsif ($line =~ /# of Bases:/) {
+    $line =~ s/^.*:\s+//;
+    $seq_length = $line;
+  } elsif ( ($line =~ /Clip Qual Left:/) && (! $recover_mids) ) {
+        $line =~ s/^.*:\s+//;
+      $clip_qual_left = $line;
+  } elsif ($line =~ /Clip Qual Right:/) {
+    $line =~ s/^.*:\s+//;
+    $clip_qual_right = $line;
+
+  #Read in the data
+  } elsif ($line =~ /Flowgram:/) {
+    $line =~ s/^.*:\s+//;
+        $flow = $line;        
+  } elsif ($line =~ /Flow Indexes:/) {
+    $line =~ s/^.*:\s+//;
+        $flow_index = $line;
+  } elsif ($line =~ /Quality Scores:/) {
+    $line =~ s/^.*:\s+//;
+        $qual = $line;
+        $export_read = 1;
+  } elsif ($line =~ /Bases:/) {
+    $line =~ s/^.*:\s+//;
+    $bases = $line;
+  }
+
+  # print "platform = $platform\n";
+  # get run_prefix for 454 from filename
+  unless ($platform eq "ion_torrent")
+  {
+    $my_run_prefix = $inFilename;
+    $my_run_prefix =~ s/..\.sff.*//;
+  }
+  # Get xy location and run_prefix from Ion Torrent read_id
+  elsif ($platform eq "ion_torrent")
+  {
+    if ($line =~ /^>(\w+):(\d+):(\d+)$/)
+    {
+      $xy_location = "$2_$3";
+      $x_coord = $2;
+      $y_coord = $3;
+      $lane    = 1;      
+      $my_run_prefix = $1;
+      $read_id = "$1_$2_$3";      
+    }
+  }
+  # print "URA1: my_run_prefix = $my_run_prefix\n";
+
+  # insert run_prefix into run table
+  if ($my_run_prefix)
+  {
+    # print "URA: my_run_prefix = $my_run_prefix\n";
+    &prep_exec_query($dbh, "UPDATE $runTable SET run_prefix = \"$my_run_prefix\" WHERE run = \"$run\"") unless ($test_only == 1);
+  }  
+
+  #######################################
+  #
+  # Trim the data and write to the files
+  #
+  #######################################
+  if ($export_read) {
+    
+  my $clippedBases;
+  
+  #Parse the read data
+  unless ($platform eq "ion_torrent")
+  {
+    $clippedBases = substr($bases, $clip_qual_left - 1, $clip_qual_right - $clip_qual_left + 1);    
+  }
+  elsif ($platform eq "ion_torrent")
+  {
+    $clippedBases = substr($bases, $clip_qual_left - 1);        
+  }
+  my $clipped_length = length($clippedBases);
+  
+  # print "\n===============================\nOOO: read_id = $read_id\n";
+  # print "URA1: clipped_length = $clipped_length; \$clip_qual_left = $clip_qual_left; clip_qual_right = $clip_qual_right; \nbases = \n$bases;\nclippedBases = \n$clippedBases;\n";
+
+  #Parse the flow data
+  my @flowIndexArray = split(/\s+/, $flow_index);
+  my @allFlowsArray = split(/\s+/, $flow);
+  my $flowString;
+  my $flowIndexString;
+
+  my $j = 1;
+  # print "URA4: \$clip_qual_left = $clip_qual_left; clip_qual_right = $clip_qual_right\n";
+  foreach my $i (@flowIndexArray)
+  {
+    unless ($platform eq "ion_torrent")
+    {
+      if (($j >= $clip_qual_left) && ($j <= $clip_qual_right))
+      {
+        $flowString .= $allFlowsArray[$i-1] . " ";
+        $flowIndexString .= $i . " ";
+      }
+    }
+    elsif ($platform eq "ion_torrent")
+    {
+      if ($j >= $clip_qual_left)
+      {
+        $flowString .= $allFlowsArray[$i-1] . " ";
+        $flowIndexString .= $i . " ";
+        # print "URA60: flowString = $flowString; flowIndexString = $flowIndexString\n";
+      }
+    }
+    else
+    {
+      print "XXX: platform = $platform; clip_qual_left = $clip_qual_left; clip_qual_right = $clip_qual_right. I don't know what to do!!!\n";        
+    }
+    $j++;
+  }
+
+  #Parse the quality data
+  my @allQualsArray = split(/\s+/, $qual);
+  my $qualString;
+  # print "\nUUU1: qual = $qual\n";
+
+  # $n = 1;
+  # print "\nUUU1: qual_line = ";
+  # foreach my $q2 (@allQualsArray3) 
+  # {
+  #   print "$n: $q2\t";
+  #   $n++;
+  # }
+  
+  # my $n = 1;
+  # print "\n======================\nUUU1: qual = ";
+  # foreach my $q2 (@allQualsArray) 
+  # {
+  #   print "$n: $q2\t";
+  #   $n++;
+  # }
+  
+  # print "UUU0: \$qual_line = $qual_line\n";
+  unless ($platform eq "ion_torrent")
+  {
+    $j = 1;
+    foreach my $q (@allQualsArray)
+    {
+      if (($j >= $clip_qual_left) && ($j <= $clip_qual_right))
+      {
+        $qualString .= $q . " ";
+      }        
+      $j++;
+    }
+  }
+  elsif ($platform eq "ion_torrent")
+  {
+    # print "Size: ",scalar @allQualsArray,"\n";
+    
+    # my $qual_length = $#allQualsArray + 1;
+    # print "Size: ",scalar @allQualsArray,"\n";
+    # print "Max Index: ", $#allQualsArray,"\n";
+    my $max_index = $#allQualsArray;
+    # my $qual_length = scalar @allQualsArray;
+    # print "QQQ1: \$#allQualsArray = $#allQualsArray\n";
+    my @allQualsArray2 = @allQualsArray[ $clip_qual_left-1 .. $max_index ];
+    # print "@allQualsArray2\n";
+    # $n = 1;
+    # print "\nUUU1: qual_line = ";
+    # foreach my $q2 (@allQualsArray2) 
+    # {
+    #   print "$n: $q2\t";
+    #   $n++;
+    # }
+    
+    $qualString = join(' ',@allQualsArray2);    
+    # $qualString = join(' ', @allQualsArray);    
+  }
+  else
+  {
+    print "XXX: platform = $platform; clip_qual_left = $clip_qual_left; clip_qual_right = $clip_qual_right. I don't know what to do!!!\n";        
+  }
+  
+
+  # print join("\t", "", $read_id, $clip_qual_left, $clip_qual_right, $clippedBases, $run, $clipped_length, $lane, substr($xy_location, 0, 4), substr($xy_location, 5, 4)) . "\n";
+  # print join("\t", $read_id, $run_id, $lane, uc($clippedBases), substr($xy_location, 0, 4), substr($xy_location, 5, 4)) . "\n";
+  # &prep_exec_query_w_arg($dbh, $read_id, "INSERT IGNORE INTO $readid (read_id) VALUES (?)");
+# todo: uncommented the next  up to "  unless ($platform eq "ion_torrent")"
+  # $insert_readid_h->execute($read_id)    || die "Unable to insert read_id information into table: $readid_table. Error: " . $dbh->errstr . "\n";
+  # $select_readid_id_h->execute($read_id) || die "Unable to select readid_id information from table: $readid_table. Error: " . $dbh->errstr . "\n";
+  # my $readid_id = $select_readid_id_h->fetchrow();  
+ # print "URA: read_id = $read_id";
+  # readid_id = $readid_id\n";
+  
+  # $insert_readid_chimeric_h->execute($readid_id)    || die "Unable to insert readid_id information into table: $read_id_chimeric_table. Error: " . $dbh->errstr . "\n";  
+
+  unless ($platform eq "ion_torrent")
+  {
+    $x_coord = substr($xy_location, 0, 4);
+    $y_coord = substr($xy_location, 5, 4);      
+  }    
+  
+  my $sequence = uc($clippedBases);
+  # ---- insert raw sequence into rawsequence table ----
+  $insert_sequence_h->execute($sequence) || die "Unable to insert sequence into table: $rawsequenceTable. Error: " . $dbh->errstr . "\n";
+  # ---- take_rawsequence_id ---
+  $select_sequence_id_h->execute($sequence) || die "$select_sequence_id. Error: " . $dbh->errstr . "\n";
+  my $rawsequence_id = $select_sequence_id_h->fetchrow();
+
+  print "\nOOO, no sequence_id! \$rawsequence_id = $rawsequence_id\nselect_sequence_id\n\$sequence = $sequence\n\n" unless ($rawsequence_id);
+  
+  print SEQ join("\t", $read_id, $run_id, $lane, $x_coord, $y_coord, $rawsequence_id) . "\n";
+
+  print FLOW join("\t", $read_id, $flowString) . "\n";
+  
+  print QUAL join("\t", $read_id, $qualString) . "\n";
+  
+  print FLOWINDEX join("\t", $read_id, $flowIndexString ) . "\n";
+
+      # Reset the variable to begin collecting new data for the next read
+      $export_read = 0;
+      reset_vars();
+  }
+}
+
+close(SEQ);
+close(FLOW);
+close(QUAL);
+close(FLOWINDEX);
+
+#######################################
+#
+# Load the data from files into the database
+#
+#######################################
+print "Importing raw sequence data...\n";
+
+# Create a hash to load the files into the database
+# OLD my $sqlCmd = "$sqlImportCmd -C -v -L -h $db_host $replace $db_name $file >> $mysqlimportlog";
+# NOTE!!  in the past we had to use the commandline mysqlimport because of undiagnosed intermittent problems with load data local infile, 
+#   but now we need to compress some fields on the fly.  If load data local infile fails, we will need a new method for compressing some
+#   fields while loading.
+
+my %sql_hash;
+
+# $sql_hash{seq}       = "LOAD DATA LOCAL INFILE \'$seqFile\'       INTO TABLE $seqTable (read_id, run_id, lane, \@var1, x_coord, y_coord) SET $sequence_field = compress(\@var1)" ;
+$sql_hash{seq}       = "LOAD DATA LOCAL INFILE \'$seqFile\'       INTO TABLE $seqTable (read_id, run_id, lane, x_coord, y_coord, rawsequence_id)" ;
+$sql_hash{qual}      = "LOAD DATA LOCAL INFILE \'$qualFile\'      INTO TABLE $qualTable (read_id, \@var1) SET $quality_field = compress(\@var1)";
+$sql_hash{flow}      = "LOAD DATA LOCAL INFILE \'$flowFile\'      INTO TABLE $flowTable (read_id, \@var1) SET $flow_field = compress(\@var1)";
+$sql_hash{flowindex} = "LOAD DATA LOCAL INFILE \'$flowIndexFile\' INTO TABLE $flowIndexTable (read_id, \@var1) SET $flowindex_field = compress(\@var1)";
+
+my $sql_hash_table_h;
+
+foreach my $table (keys %sql_hash)
+{
+    if ($verbose_only) 
+    {
+        print "$sql_hash{$table}\n\n";
+
+    } else {
+        ### Load the data
+        # my $sqlCmd = "$sqlImportCmd -C -v -L -h $db_host $replace $db_name $file_hash{$table} >> $mysqlimportlog";
+
+        print LOG "Importing $table data into the database\n\t$sql_hash{$table}\n";
+        &prep_exec_query($dbh, $sql_hash{$table});
+
+        # TODO: need to store load data local infile errors in the log file.
+       # my $sqlErr = system($sqlCmd);
+       # if ($sqlErr) {print LOG "Unable to execute MySQL statement: $sqlCmd.  Error:  $sqlErr (" . (localtime) . ")\n";}
+        # `rm $file_hash{$table}`;
+    }
+} 
+
+
+ system("chgrp g454 $log_filename");
+
+exit;
+########################## SUBROUTINES #######################################
+
+
+#######################################
+#
+# reset_vars
+#
+#######################################
+
+sub reset_vars
+{
+    $read_id     = '';
+    $lane        = 0;
+    $xy_location = '';
+    $x_coord     = '';
+    $y_coord     = '';
+    $seq_length  = 0;
+    if (! $recover_mids) { $clip_qual_left = 0; }
+    $clip_qual_right = 0;
+    $flow        = '';
+    $flow_index  = '';
+    $qual        = '';
+    $bases       = '';
+}

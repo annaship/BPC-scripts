@@ -16,5 +16,5 @@ time usearch -usearch_global ${run}_$reg.unique.fa -gapopen 0E -gapext 0E -uc_al
 
 time grep -P "^H\t" ${run}_$reg.uc.txt | sed -e 's/|.*$//' | awk '{print $9 "\t" $4 "\t" $10 "\t" $8}' | sort -k1,1b -k2,2gr | clustergast_tophit -ignore_terminal_gaps > gast_${run}_$reg.txt
 
-time /usr/local/mysql/bin/mysqlimport -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h newbpcdb2 env454 gast_${run}_$reg.txt
+time /usr/local/mysql/bin/mysqlimport -C -v -L --columns='read_id','refhvr_id','distance','alignment' -h bpcdb1 env454 gast_${run}_$reg.txt
 

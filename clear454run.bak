@@ -1,0 +1,497 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# clear454run: removes incomplete or incorrect run data from env454
+#
+# Author: Susan Huse, shuse@mbl.edu
+#
+# Date: Thu Dec 11 06:38:04 EST 2008
+#
+# Copyright (C) 2008 Marine Biological Laborotory, Woods Hole, MA
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# For a copy of the GNU General Public License, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# or visit http://www.gnu.org/copyleft/gpl.html
+#
+# Keywords: 454 database run env454 clear clean
+# 
+# Assumptions: 
+#
+# Revisions:
+#
+# Programming Notes:
+#
+########################################
+use strict;
+use warnings;
+use Conjbpcdb;
+require 'pipeline_subs.pl'; #subroutines
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+my $script_help = "
+ clear454run - removes a 454 run from the database, either the raw data or 
+               trimmed data, in preparation for a re-import or re-trim.
+\n";
+
+my $usage = "
+   Usage:  clear454run [-raw|-trim] -run run_date
+      ex:  clear454run -trim -run 20081205
+           clear454run -raw -run 20081205
+           clear454run -raw -reg 2 -run 20081205
+           clear454run -raw -keys -run 20081205
+           clear454run -trim -keys -run 20081205
+           clear454run -raw -project HMP_DAWG_Bv5v3
+ Options:  
+           -run the date of the run to be removed
+           -raw | -trim specifies raw data or trimmed data
+           -reg optional plate lane, only available with -raw
+           -keys optionally remove data from run_info, run_primers
+           -gast optionally remove data from gast_concat, gast
+           -taxonomy optionally remove data from tagtax, tax_assignment
+           -project project_name - optionally remove data by given project
+\n";
+
+#######################################
+#
+# Definition statements
+#
+#######################################
+#Commandline parsing
+#my $arg_count = 3;
+my $min_arg_count = 2;
+my $max_arg_count = 4;
+my $verbose = 0;
+
+#Runtime variables
+my $lane      = "";
+my $set_of_tables = "";
+my $run       = "";
+my $runkeys   = 0;
+my $gast      = 0;
+my $taxonomy  = 0;
+my $raw_table = "rawseq";
+# my $trim_table = "trimseq";
+my $trimseq_table = "trimseq";
+my $trimseq_deleted_table = "trimseq_deleted";
+my $trimming_table = "trimming";
+my $do_raw  = 0;
+my $do_trim = 0;
+my $project = "";
+
+my %tables_for = (
+    raw => ["rawqual", "rawflow", "rawflowindex", "rawseq"],
+    trim => ["trimseq", "trimseq_deleted", "trimming", "trimqual", "trimflow", "chimeras", "chimeras_denovo", "chimeras_ref"],
+    runkeys => ["run_info", "run_primer"],
+    gast => ["gast_concat", "gast"],
+    taxonomy => ["tagtax", "tax_assignment"]
+);
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) {
+  print $script_help;
+  print $usage;
+  exit -1;
+} 
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/)) {
+  if ($ARGV[0] =~ /-h/) {
+    print $script_help;
+    print $usage;
+    exit 0;
+  } 
+    elsif ($ARGV[0] eq "-trim") {
+        #if ($set_of_tables) {print "Use either -trim or -raw but not both\n$usage\n"; exit}
+    #$set_of_tables = shift @ARGV;
+        #$set_of_tables =~ s/^-//;
+        $do_trim = 1;
+        shift @ARGV;
+  } 
+    elsif ($ARGV[0] eq "-raw") {
+        #if ($set_of_tables) {print "Use either -trim or -raw but not both\n$usage\n"; exit}
+    #$set_of_tables = shift @ARGV;
+        #$set_of_tables =~ s/^-//;
+        $do_raw = 1;
+        shift @ARGV;
+  } 
+    elsif ($ARGV[0] eq "-reg") {
+        shift @ARGV;
+    $lane = shift @ARGV;
+  } 
+    elsif ($ARGV[0] eq "-run") {
+    shift @ARGV;
+    $run = shift @ARGV;
+  } 
+    elsif ($ARGV[0] eq "-keys") {
+    shift @ARGV;
+    $runkeys = 1;
+  } 
+    elsif ($ARGV[0] eq "-gast") {
+    shift @ARGV;
+    $gast = 1;
+  } 
+    elsif ($ARGV[0] eq "-taxonomy") {
+    shift @ARGV;
+    $taxonomy = 1;
+  } 
+    elsif ($ARGV[0] eq "-v") {
+    $verbose = 1;
+    shift @ARGV;
+  } 
+    elsif ($ARGV[0] eq "-project") {
+      shift @ARGV;
+      $project = shift @ARGV;      
+  } 
+    elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+    print "Unknown commandline flag \"$ARGV[0]\".\n";
+    print $usage;
+    exit -1;
+  }
+}
+
+#######################################
+#
+# Connect to the database
+#
+#######################################
+
+my $db_name = "env454"; 
+my $db_host = "newbpcdb2";
+my $dbh     = &db_connect($db_host, $db_name);
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if ($project)
+{
+  &delete_by_project();
+  print "Deleted everethyng for $project.\n";
+  exit;
+}
+
+if ( (! $run) || ((! $do_trim) && (! $do_raw) && (! $runkeys) && (! $gast) && (! $taxonomy)) ) 
+{
+  print "Incorrect number of arguments.\n";
+  print "$usage\n";
+  exit;
+} 
+
+# if ( ($region) && ($set_of_tables ne "raw") )
+if ( ($lane) && ($do_raw != 1) )
+{
+    print "Option -reg is only available with option -raw\n";
+    print "$usage\n";
+    exit;
+}
+
+if ( ($lane) && ($lane !=1) && ($lane != 2) )
+{
+    print "Valid lanes are 1 or 2.\n";
+    print "$usage\n";
+    exit;
+}
+
+#######################################
+#
+# Get run_ids
+#
+#######################################
+
+my $runTable = "run";
+my $run_id   = &prep_exec_fetch_query($dbh, "SELECT run_id from $runTable where run = $run");
+unless ($run_id) {print "There is no such run date!\n"; exit;}
+
+#######################################
+#
+# Get run_prefix
+#
+#######################################
+
+my $run_prefix   = &prep_exec_fetch_query($dbh, "select run_prefix from $runTable where run = $run");
+# print "HERE111: run_prefix = $run_prefix\n";
+unless ($run_prefix) {print "There is no such run date!\n"; exit;}
+
+#######################################
+#
+# Check what to delete
+#
+#######################################
+
+if ($runkeys) 
+{
+  my $trim_exist = &prep_exec_fetch_query($dbh, "SELECT * FROM $trimseq_table WHERE read_id LIKE '" . $run_prefix . "%' LIMIT 1");
+  print "EEE1: trim_exist = $trim_exist";
+  if ($trim_exist) {print "Please clear the trim tables first\n"; exit;}
+  my $raw_exist = &prep_exec_fetch_query($dbh, "SELECT * FROM $raw_table WHERE read_id LIKE '" . $run_prefix . "%' LIMIT 1");
+  print "EEE2: raw_exist = $raw_exist";
+  if ($raw_exist) {print "Please clear the raw tables first\n"; exit;}
+}
+
+
+#######################################
+#
+# Get read_ids
+#
+#######################################
+
+my $where_read_like = "WHERE read_id like ";
+my $substr_length   = 9; #includes lane characters
+my $lane_where = "";
+my ($get_read_h1, $get_read_h2, $get_read_h3);
+
+if ( ($do_raw) || ($do_trim) )
+{
+    if ($lane) { $lane_where = " and lane= $lane"; }
+    my $read_id1 = "";
+    
+    my $get_read_query1 = "select substring(read_id, 1, $substr_length) from $raw_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
+    # print "URA11: \$get_read_query1 = $get_read_query1\n";
+    $get_read_h1 = $dbh->prepare($get_read_query1);
+    $get_read_h1->execute() or die "Unable to execute SQL statement: \"$get_read_query1\".  Error: " . $get_read_h1->errstr . "\n";
+
+    # if ($get_read_h1 && $get_read_h1->rows < 1) 
+    #    {
+    #      my $a = $get_read_h1->rows;
+    #      print "URA030: Here in if; run_prefix = $run_prefix;get_read_h1 = $get_read_h1; \$get_read_h1->rows = $a\n";
+    #        # nothing in rawseq, check trimseq.  May have cleaned rawseq first
+    #        if ($do_raw) {print "This run is no longer in the raw tables.\n";}
+    #        $do_raw = 0;  # don't do it even if they asked
+    #    
+    #        # rerun the query, but now on trimseq
+    #        my $get_read_query1 = "select substring(read_id, 1, $substr_length) from $trimseq_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
+    #        # print "URA21: \$get_read_query1 = $get_read_query1\n";
+    #        my $get_read_query2 = "select substring(read_id, 1, $substr_length) from $trimseq_deleted_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
+    #        # print "URA22: \$get_read_query2 = $get_read_query2\n";
+    #        my $get_read_query3 = "select substring(read_id, 1, $substr_length) from $trimming_table where run_id = '" . $run_id . "' $lane_where LIMIT 1";
+    #        # print "URA23: \$get_read_query3 = $get_read_query3\n";
+    #        $get_read_h1 = $dbh->prepare($get_read_query1);
+    #        $get_read_h2 = $dbh->prepare($get_read_query2);
+    #        $get_read_h3 = $dbh->prepare($get_read_query3);
+    #        $get_read_h1->execute() or die "Unable to execute SQL statement: \"$get_read_query1\".  Error: " . $get_read_h1->errstr . "\n";
+    #        $get_read_h2->execute() or die "Unable to execute SQL statement: \"$get_read_query2\".  Error: " . $get_read_h2->errstr . "\n";
+    #        $get_read_h3->execute() or die "Unable to execute SQL statement: \"$get_read_query3\".  Error: " . $get_read_h3->errstr . "\n";
+    #        if ($get_read_h1->rows < 1) 
+    #        {
+    #            if ($do_trim) {print "This run is no longer in the trimseq table.\n";}
+    #            $do_trim = 0; # dont' even try
+    #        }
+    #        if ($get_read_h2->rows < 1) 
+    #        {
+    #            if ($do_trim) {print "This run is no longer in the trimseq_deleted table.\n";}
+    #            $do_trim = 0; # dont' even try
+    #        }
+    #        if ($get_read_h3->rows < 1) 
+    #        {
+    #            if ($do_trim) {print "This run is no longer in the trimming table.\n";}
+    #            $do_trim = 0; # dont' even try
+    #        }
+    #    } else {
+      # print "URA3: Here in else; run_prefix = $run_prefix\n";
+        $read_id1 = $get_read_h1->fetchrow();
+        if ($lane) 
+        {
+            $where_read_like .= "'" . $read_id1 . "%'";
+        } else {
+            # $where_read_like .= "'" . substr($read_id1, 0, 7) . "%'";
+            $where_read_like .= "'" . $run_prefix . "%'";            
+        }
+    # }
+}
+
+#######################################
+#
+# Delete from the trim or raw tables
+#
+#######################################
+my @tables_to_clean;
+
+if ($do_raw) { push (@tables_to_clean, @{$tables_for{raw}}); }
+if ($do_trim) { push (@tables_to_clean, @{$tables_for{trim}}); }
+if ($where_read_like eq "WHERE read_id like")
+{
+  $where_read_like .= "'" . $run_prefix . "%'";              
+}
+
+# print "WWW0: where_read_like = $where_read_like\n";
+foreach my $t (@tables_to_clean)
+{
+    my $delete_string = "DELETE FROM $t $where_read_like";
+    # print "QQQ1: $delete_string\n";
+    delete_records($delete_string);
+}
+
+#######################################
+#
+# Delete from the gast or taxonomy tables
+#
+#######################################
+undef @tables_to_clean;
+
+if ($gast) { push (@tables_to_clean, @{$tables_for{gast}}); }
+if ($taxonomy) { push (@tables_to_clean, @{$tables_for{taxonomy}}); }
+foreach my $table_name (@tables_to_clean)
+{
+    my $delete_string = "delete FROM $table_name WHERE read_id like \"$run_prefix%\"";
+    print "$delete_string\n";
+    delete_records($delete_string);
+}
+
+
+#######################################
+#
+# Delete from the runkeys and primers tables
+#
+#######################################
+if ($runkeys) 
+{
+    my $where = "run_id = $run_id";  # don't include the lane when deleting from key tables
+    foreach my $t (@{ $tables_for{runkeys} })
+    {
+        my $delete_string = "DELETE FROM $t WHERE run_id = \"$run_id\" ";
+        # print "$delete_string\n";
+        delete_records($delete_string);
+    }
+}
+
+#$dbh->disconnect;
+
+#######################################
+#
+# Subroutines
+#
+#######################################
+
+sub delete_records
+{
+    my $delete_query = shift;
+    print "$delete_query\n";
+
+    my $delete_query_h = $dbh->prepare($delete_query) or die "Unable to prepare statement: $delete_query. Error: " . $dbh->errstr . "\n";
+    $delete_query_h->execute() or die "Unable to execute SQL statement: $delete_query.  Error: " . $delete_query_h->errstr . "\n";
+}
+
+sub delete_by_project
+{
+    print "III: in delete_by_project, project = $project\n";
+    # 1) select all read_ids for the project from trimseq and trimseq_deleted
+    select_pr_read_ids();
+    # 2) remove everethyng with the read_ids from all tables
+    delete_by_read_id_pr();
+    # 3) remove the project from run_info, project
+    delete_project_info();
+}
+
+sub select_pr_read_ids
+{
+  my $rows_affected;
+  print "Select all read_ids for the project from trimseq and trimseq_deleted\n";
+  my $sql0 = "DROP TABLE IF EXISTS project_read_ids_temp;";
+  my $sql1 = "CREATE TABLE project_read_ids_temp (
+    read_id_id int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    read_id char(15) NOT NULL DEFAULT '',
+    UNIQUE KEY read_id (read_id)
+    );
+  ";
+  
+  my $sql2 = "INSERT IGNORE INTO project_read_ids_temp (read_id)
+    SELECT read_id FROM
+    trimseq JOIN project USING(project_id)
+    WHERE project = \"$project\";
+  ";
+  my $sql3 = "INSERT IGNORE INTO project_read_ids_temp (read_id)
+    SELECT read_id FROM
+    trimseq_deleted JOIN project USING(project_id)
+    WHERE project = \"$project\";
+  ";
+  print "\$sql0 = $sql0\n";
+  print "\$sql1 = $sql1\n";
+  print "\$sql2 = $sql2\n";
+  print "\$sql3 = $sql3\n";
+  $rows_affected = &prep_exec_query($dbh, $sql0);
+  print $rows_affected;
+  $rows_affected = &prep_exec_query($dbh, $sql1);
+  print $rows_affected;
+  $rows_affected = &prep_exec_query($dbh, $sql2);
+  print $rows_affected;
+  $rows_affected = &prep_exec_query($dbh, $sql3);
+  print $rows_affected;
+}
+
+sub delete_by_read_id_pr()
+{
+  my $rows_affected;
+  my $sql = "";
+  foreign_key_check_no();
+  my @table_names_to_clean = (
+    "gast", "gast_concat", "gast_concat_mockcomm", "gast_mockcomm", "rawflow", "rawflowindex", "rawqual", "rawseq", 
+    "readid", "tagtax", "tax_assignment", "trimflow", "trimming", "trimqual", "trimseq "
+  );
+  foreach my $table_name_to_clean (@table_names_to_clean)
+  {
+    $sql = "DELETE FROM $table_name_to_clean 
+      USING $table_name_to_clean
+      JOIN project_read_ids_temp USING(read_id);";
+    print "sql = $sql\n";
+    $rows_affected = $dbh->do($sql);
+    print $rows_affected;
+    print "\n";
+  }
+  foreign_key_check_yes();
+}
+
+sub delete_project_info
+{
+  my $rows_affected;
+  my $sql0 = "DELETE FROM run_info, project
+    USING run_info JOIN project using(project_id)
+    WHERE project = \"$project\";";
+
+  print "sql0 = $sql0\n";    
+  $rows_affected = &prep_exec_query($dbh, $sql0);
+  print $rows_affected;
+  print "\n";
+}
+
+sub foreign_key_check_no
+{
+  my $rows_affected;
+  my $sql0 = 'SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;';
+  my $sql1 = 'SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;';
+  my $sql2 = 'SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE=\'TRADITIONAL\';';
+  $dbh->do($sql0);
+  $dbh->do($sql1);
+  $dbh->do($sql2);
+}
+
+sub foreign_key_check_yes
+{
+  my $rows_affected;
+  my $sql0 = 'SET SQL_MODE=@OLD_SQL_MODE;';
+  my $sql1 = 'SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;';
+  my $sql2 = 'SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;';
+  $dbh->do($sql0);
+  $dbh->do($sql1);
+  $dbh->do($sql2);
+}

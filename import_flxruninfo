@@ -201,7 +201,7 @@ prep_vamps_SQL();
 my ($dbh, $insertContact, $insertContact_h, $insertDataset, $insertDataset_h, $insertNew_run, $insertNew_run_h, $insertPrimer, $insertPrimer_h, $insertProject, $insertProject_h, $insertRun_info, $insertRun_info_h, $insertRun_key, 
   $insertRun_key_h, $insertRun_primer, $insertRun_primer_h, $insertDna_region, $insertDna_region_h, $insertQuant_method, $insertQuant_method_h, $take_contact_id, $take_contact_id_h, $update_vamps_name, $update_vamps_name_h);
 
-$dbh = &db_connect("newbpcdb2", "env454");
+$dbh = &db_connect("bpcdb1", "env454");
 
 prep_env454_SQL();
 

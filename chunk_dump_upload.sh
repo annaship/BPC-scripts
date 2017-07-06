@@ -40,7 +40,7 @@ dbname_from=$7
 dbhost_from=$8
 dbname_from=$9
 
-if ["$dbhost_from" = ""]; then dbhost_from="newbpcdb2"; fi
+if ["$dbhost_from" = ""]; then dbhost_from="bpcdb1"; fi
 if ["$dbname_from" = ""]; then dbname_from="env454"; fi
 # if ["$dbhost_from" = ""]; then dbhost_from="vampsdev"; fi
 # if ["$dbname_from" = ""]; then dbname_from="vamps2"; fi
@@ -72,8 +72,8 @@ get_data()
         SELECT $id_name FROM $source_table_name ORDER BY $id_name \
         LIMIT $from_here, $chunk_size \
         ) AS t USING($id_name)"
-    # echo "time mysql -e \"$query\" -u $user_name -h newbpcdb2 env454 > $out_file"
-    # mysql -e "$query" -u $user_name -h newbpcdb2 env454 > $out_file
+    # echo "time mysql -e \"$query\" -u $user_name -h bpcdb1 env454 > $out_file"
+    # mysql -e "$query" -u $user_name -h bpcdb1 env454 > $out_file
     echo "#! /bin/bash" > $file_name.out_db.$file_number.job.sh
     echo "time mysql -e \"$query\" -u $user_name -h $dbhost_from $dbname_from > $out_file" >> $file_name.out_db.$file_number.job.sh
     chmod u+x $file_name.out_db.$file_number.job.sh

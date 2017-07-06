@@ -1,0 +1,2732 @@
+#!/usr/bin/env perl
+
+#########################################
+#
+# trimflx: trim GS-FLX sequences by removing low quality data and amplification primers
+#
+# Author: Susan Huse, shuse@mbl.edu
+# Date: updated Dec, 2011
+#
+# Keywords: 454 trim edit
+#
+# Assumptions:
+#
+# Revisions:
+#   12/10/11 - queries are changed according to the new db structure (by A. Shipunova).
+#   11/08/08 - SMH subroutining and adding additional comments to the code in preparation for public consumption
+#                  also remove all sequences that should have a distal primer, but it couldn't be found
+#  03/01/08 - SMH removed homopolymer accounting -- we have never used this.
+#   06/22/07 - SMH moved distal primer blastall -E1 to -E2 for blastaall 2.2.16 upgrade
+#
+#   VERSION 6 - adapted for reading either from database or from fasta file
+#               requires exact match to distal primer to keep the sequence
+#
+#   VERSION5 - adapted for cluster, run a mix of forward and reverse together
+#
+#   VERSION4b - read primer and runkey information from database tables
+#               run forward or reverse, with multiple primers
+#
+#   VERSION4 - delete all sequences with N>0
+#              if no distal and < 100, delete
+#              if no distal and > 100, truncate
+#              flag for 3TAG experiment separation
+#              added commandline table specification
+#
+#   VERSION3c -
+#      delete all sequences containing 1 or more Ns
+#      delete_reason may be xy (likely trimmed by hand)
+#
+#  VERSION3b -
+#      added distal primer missing = delete, deleteReason=distal,
+#      deleteReason = proximal (instead of primer) for missing proximal primer
+#      trims the flow and qual tables
+#      option to run on individual blast/fuzznuc files depending on the run
+#              (important because 454 processing pipeline gives different sequence strings
+#              for the same read_id.
+#
+#   VERSION4 - 2009071x
+#            added delete for low quality if avg qual < 30
+#            delete for distal primer if the primer doesn't start correctly
+#                 (we were getting valid fuzzy primers that were fuzzy at the
+#                 beginning, which resulted in a few hanging bases after trim).
+#            writes to a tmp file and then loads up at once, rather than record by record
+#            added check for overtrimming distal if too far from the end
+#
+# Programming Notes:
+#
+########################################
+
+use strict;
+use warnings;
+use Bio::Seq;
+use Bio::SeqIO;
+#use Bio::Tools::Run::StandAloneBlast;
+use String::Approx 'adist';
+use Conjbpcdb;
+use File::Temp qw/ tempfile tempdir /;
+require 'pipeline_subs.pl'; #subroutines
+use Term::ANSIColor qw(:constants);
+use List::Util qw(sum);
+
+#######################################
+# --------- Table of content ---------
+# Set up usage statement
+# Definition statements
+# --- Runtime variables
+# --- changed to match mysqlimport requirements, mysql LOAD DATA LOCAL INFILE throws inconsistent errors
+# Test for commandline arguments
+# Open the output files
+# Parse commandline arguments, ARGV
+# Set up for using a database vs. input files
+#   Load the keys and primers information
+# Read each sequence and trim / test for inclusion
+# Step through each sequence to trim
+# Prep the sequences
+# --- All caps for easy comparison/searching
+# --- Count the number of Ns here, but delete further on,
+#       so sequences can be added back in later
+# Remove the run_key if present
+# --- get the list of keys from the hash
+# --- remove the key
+# --- There should be a runkey, remove it
+# Determine the direction of the read and the type of trim
+# --- If the direction is indeterminate, give it up
+# Trim the proximal primer
+# --- Look for forward primers first, if applicable (B is bidirectional)
+# --- need to expand degenerate primer information (N, Y, W, etc.)
+# --- Look for reverse primers, if applicable
+# --- If you didn't find the primer and you were looking for a primer, then delete
+# Trim the distal primer
+#      trim even if deleted, because the information is valuable
+# --- If sequence length is less than trim length, don't bother checking for the distal primer
+# --- Create the list of distal primers to search for
+# --- Search for an exact match to the distal primer and the FLX adaptor sequences
+# --- Choose the longest trim
+# --- Find any adaptor removed during the trimming
+# --- not always being parsed correctly above.
+# --- Couldn't find it, just delete it.
+# Check a few more delete reasons before finishing
+# --- must have been a primer dimer, no data remaining
+# Assign dataset, project, dna_region
+# Find location of trimmed sequence in original sequence
+#   for trimming qual and flowindex data
+#   before reverse complementing reverse reads
+# --- Truncate the reads to $maxLength if appropriate, always truncate before RC
+# --- Look up the indices
+# --- now reverse complement the sequence if necessary
+# --- Last verbose, then skip writing and upload, if you want qual scores, more the "next", done below
+# Find dupes and write out the trimmed sequences
+#   Trim the quality and flowgram scores as well
+# --- Write out the quality data and averages
+# --- Determine average quality score and filter remaining lowquality reads
+# --- Write out the flowgram data
+# --- Write out the trimmed and deleted sequences data
+# --- Write out the trimmed sequences data
+# --- Insert $fuzzy_match or $exact_found as a distal primer into distal_primer table and get it's id.
+# --- Write out the trimming info
+########################## SUBROUTINES #######################################
+# prep_SQL:
+#         if running off a database, create and prepare the SQL statements
+#         The field names should be changed for databases other than the MBL.
+# load_keys
+#         load the run_keys read from either a database input or a fasta file input
+#         The field names should be changed for databases other than the MBL.
+# load_primers
+#         load the primers for each lane
+#         read from either a database input or a fasta file input
+#         The field names should be changed for databases other than the MBL.
+# get_seqs - step through the mothur unique file and get sequences
+# remove_key
+#        remove the runkey from the sequence
+# get_direction
+#        determine if the read is forward or reverse
+# --- Look up the key and figure out which direction the read should be
+# --- Check for a final reverse complement --
+# --- this happens with Forward (A-adaptor) reads based on reverse amplification, e.g., V5 -> V3
+# trim_proximal
+#        find and remove the proximal primer (if appropriate)
+# --- starts with the exact match to the primer
+# --- Upon request, an offset or shift in primer is passed.
+# --- but only if the position is <=10 bases from the start
+# Take all from primers table for this run
+# --- take all primers for this run
+# --- expand them
+# --- reverse if direction = R
+# take `run_key`, `lane`, direction, `run`, `primer` to connect with ours seqs
+# trim whitespaces in the behinning and end
+#   argument is a string
+# expand_exact_primers
+#   expand the primers list to every possibility
+#   used for proximal and distal primers
+# expand_fuzzy_distal_primers
+#        expand the primers list to the most basic, without Ns
+#        selecting every possibility and running them through BLAST
+#        and fuzznuc, though, is way too slow.
+# trim_exact_distal
+#        find and remove the distal primer (if appropriate)
+#        always check for the B adaptor, too, just in case
+# trim_fuzzy_distal
+#        Use Levenshtein distance on a sliding window
+# get_qual_flow
+#        retrieve the quality values
+# trim_qual_flow
+#        trim the quality sequence
+# calc_avg_qual
+#        calculate the average quality score for the trimmed sequence
+# import_files
+#        load up the SEQ, QUAL, FLOW files and clean them out
+#######################################
+
+#######################################
+#
+# Set up usage statement
+#
+#######################################
+
+my $usage =
+" Usage:   trimflx <-flags>
+           -r    name of the run e.g., 2006dec28
+           -ri   the run_id
+           -platform : specify if not 454, there is a different process for 'ion_torrent'
+           -d    database name to use rather than flatfile input [default: env454]
+           -l    minimum length for a sequence to be maintained [default: 50]
+           -ml   maximum length, trimmed sequences are truncated to this length
+           -nd   do not require the presence of distal primer [default: require distal]
+           -nf   do not check for appropriate length in flow space [default: check flowcount]
+           -md   maximum number of mismatches to allow in the distal primer [default: 3]
+           -f    fasta file to use as input rather than database
+           -p    primer file for trimming fasta file
+           -fp   prefix of an interim fasta file containing the raw sequences to be trimmed
+           -m    metadata file for trimming fasta file
+           -i    input table of untrimmed sequences, [default: rawseq]
+           -ot    export table for trimmed not deleted data [default: trimseq]
+           -od    export table for trimmed deleted data [default: trimseq_deleted]
+           -or    export table for trimming info data [default: trimming]
+           -if   input table of untrimmed flowgrams, [default: rawflow]
+           -of   export table for trimmed flowgrams [default: trimflow]
+           -iq   input table of untrimmed quality scores, [default: rawqual]
+           -oq   export table for trimmed quality scores [default: trimqual]
+           -k    keys table for trimming parameters, [default: run_info]
+           -w    where statement for select from input table,
+                 this is in addition to the run  e.g., -w \"where lane=1\"
+\n";
+
+my $scripthelp = "
+ trimflx - trims raw sequences
+             1) searches for an exact match to proximal primer at 5' end
+             2) removes all sequences that don't have an exact match at the 5' end
+             3) looks for an exact match to the distal primer at the 3' end.
+             4) looks for an inexact match (up to 3 changes) to distal primer at the 3' end.
+                If no distal primer found, remove the sequence (unless using -nd flag).
+             5) removes any sequences shorter than minLength.
+             6) removes any sequences with more than one N.
+             7) removes sequences with average quality < 30
+             8) stores all trimmed sequences along with trim and delete information
+             9) stores the read orientation, whether an exact match is found
+                to the reverse complement of the other primer, how many N's
+                remain in the sequence, and sequence length.
+            10) trims the flowgram and quality records to match the trimmed sequences
+\n\n";
+#######################################
+#
+# Definition statements
+#
+#######################################
+
+#Runtime variables
+my $useDB            = 1;
+my $db_name          = "env454";
+my $db_host          = "newbpcdb2";
+
+my $run              = "";
+my $run_id           = "";
+# my $inSeqTable       = "rawseq_copy";
+# my $inFlowTable      = "rawflow_copy";
+# my $inQualTable      = "rawqual_copy";
+# my $outTrimseqTable  = "trimseq_copy";
+# my $outTrimseq_deletedTable = "trimseq_deleted_copy";
+# my $outTrimmingTable = "trimming_copy";
+# my $outFlowTable     = "trimflow_copy";
+# my $outQualTable     = "trimqual_copy";
+# my $distal_primerTable  = "distal_primer_copy";
+
+my $inSeqTable       = "rawseq";
+my $inFlowTable      = "rawflow";
+my $inQualTable      = "rawqual";
+my $outTrimseqTable  = "trimseq";
+my $outTrimseq_deletedTable = "trimseq_deleted";
+my $outTrimmingTable = "trimming";
+my $outFlowTable     = "trimflow";
+my $outQualTable     = "trimqual";
+my $distal_primerTable  = "distal_primer";
+
+my $trimsequenceTable = "trimsequence";   
+my $rawsequenceTable  = "rawsequence";   
+
+my $datasetTable     = "dataset";
+my $keysTable        = my $run_infoTable = "run_info";
+my $projectTable     = "project";
+my $runTable         = "run";
+my $run_keyTable     = "run_key";
+my $dna_regionTable  = "dna_region";
+my $deleteReasonTable = "delete_reason";
+
+my $primerSeqTable  = "primer";
+my $run_primerTable = "run_primer";
+# my $sourceTable     = "source";
+
+my $platform        = "454";
+my $run_field       = "run";
+my $lane_field      = "lane";
+my $read_field      = "read_id";
+my $sequence_field  = "sequence_comp";
+my $flow_field      = "flow_comp";
+my $quality_field   = "quality_comp";
+
+my $tmpDir          = "/usr/local/tmp/";
+my $primer_name     = "";
+my $p_offset        = 0;
+my %p_name_seq      = ();
+my %p_name_seq_all  = ();
+my %primer_info     = ();
+
+# changed to match mysqlimport requirements, mysql LOAD DATA LOCAL INFILE throws inconsistent errors
+my ( $trimseq_fh, $trimseq_filename )   = tempfile( SUFFIX => '.trimseq', DIR => $tmpDir );
+my ( $trimseq_deleted_fh, $trimseq_deleted_filename ) = tempfile( SUFFIX => '.trimseq_deleted', DIR => $tmpDir );
+my ( $trimming_fh, $trimming_filename ) = tempfile( SUFFIX => '.trimming', DIR => $tmpDir );
+my ( $flow_fh, $flow_filename )         = tempfile( SUFFIX => '.flow', DIR => $tmpDir );
+my ( $qual_fh, $qual_filename )         = tempfile( SUFFIX => '.qual', DIR => $tmpDir );
+
+my $fasta_prefix      = "rawseq";  # prefix for .fa, unique.fa, .names
+my $fastaFile         = "";
+my $metadataFile      = "";
+my $primersFile       = "";
+my $trimmingFile      = "";
+#my $minLength        = 50;
+my $minLength;
+my $maxLength          = 0;  # NOT YET CODED, 200 is for bac v6, not eukv9 or dutchv6
+my $requireDistal      = 1;
+my $checkFlowCounts    = 0;
+my $final_revcmp       = 0;  # for forward reads that are amplified 3' to 5' of the rRNA, e.g., V5->V3
+#my $numFlows          = 168; # number of flows in a kit (using short for now)
+my $numFlows           = 400; # number of flows in a long kit
+my $ti_numFlows        = 800;
+my $flowBuffer         = 36;   #Need to include 45 for A-adaptor + Key sequence, 45 for B-adaptor, and 36 for distal primer
+my $reverseComplement  = 0;
+my $deletePrevious     = 0;
+my $maxN               = 0; #maximum number of N's that are acceptable in the sequence
+my $whereSQL           = "";
+my $limit              = "";
+my $first_row          = -1;
+my $num_rows           = -1;
+my $verbose            = 0;
+my $verbose_only       = 0;
+my $logFilename        = "trimflx.log";
+#my $machine           = 'flx'; # is a regular flx run (gs20, flx, ti)
+my $machine            = 'ti'; # is a regular flx run (gs20, flx, ti)
+my %trims; # trim type, either distal or anchor
+my %trim_lengths; # the expected length of trimmed sequence and the minimum length to keep
+my $max_distance       = 3;
+my $distal_from_end    = 12;
+my $trim_type          = "";
+my $proximalPrimer;
+my $Aadaptor          = "GCCTCCCTCGCGCCATCAG";
+my $rcAadaptor        = "CTGATGGCGCGAGGGAGGC";
+my $Badaptor          = "GCCTTGCCAGCCCGCTCAG";
+my $rcBadaptor        = "CTGAGCGGGCTGGCAAGGC";
+
+my $ti_Aadaptor       = "CCATCTCATCCCTGCGTGTCTCCGACTCAG";
+my $ti_rcAadaptor     = "CTGAGTCGGAGACACGCAGGGATGAGATGG";
+my $ti_Badaptor       = "CCTATCCCCTGTGTGCCTTGGCAGTCTCAG";
+my $ti_rcBadaptor     = "CTGAGACTGCCAAGGCACACAGGGGATAGG";
+
+###
+### SUE need to put data into the database rather than hardcoding it here!!
+###
+#%trim_lengths = (
+#    v6 => [60, 12, 50, "distal"],
+#    v6v4 => [482, 50, 400, "internal"],
+#    v3v5 => [439, 50, 375, "internal"]
+#    );
+# 0: anchor begin -- where to start looking for an internal anchor (if distal, doesn't really matter)
+# 1: anchor end -- where to stop looking for an internal anchor, set to -1 for distal trimming
+# 2: minimum length -- delete if sequence is shorter than this length
+# 3: trim type is it looking internal = inside for an anchor or distal = at the end
+%trim_lengths = (
+    v3 => [110, -1, 110, "distal"],
+    v4 => [112, -1, 112, "distal"],
+    v6 => [50, -1, 50, "distal"],
+    v9 => [70, -1, 70, "distal"],
+    "ITS1" => [400, -1, 170, "distal"],
+    v6v4 => [420, 525, 400, "internal"],
+    v6v4a => [325, 425, 325, "internal"],
+    v3v5 => [375, 450, 350, "internal"],
+    v4v5 => [0, -1, 350, "distal"],    
+    v4v6 => [350, 420, 350, "internal"]
+    );
+    
+
+#######################################
+#
+# Test for commandline arguments
+#
+#######################################
+
+if (! $ARGV[0] ) {
+  print $scripthelp;
+  print $usage;
+  print "exit N1\n"; exit -1;
+}
+my $trimflx_cmd = join(" ", $0, @ARGV);
+
+while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
+{
+  if ($ARGV[0] =~ /-h/) {
+    print $scripthelp;
+    print $usage;
+    print "exit N2\n"; exit 0;
+  } elsif ($ARGV[0] eq "-d") {
+    shift @ARGV;
+    $useDB = 1;
+    if ($ARGV[0] !~ /^-/)
+    {
+      $db_name = shift @ARGV;
+    }
+  } elsif ($ARGV[0] eq "-f") {
+    shift @ARGV;
+    $fastaFile = shift @ARGV;
+    $useDB = 0;
+  } elsif ($ARGV[0] eq "-fp") {
+    shift @ARGV;
+    $fasta_prefix = shift @ARGV;
+  } elsif ($ARGV[0] eq "-m") {
+    shift @ARGV;
+    $metadataFile = shift @ARGV;
+  } elsif ($ARGV[0] eq "-l") {
+    shift @ARGV;
+    $minLength = shift @ARGV;
+  } elsif ($ARGV[0] eq "-ml") {
+    shift @ARGV;
+    $maxLength = shift @ARGV;
+  } elsif ($ARGV[0] eq "-nd") {
+    shift @ARGV;
+    $requireDistal = 0;
+  } elsif ($ARGV[0] eq "-nf") {
+    shift @ARGV;
+    $checkFlowCounts = 0;
+  } elsif ($ARGV[0] eq "-md") {
+    shift @ARGV;
+    $max_distance = 0;
+  } elsif ($ARGV[0] eq "-p") {
+    shift @ARGV;
+    $primersFile = shift @ARGV;
+  } elsif ($ARGV[0] eq "-i") {
+    shift @ARGV;
+    $inSeqTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-ot") {
+    shift @ARGV;
+    $outTrimseqTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-od") {
+    shift @ARGV;
+    $outTrimseq_deletedTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-or") {
+    shift @ARGV;
+    $outTrimmingTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-iq") {
+    shift @ARGV;
+    $inQualTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-oq") {
+    shift @ARGV;
+    $outQualTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-if") {
+    shift @ARGV;
+    $inFlowTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-of") {
+    shift @ARGV;
+    $outFlowTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-k") {
+    shift @ARGV;
+    $keysTable = shift @ARGV;
+  } elsif ($ARGV[0] eq "-w") {
+    shift @ARGV;
+    $whereSQL = " " . $ARGV[0];
+    shift @ARGV;
+  } elsif ($ARGV[0] eq "-r") {
+    shift @ARGV;
+    $run = shift @ARGV;
+  } elsif ($ARGV[0] eq "-ri") {
+    shift @ARGV;
+    $run_id = shift @ARGV;
+  } elsif ($ARGV[0] eq "-v") {
+    shift @ARGV;
+    $verbose=1;
+  } elsif ($ARGV[0] eq "-vo") {
+    shift @ARGV;
+    $verbose=1;
+        $verbose_only = 1;
+  } elsif ($ARGV[0] eq "-limit") {
+    shift @ARGV;
+        ($first_row, $num_rows) = split(/,/, shift @ARGV);
+	} elsif ($ARGV[0] eq "-platform") {
+		shift @ARGV;
+		$platform = shift @ARGV;	
+  } elsif ($ARGV[0] =~ /^-/) { #unknown parameter, just get rid of it
+    print "Unknown commandline argument: $ARGV[0]\n";
+    shift @ARGV;
+  }
+}
+my $today = `date '+%Y-%m-%d'`;
+chomp($today);
+my $minAvgQual;
+unless ($platform eq "ion_torrent")
+{
+  $minAvgQual         = 30;
+}
+elsif ($platform eq "ion_torrent")
+{
+  # average quality threshold
+  $minAvgQual         = 23;
+  # $minAvgQual         = 20;
+}
+else
+{
+  print "What kind of platform is it?\n"; exit 1;
+}
+
+# print "URA0: \$minAvgQual = $minAvgQual; platform = $platform\n";
+
+my $dbh = &db_connect($db_host, $db_name);
+
+#######################################
+#
+# Open the output files
+#
+#######################################
+#my $rmError = system("rm -f $logFilename");
+#if ($rmError) {warn "Unable to refresh $logFilename file.  print "exit N"; exiting.\n"; print "exit N"; exit -1}
+open(LOG, ">>$logFilename");
+
+unless ($run_id)
+{
+  print "URA0: taking run_id from within trimflx\n";
+  print LOG "URA0: taking run_id from within trimflx\n";
+  $run_id = &prep_exec_fetch_query($dbh, "SELECT run_id from $runTable where run='" . $run ."'");
+}
+
+
+# For some reason the TEMPLATE in the temp file creation does not seem to be working, so
+# just be sure that the temp files begin with the table name otherwise the mysqlimport will fail.
+
+my $new_prefix = "";
+
+if ($trimseq_filename !~ /$outTrimseqTable/)
+{
+    $new_prefix = $tmpDir . $outTrimseqTable . ".";
+    $trimseq_filename =~ s/$tmpDir/$new_prefix/;
+}
+if ($trimseq_deleted_filename !~ /$outTrimseq_deletedTable/)
+{
+    $new_prefix = $tmpDir . $outTrimseq_deletedTable . ".";
+    $trimseq_deleted_filename =~ s/$tmpDir/$new_prefix/;
+}
+if ($trimming_filename !~ /$outTrimmingTable/)
+{
+    $new_prefix = $tmpDir . $outTrimmingTable . ".";
+    $trimming_filename =~ s/$tmpDir/$new_prefix/;
+}
+if ($flow_filename !~ /$outFlowTable/)
+{
+    $new_prefix = $tmpDir . $outFlowTable . ".";
+    $flow_filename =~ s/$tmpDir/$new_prefix/;
+}
+
+if ($qual_filename !~ /$outQualTable/)
+{
+    $new_prefix = $tmpDir . $outQualTable . ".";
+    $qual_filename =~ s/$tmpDir/$new_prefix/;
+}
+
+open(TRIMSEQ, ">$trimseq_filename")   || die "Unable to open output sequence file, $trimseq_filename, for writing.  print \"exit N3\"; exiting...\n";
+open(TRIMSEQ_DELETED, ">$trimseq_deleted_filename") || die "Unable to open output sequence file, $trimseq_deleted_filename, for writing.  print \"exit N\"; exiting...\n";
+open(TRIMMING, ">$trimming_filename") || die "Unable to open output sequence file, $trimming_filename, for writing.  print \"exit N4\"; exiting...\n";
+open(FLOW, ">$flow_filename")         || die "Unable to open output flowgram file, $flow_filename, for writing.  print \"exit N5\"; exiting...\n";
+open(QUAL, ">$qual_filename")         || die "Unable to open output quality file, $qual_filename, for writing.  print \"exit N6\"; exiting...\n";
+print LOG "$trimflx_cmd\n";
+print LOG "Using output files: $trimseq_filename, $trimseq_deleted_filename, $trimming_filename, $flow_filename, $qual_filename\n";
+
+
+#######################################
+#
+# Parse commandline arguments, ARGV
+#
+#######################################
+
+if ( (! $db_name) && (! $fastaFile) )
+{
+  print "Incorrect number of arguments, requires a database or fasta file name.\n";
+  print "$usage\n";
+  print "exit N7\n"; exit;
+}
+
+if ( ($fastaFile) && ( (! $metadataFile) || (! $primersFile) ) )
+{
+  print "Fasta file trimming requires a metadata file and a primers file.\n";
+  print "$usage\n";
+  print "exit N8\n"; exit;
+}
+
+if ( ($useDB) && ( ($metadataFile) || ($primersFile) ) )
+{
+  print "Database trimming requires metadata and primer information to be in the database.\n";
+  print "$usage\n";
+  print "exit N9\n"; exit;
+}
+
+if ( ($fastaFile) && ( (! -f $fastaFile) || (! -f $metadataFile) || (! -f $primersFile) ) )
+{
+  print "Unable to locate all input files: $fastaFile, $metadataFile, $primersFile.\n";
+  print "$usage\n";
+  print "exit N10\n"; exit;
+}
+
+if ($whereSQL)
+{
+  $whereSQL =~ s/WHERE//i;
+  $whereSQL = "WHERE ( $whereSQL ) ";
+  if ($run) { $whereSQL .= "AND run='" . $run . "'"; }
+} else {
+  if ($run) { $whereSQL = "WHERE run='" . $run . "'"; }
+}
+
+if ($inFlowTable eq "null") {$inFlowTable="";}
+if ($inQualTable eq "null") {$inQualTable="";}
+#
+## SUE
+## Clean this up!!!
+#
+if ($machine eq "ti")
+{
+    $Aadaptor = $ti_Aadaptor; $rcAadaptor = $ti_rcAadaptor;
+    $Badaptor = $ti_Badaptor; $rcBadaptor = $ti_rcBadaptor;
+    $numFlows = $ti_numFlows;
+}
+
+#######################################
+#
+# Set up for using a database vs. input files
+# Load the keys and primers information
+#
+#######################################
+
+my ($dataset_id_sql, $dataset_id_prep, $dna_region_id_sql, $dna_region_id_prep, $run_key_id_sql, $run_key_id_prep, $delete_reason_id_sql, $delete_reason_id_prep, $prox_primer_id_sql, $prox_primer_id_prep, $project_id_sql, $project_id_prep, 
+  $insert_distal_primer_h, $select_distal_primer_id_h, $selectKeysSQL, $selectKeys_h, $selectPrimersSQL, $selectPrimers_h, $selectDistinctRawSQL, $selectDistinctRaw_h, $selectRawDupesSQL, 
+  $selectRawDupes_h, $selectFlowSQL, $selectFlow_h, $selectQualSQL, $selectQual_h, $insertTrimSQL, $insertTrim_h, $insertTrimFlowSQL, $insertTrimFlow_h, $insertTrimQualSQL, $insertTrimQual_h, $select_orig_seq_h,
+  $insert_sequence_h, $select_sequence_id_h);
+my (%run_keys, %primerSeqs, %primerNames, %projects, %datasets, %seqDirs, %dna_regions, %trim );
+
+if ($useDB)
+{
+  prep_SQL();
+}
+
+load_keys();
+
+# for my $lane ( keys %run_keys )
+# {
+#   print "\nSSS0: lane = $lane\n";
+#   for my $run ( keys %{$run_keys{$lane}} )
+#   {
+#     print "\nSSS1: run = $run\n";
+#     print BOLD, BLUE, join(", ", @{$run_keys{$lane}{$run}}), RESET;
+#   }
+# }
+# load_primers();
+
+get_all_run_primers();
+
+# for my $primer_name ( keys %p_name_seq_all )
+# {
+#   print "\nUUUUT: primer_name = $primer_name\n";
+#   for my $orig_p_direction ( keys %{$p_name_seq_all{$primer_name}} )
+#   {
+#     print "\nUUUUT: orig_p_direction = $orig_p_direction\n";
+#     for my $current_p_direction ( keys %{$p_name_seq_all{$primer_name}{$orig_p_direction}} )
+#     {
+#       print "current_p_direction = $current_p_direction\n \$p_name_seq_all{".$primer_name."}{".$orig_p_direction."}{".$current_p_direction."}} = p_seq: ";
+#       print BOLD, BLUE, join(", ", @{$p_name_seq_all{$primer_name}{$orig_p_direction}{$current_p_direction}}), RESET;
+#       print "\n";
+#     }
+#   }
+# }
+
+get_run_primer_info();
+# 
+# for my $run_key ( keys %primer_info )
+# {
+#   print "TTT1: run_key = $run_key\n";
+#   for my $lane ( keys %{$primer_info{$run_key}} )
+#   {
+#     print "TTT2: lane = $lane\n";
+#     for my $run ( keys %{$primer_info{$run_key}{$lane}} )
+#     {
+#       print "TTT3: run = $run\n";
+#       # print BOLD, GREEN, "primer_name = $primer_info{$run_key}{$lane}{$run}\n", RESET;
+#       print BOLD, GREEN, '@{$primer_info{'.$run_key.'}{'.$lane.'}{'.$run."}} = ". join (", ", @{$primer_info{$run_key}{$lane}{$run}})."\n", RESET;
+#       print BOLD, GREEN, "primer_name = ". join (", ", @{$primer_info{$run_key}{$lane}{$run}})."\n", RESET;
+#     }
+#   }
+# }
+
+
+
+#######################################
+#
+# Read each sequence and trim / test for inclusion
+#
+#######################################
+my %seqHash;
+
+# Get all untrimmed data
+#my $seqArrayRef = get_seqs();
+
+my ($seqs_ref, $dupe_ref) = get_seqs();
+
+my %sequences = %{$seqs_ref};
+my %dupes     = %{$dupe_ref};
+
+# Step through each sequence to trim
+#foreach my $row (@$seqArrayRef)
+#foreach (my ($seq, $lane, $id, $readcnt) = keys %seqHash;
+
+foreach my $id (keys %sequences)
+{
+  #my ($seq, $run, $lane, $id, $readcnt) = @$row;
+  # print join (", ", @{ $sequences{$id} })."\n";
+  my ($seq, $run, $lane) = @{ $sequences{$id} };
+
+  if ($verbose) {print "\n\nNext Read:\t" . join("\t", $id, $run, $lane, $seq) . "\n"; }
+  # print "URRA6: Next Read:\t" . join("\t", $id, $run, $lane, $seq) . "\n";
+  # print "URRA5: Next Read:\t id = $id, run = $run, lane = $lane,\n seq = $seq \n";
+  my $barcode = "";
+  my $countN = 0;
+  my $dataset = "";
+  my $dataset_id = "";
+  my $deleteReason="";
+  my $delete_reason_id="";
+  my $deleted = 0;
+  my $distal_primer = "";
+  my $distal_primer_id = "";
+  my $exactLeft = 0;
+  my $orientation = 0;
+  my $project = "";
+  my $project_id = "";
+  my $prox_primer_id = 0;
+  my $rawSeq = $seq;
+  my $run_key_id = "";
+  my $run_key = "";
+  my $seqDir = 0;
+  my $seqLength = 0;
+  my $dna_region = "";
+  my $dna_region_id = "";
+
+  #print "$seq, $lane, $id, $readcnt\n";
+  #Vif ($verbose) {print "$id:\tlane $lane, read count $readcnt, $seq\n";}
+
+  #########################################
+  #
+  # Prep the sequences
+  #
+  #########################################
+
+  # All caps for easy comparison/searching
+  $seq =~ tr/a-z/A-Z/;
+  #print "Init: $seq\t";
+
+  # Count the number of Ns here, but delete further on,
+  # so sequences can be added back in later
+  my $N = $seq;
+  $countN = $N =~ tr/N/N/;
+  #print "CountN: $N\n";
+
+  #########################################
+  #
+  # Remove the run_key if present
+  #
+  #########################################
+
+  # get the list of keys from the hash
+  my @keysArray;
+  if ( (exists $run_keys{$lane}) && (exists $run_keys{$lane}{$run}) )
+  {
+    @keysArray = @{$run_keys{$lane}{$run}};
+  } else {
+    print LOG "Error, no keys found for run $run and lane $lane\n";
+  }
+  if ( (exists $run_keys{0}) && (exists $run_keys{0}{$run}) && (defined @{$run_keys{0}{$run}})) {push (@keysArray, @{$run_keys{0}{$run}}); }
+    #if ($verbose_only) {print "Keys array: " . join (", ", @keysArray) . "\n";}
+
+  # remove the key
+  if (scalar @keysArray)
+  {
+    # There should be a runkey, remove it
+    ($barcode, $seq) = remove_key(\@keysArray, $seq);
+    # print "URA51: runkey = $barcode\n\$seq = $seq\n\n";
+  }
+  if ( (scalar @keysArray) && (! $barcode) )
+  {
+      $deleted = 1;
+      $deleteReason = "key";
+  }
+    #########################################
+    #
+    # Determine the direction of the read and the type of trim
+    #
+    #########################################
+    #my $svar = $dna_regions{$barcode}{$lane}{$run} ;
+    #if ( (! $dna_regions{$barcode}) || (! $dna_regions{$barcode}{$lane} ) || if $dna_regions{$barcode}{$lane}{$run}) )
+    #print "dna_region: $svar\n"; print "exit N"; exit;
+  if (! $deleted)
+  {
+    $trim_type = $trim_lengths{ $dna_regions{$barcode}{$lane}{$run} }[3];
+    #$trim_type = $trims{$barcode}{$lane}{$run};
+    #V if ($verbose){print "Trim type: $trim_type\n";}
+    $seqDir = get_direction($barcode, $lane, $run);
+  }
+
+  # If the direction is indeterminate, give it up
+  if ( (! $deleted)  && (! $seqDir) )
+  {
+      #Vif ($verbose) {print LOG "No sequencing direction specified for read $id.\n";}
+      $deleted      = 1;
+      $deleteReason = "unknown direction";
+  }
+  #print "$rawSeq, $barcode, $deleted, $seqDir, $seq\n";
+
+  #########################################
+  #
+  # Trim the proximal primer
+  #
+  #########################################
+  my $p_offset = 0;
+  my $offset = 0;
+  my $primerSeq = "";
+
+  if (! $deleted)
+  {
+    $exactLeft = 0;
+    $primer_name = "";
+    # Look for forward primers first, if applicable (B is bidirectional)
+    my @tmpProximals;
+    my @forwardProximals;
+
+    #   tests:
+    # 1) $seqDir = F
+    # 2) $seqDir = R
+    # 3) $seqDir = B
+    # $seqDir = "B";
+    if ( ($seqDir eq "F") || ($seqDir eq "B") )
+    {
+      my $current_seq_dir = "F";
+
+      # get primer name for this seq
+
+      PRIMER_NAMES_F: foreach my $p_name (@{$primer_info{$barcode}{$lane}{$run}})
+      {
+        # print BOLD, GREEN, "p_name = $p_name\n", RESET;
+        # if ((defined @{$p_name_seq_all{$p_name}{$current_seq_dir}{$current_seq_dir}}) && (defined @{$p_name_seq_all{$p_name}{$current_seq_dir}{"F"}}))
+        # {
+        #  print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{'.$current_seq_dir.'}{"F"} = '.join(", ", @{$p_name_seq_all{$p_name}{$current_seq_dir}{"F"}})."\n", RESET;
+        # }
+        # if (defined @{$p_name_seq_all{$p_name}{"F"}{$current_seq_dir}})
+        # {
+        #  print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"F"}{"F"} = '.join(", ", @{$p_name_seq_all{$p_name}{"F"}{"F"}})."\n", RESET;
+        #  print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"F"}{"R"} = '.join(", ", @{$p_name_seq_all{$p_name}{"F"}{"R"}})."\n", RESET;
+        #  # print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"R"}{"F"} = '.join(", ", @{$p_name_seq_all{$p_name}{"R"}{"F"}})."\n", RESET;
+        #  # print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"R"}{"R"} = '.join(", ", @{$p_name_seq_all{$p_name}{"R"}{"R"}})."\n", RESET;
+        # }
+         ($exactLeft, $offset, $seq) = trim_proximal_new($p_name, $seq, $current_seq_dir);
+
+        if ($exactLeft)
+        {
+          $orientation = "+";
+          $primer_name = $p_name;
+          if ($offset)
+          {
+            # $primer_name = "offset $p_name";
+            # $primer_name = $p_name;
+            $p_offset = 1;
+            # print "PPP10: p_offset = $p_offset; primer_name = $primer_name\n";
+            
+          }
+          last PRIMER_NAMES_F;
+        }
+        # primer_name
+      }
+
+      # primer_name
+    }
+
+    # Look for reverse primers, if applicable
+    if ( (! $exactLeft) && ( ($seqDir eq "R") || ($seqDir eq "B") ) )
+    {
+      my $current_seq_dir = "R";
+
+      # foreach my $p_name (@{$primer_info{$barcode}{$lane}{$run}})
+
+      PRIMER_NAMES_R: foreach my $p_name (@{$primer_info{$barcode}{$lane}{$run}})
+      {
+        # print BOLD, GREEN, "p_name = $p_name\n", RESET;
+        # if ((defined @{$p_name_seq_all{$p_name}{$current_seq_dir}{$current_seq_dir}}) && (defined @{$p_name_seq_all{$p_name}{$current_seq_dir}{"F"}}))
+       # {
+       #   print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{'.$current_seq_dir.'}{"F"} = '.join(", ", @{$p_name_seq_all{$p_name}{$current_seq_dir}{"F"}})."\n", RESET;
+       # }
+       # if (defined @{$p_name_seq_all{$p_name}{"F"}{$current_seq_dir}})
+       # {
+       #   print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"F"}{"F"} = '.join(", ", @{$p_name_seq_all{$p_name}{"F"}{"F"}})."\n", RESET;
+       #   print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"F"}{"R"} = '.join(", ", @{$p_name_seq_all{$p_name}{"F"}{"R"}})."\n", RESET;
+       #   print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"R"}{"F"} = '.join(", ", @{$p_name_seq_all{$p_name}{"R"}{"F"}})."\n", RESET;
+       #   print BOLD, YELLOW, 'p_name_seq_all{'.$p_name.'}{"R"}{"R"} = '.join(", ", @{$p_name_seq_all{$p_name}{"R"}{"R"}})."\n", RESET;
+       # }
+
+        ($exactLeft, $offset, $seq) = trim_proximal_new($p_name, $seq, $current_seq_dir);
+
+        if ($exactLeft)
+        {
+          $orientation = "-";
+          $primer_name = $p_name;
+          if ($offset) {
+            # $primer_name = $p_name;
+            $p_offset = 1;
+            # print "PPP11: p_offset = $p_offset\n";
+            
+          }
+          last PRIMER_NAMES_R;
+        }
+        # primer_name
+      }
+
+      # primer_name
+    }
+    # If you didn't find the primer and you were looking for a primer, then delete
+    # ASK SUE how to change:    if ( (! $exactLeft) && ( (scalar @forwardProximals) + (scalar @reverseProximals) > 0) )
+    if ( ! $exactLeft )
+    {
+      $deleted = 1;
+      if (! $deleteReason) { $deleteReason = "proximal"; }
+      $prox_primer_id_prep->execute("") || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+      $prox_primer_id = $prox_primer_id_prep->fetchrow();
+      # unless ($prox_primer_id) {print "URA51: deleteReason = proximal; Read:\t id = $id, run = $run, lane = $lane,\n seq = $seq \n";}
+      # print LOG "PPP19: prox_primer_id = $prox_primer_id\n";
+      
+    }
+    elsif ( $exactLeft )
+    {
+      # primer_name = offset 967F-UC12; 
+      if ($primer_name =~ /offset/) 
+      {
+        $primer_name =~ s/offset //;   
+        $p_offset = 1; 
+        # print "PPP12: p_offset = $p_offset\n";        
+      }
+      $prox_primer_id_prep->execute($primer_name) || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+      $prox_primer_id = $prox_primer_id_prep->fetchrow();
+      # unless ($prox_primer_id) {print "URA52: exactLeft = $exactLeft; primer_name = $primer_name; Read: id = $id, run = $run, lane = $lane,\n seq = $seq \n";}
+      # print LOG "PPP13: $ prox_primer_id = $prox_primer_id\n";
+      
+    }
+    if ($verbose) {print "ID: $id,  \$prox_primer_id =  $prox_primer_id; Key: $barcode, Dir: $seqDir, Prox: $exactLeft, Orient: $orientation, DelReason: $deleteReason,\n\tRaw: $rawSeq\n\n";}
+  }
+  # elsif ($deleted)
+  else
+  {
+    $prox_primer_id_prep->execute("") || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+    $prox_primer_id = $prox_primer_id_prep->fetchrow();
+    # unless ($prox_primer_id) {print "URA5: was deleted; Read:\t id = $id, run = $run, lane = $lane,\n seq = $seq \n";}
+    # print LOG "PPP14: prox_primer_id = $prox_primer_id\n";
+  }
+
+    # print "PPP1: prox_primer_id = $prox_primer_id\n";
+    #########################################
+    #
+    # Trim the distal primer
+  #      trim even if deleted, because the information is valuable
+    #
+    #########################################
+    my @tmpDistals;
+    my @distals;
+    my $distalDir;
+    my $distalAdaptor = "";
+    my $readSeq;
+    my $exactRight = "";
+    my $exactTrimmed = "";
+    my $fuzzyRight = "";
+    my $fuzzyTrimmed = "";
+    my $fuzzyDist = "";
+    my $dist_read_dir = "";
+
+    if ($deleteReason ne "key")
+    {
+        # If sequence length is less than trim length, don't bother checking for the distal primer
+        $minLength = $trim_lengths{$dna_regions{$barcode}{$lane}{$run} }[2];
+        # ??? always the same? If so do not repeat
+
+        #V if ($verbose) {print "Length test: min=$minLength, seq length = " . length($seq) . "\n";}
+        if (length($seq) < $minLength)
+        {
+          $deleted = 1;
+          if (! $deleteReason) {$deleteReason = "minimum length";}
+        }
+        else
+        {
+          # Create the list of distal primers to search for
+          # $seqDir eq "F" ? $distalDir = "R" : $distalDir = "F";
+          if ($seqDir eq "F") {
+              $dist_read_dir = "R";
+              $distalDir = "R";
+            }
+          else # $seqDir eq "R"
+          {
+            $dist_read_dir = "R";
+            $distalDir = "F";
+          }
+
+          # Check for the FLX adaptor, too while you're at it
+          if ($seqDir eq "F") {$distalAdaptor =  $rcBadaptor;} else {$distalAdaptor = $rcAadaptor;}
+
+          DISTAL_NAMES_R: foreach my $p_name (@{$primer_info{$barcode}{$lane}{$run}})
+          {
+            if (defined @{$p_name_seq_all{$p_name}{$distalDir}{$dist_read_dir}})
+            {
+
+              @distals = @{$p_name_seq_all{$p_name}{$distalDir}{$dist_read_dir}};
+              last DISTAL_NAMES_R;
+            }
+            # PRIMER_SEQ: foreach my $p_seq (@{$p_name_seq_all{$primer_name}{$dist_read_dir}})
+
+            # @distals = expand_exact_primers(\@{$p_name_seq_all{$p_name}{$dist_read_dir}{$distalDir}});
+
+          }
+          # Store the length of the distal
+          my $max_anchor_length = 0;
+          for my $distal (@distals) { if (length($distal) > $max_anchor_length) {$max_anchor_length = length($distal);} }
+
+          #
+          # Search for an exact match to the distal primer and the FLX adaptor sequences
+          #
+          my $anchor_begin = $trim_lengths{$dna_regions{$barcode}{$lane}{$run} }[0];
+          my $anchor_end = $trim_lengths{$dna_regions{$barcode}{$lane}{$run} }[1];
+
+          #V if ($verbose) {print "Startpos = $anchor_begin, and Endpos = $anchor_end\n";}
+
+          my $exact_found = "none";
+          my $fuzzy_match = "";
+
+          ($exactRight, $exactTrimmed, $exact_found) = trim_exact_distal(\@distals, $distalAdaptor, $seq, $id, $trim_type, $anchor_begin, $anchor_end);
+          #V if ($verbose) {print "$id  Exact: $exact_found, $exactRight, $exactTrimmed\n";}
+          $distal_primer = $exact_found;
+
+          #if ( (scalar @distals > 0) && (length($exactRight) < $max_anchor_length) )
+          if ( (scalar @distals > 0) && ($exact_found eq "none") )
+          {
+              ($fuzzyRight, $fuzzyDist, $fuzzyTrimmed, $fuzzy_match) = trim_fuzzy_distal(\@distals, $seq, $dist_read_dir, $anchor_begin, $anchor_end, $trim_type);
+              $distal_primer = $fuzzy_match;
+          }
+          #V if ($verbose) {print join(" ", "$id:", "E:", $exactRight, length($exactRight), "F:", $fuzzyRight, length($fuzzyRight), $fuzzyDist) . "\n";}
+          # Choose the longest trim
+            #V if ($verbose) {print "ExRt: $exactRight, FzRt: $fuzzyRight, Lengths: ", length($exactRight) . ", " . length($fuzzyRight) . ".";}
+
+          if ( length($exactRight) < length($fuzzyRight) )
+            {
+                $exactRight = $fuzzyRight;
+                # $distal_primer = $fuzzyRight;
+                $seq = $fuzzyTrimmed;
+            } else {
+                $seq = $exactTrimmed;
+            }
+
+          # Find any adaptor removed during the trimming
+          # not always being parsed correctly above.
+          #my @seqSplit = split($seq, $exactRight);
+          #if (exists $seqSplit[1]) {$adaptorTrim = $seqSplit[1];}
+
+          #
+          # Couldn't find it, just delete it.
+          #
+
+          if ( (! $exactRight) && (scalar @distals > 0) )
+          {
+            if ($requireDistal)
+            {
+              $deleted = 1;
+              if (! $deleteReason) { $deleteReason = "distal"; }
+            } elsif ($checkFlowCounts) {
+              my $seqFlowCount = `flowcount -q -s $rawSeq`;
+              chomp $seqFlowCount;
+              #V if ($verbose) {print LOG "$id: Flow count = $seqFlowCount\n";}
+
+                    # If the sequence doesn't have a distal but should have made ended prematurely
+                    # it was likely trimmed back by the 454 machine and is likely poor quality
+                    # if (number of flows used by the machine minus a generous flow count
+                    #     buffer for the distal primer and the B adaptor)
+                    #     is longer than the flowcount of the current sequence,
+                    #     delete it
+              if ( ($seqFlowCount > 0) && ($seqFlowCount < ($numFlows - $flowBuffer) ) )
+              {
+                $deleted = 1;
+                if (! $deleteReason) { $deleteReason = "flowcount"; }
+              }
+            }
+          }
+        }
+
+      #
+         # Insert $fuzzy_match or $exact_found as a distal primer into distal_primer table and get it's id.
+      #
+    }
+    $insert_distal_primer_h->execute($distal_primer)    || die "Unable to insert run information into table: $distal_primerTable. Error: " . $dbh->errstr . "\n";
+    $select_distal_primer_id_h->execute($distal_primer) || die "SELECT distal_primer_id from $distal_primerTable where distal_primer=$distal_primer. Error: " . $dbh->errstr . "\n";
+    $distal_primer_id = $select_distal_primer_id_h->fetchrow();
+
+    # print "URA81: exactRight = $exactRight, \$distal_primer = $distal_primer\n";
+  #if ($verbose) {print LOG "$rawSeq, $barcode, $seqDir, $exactLeft, $orientation, $exactRight, $deleteReason, $seq\n";}
+
+    #########################################
+    #
+    # Check a few more delete reasons before finishing
+    #
+    #########################################
+    if (! $deleted)
+    {
+      if (! $seq)
+      {
+        #must have been a primer dimer, no data remaining
+        $deleted = 1;
+        if (! $deleteReason) {$deleteReason = "no insert";}
+      } else {
+            if (exists $trim_lengths{$dna_regions{$barcode}{$lane}{$run} })
+            {
+                $minLength = $trim_lengths{$dna_regions{$barcode}{$lane}{$run} }[2];
+            } else {
+                print LOG "No minimum length specified for " . $dna_regions{$barcode}{$lane}{$run} . ". print \"exit N11\"; exiting, sorry\n";
+            }
+            #V if ($verbose) {print "Length test: min=$minLength, seq length = " . length($seq) . "\n";}
+          if (length($seq) < $minLength)
+          {
+            $deleted = 1;
+            if (! $deleteReason) {$deleteReason = "minimum length";}
+          }
+        }
+
+      if ( (! $deleted) && ($countN > $maxN) )
+      {
+        $deleted = 1;
+        if (! $deleteReason) {$deleteReason = "N";}
+      }
+    }
+    #if ($verbose) {print LOG "$rawSeq\n$barcode, $seqDir, $exactLeft, $orientation, $exactRight, $countN, $deleted, $deleteReason\n$seq\n\n";}
+
+    #########################################
+    #
+    # Assign dataset, project, dna_region
+    #
+    #########################################
+    if (defined $datasets{$barcode}{$lane}{$run})
+    {
+      $dataset = $datasets{$barcode}{$lane}{$run};
+    } elsif (defined $datasets{$barcode}{0}{$run}) {
+      $dataset = $datasets{$barcode}{0}{$run};
+    }
+
+    if (defined $projects{$barcode}{$lane}{$run})
+    {
+      $project = $projects{$barcode}{$lane}{$run};
+    } elsif (defined $projects{$barcode}{0}{$run}) {
+      $project = $projects{$barcode}{0}{$run};
+    }
+
+    if (defined $dna_regions{$barcode}{$lane}{$run})
+    {
+      $dna_region = $dna_regions{$barcode}{$lane}{$run};
+    } elsif (defined $dna_regions{$barcode}{0}{$run}) {
+      $dna_region = $dna_regions{$barcode}{0}{$run};
+    }
+
+    if ($verbose) {print "$rawSeq\n$barcode, $seqDir, $exactLeft, $orientation, $exactRight, $countN, $deleted, $deleteReason, $dataset, $project\n$seq\n\n";}
+
+    #########################################
+    #
+    # Find location of trimmed sequence in original sequence
+    #   for trimming qual and flowindex data
+    #   before reverse complementing reverse reads
+    #
+    #########################################
+    # Truncate the reads to $maxLength if appropriate, always truncate before RC
+    if ($maxLength)
+    {
+        #Vif ($verbose) {print "Trim length = " . length($seq) . "\t";}
+        $seq = substr($seq, 0, $maxLength);
+        #Vif ($verbose) {print "Truncated length = " . length($seq) . "\n";}
+    }
+
+    # Look up the indices
+  my $startIndex = index(uc $rawSeq, $seq);
+  my $stopIndex = $startIndex + length($seq) - 1;
+  # print "\n\n============\nURA9: START\n";
+
+  # print "III1: startIndex = $startIndex; stopIndex = $stopIndex\n";
+
+    # now reverse complement the sequence if necessary
+  if ( ($seqDir eq "R") || ( ($seqDir eq "F") and ($final_revcmp) ) )
+  {
+    $seq =~ tr/AGCT/TCGA/;
+    $seq = reverse($seq);
+
+        $exactRight =~ tr/AGCT/TCGA/;
+        $exactRight = reverse($exactRight);
+  }
+  # ------- get ids ----------
+  $project_id_prep->execute($project) || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+  $project_id = $project_id_prep->fetchrow() || "";
+
+  $dataset_id_prep->execute($dataset) || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+  $dataset_id = $dataset_id_prep->fetchrow() || "";
+
+  $dna_region_id_prep->execute($dna_region) || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+  $dna_region_id = $dna_region_id_prep->fetchrow() || "";
+
+  $run_key_id_prep->execute($barcode) || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+  $run_key_id = $run_key_id_prep->fetchrow() || "";
+
+
+  # ------- get ids ends ----------
+
+    # Last verbose, then skip writing and upload, if you want qual scores, more the "next", done below
+  if ($verbose) {print LOG "$id: $barcode, $seqDir, $exactLeft, $orientation, $exactRight, $countN, $deleted, $deleteReason, $dataset, $project, $startIndex, $stopIndex\n$seq\n\n"; next;}
+  # print LOG "$id: $barcode, $seqDir, $exactLeft, $orientation, $exactRight, $countN, $deleted, $deleteReason, $dataset, $project, $startIndex, $stopIndex\n$seq\n\n";
+  #########################################
+  #
+  # Find dupes and write out the trimmed sequences
+  #  Trim the quality and flowgram scores as well
+  #
+  #########################################
+  #print LOG join(", ", $id, $barcode, $deleted, $deleteReason, $exactLeft, $exactRight, $adaptorTrim, $orientation, $countN, length $seq, $seq, $run, $dataset, $project, $dna_region) . "\n\n\n\n";
+  if ($useDB)
+  {
+    #my $idArrayRef = get_dupes($lane, $run, $rawSeq);
+    #foreach my $newID (@$idArrayRef)
+    foreach my $newID ( @{ $dupes{$id} } )
+    {
+
+      #
+         # Write out the quality data and averages
+      #
+
+      # print "===============\nURA55: trim_qual_flow(get_qual_flow(newID = $newID \"quality\"), \$startIndex = $startIndex, \$stopIndex = $stopIndex, \$seqDir= $seqDir)\n";
+      my $newQual = trim_qual_flow(get_qual_flow($newID, "quality"), $startIndex, $stopIndex, $seqDir);
+      my $deletedQ = $deleted;
+      my $deleteReasonQ = $deleteReason;
+      # print "URA4: \$newID = $newID, \$startIndex = $startIndex; \$stopIndex = $stopIndex; \$seqDir = $seqDir; \$newQual = $newQual\n";
+      # Determine average quality score and filter remaining lowquality reads
+      my $avgQual = calc_avg_qual($newQual);
+      #V if ($verbose_only) {print "Avg Qual: $avgQual\t";}
+      # print "URA10: Avg Qual: $avgQual\t";
+      # print "URA100: \$minAvgQual = $minAvgQual; platform = $platform\n";
+      if ( ($avgQual < $minAvgQual) && (! $deleted) ) { 
+        # print "URA100 in if: avgQual = $avgQual; minAvgQual = $minAvgQual; deleted = $deleted\n";
+        $deletedQ = 1; $deleteReasonQ = "average quality"; 
+      }
+
+      $delete_reason_id_prep->execute($deleteReasonQ) || die "Unable to execute MySQL statement. Error: " . $dbh->errstr . "\n";
+      $delete_reason_id = $delete_reason_id_prep->fetchrow();
+
+      my $print_filename = *STDOUT;
+
+      unless ($verbose_only) { $print_filename = *QUAL; }
+      print $print_filename join("\t", $run_id, $newID, $newQual, $avgQual) . "\n";
+
+      #
+         # Write out the flowgram data
+      #
+      # print "\nURA555: trim_qual_flow(get_qual_flow(newID = $newID \"flow\"), \$startIndex = $startIndex, \$stopIndex = $stopIndex, \$seqDir= $seqDir)\n\n";
+      my $newFlow = trim_qual_flow(get_qual_flow($newID, "flow"), $startIndex, $stopIndex, $seqDir);
+
+      unless ($verbose_only) { $print_filename = *FLOW; }
+      print $print_filename join("\t", $run_id, $newID, $newFlow) . "\n";
+
+      # insert trimmed sequence into trimsequence table
+      $insert_sequence_h->execute($seq)    || die "Unable to insert sequence into table: $trimsequenceTable. Error: " . $dbh->errstr . "\n";
+      my $select_sequence_id = "SELECT trimsequence_id from $trimsequenceTable where sequence_comp=compress(\"".$seq."\")";
+      # print $select_sequence_id;
+      my $select_sequence_id_h = $dbh->prepare($select_sequence_id) || die "Unable to prepare query: $select_sequence_id\nError: " . $dbh->errstr . "\n";    
+      # $select_sequence_id_h      = prep_query($dbh, "SELECT trimsequence_id from $trimsequenceTable where sequence_comp=compress(?)");
+      
+      $select_sequence_id_h->execute() || die "$select_sequence_id. Error: " . $dbh->errstr . "\n";
+      my $trimsequence_id = $select_sequence_id_h->fetchrow();
+
+      print "\nOOO, no sequence_id! \$trimsequence_id = $trimsequence_id\nselect_sequence_id\n\$seq = $seq\n\n" unless ($trimsequence_id);
+      
+      if ($deletedQ)
+      {
+        #
+           # Write out the trimmed and deleted sequences data
+        #
+        unless ($verbose_only) { $print_filename = *TRIMSEQ_DELETED; }
+        # print $print_filename join("\t", $newID, $seq, $run_id, $dataset_id, $project_id, $dna_region_id) . "\n";
+        print $print_filename join("\t", $newID, $run_id, $dataset_id, $project_id, $dna_region_id, $trimsequence_id) . "\n";
+      }
+      else
+      {
+        #
+           # Write out the trimmed sequences data
+        #
+        unless ($verbose_only) { $print_filename = *TRIMSEQ; }
+        # print $print_filename join("\t", $newID, $seq, $run_id, $dataset_id, $project_id, $dna_region_id) . "\n";
+        print $print_filename join("\t", $newID, $run_id, $dataset_id, $project_id, $dna_region_id, $trimsequence_id) . "\n";
+      }
+
+      #
+         # Write out the trimming info
+      #
+
+      unless ($verbose_only) { $print_filename = *TRIMMING; }
+      print $print_filename join("\t", $newID, $run_id, $run_key_id, $delete_reason_id, $prox_primer_id, $orientation, $distal_primer_id, $countN, $p_offset) . "\n";
+      # if ($p_offset) {print "PPP1: p_offset = $p_offset; \$prox_primer_id = $prox_primer_id\n";}
+      $p_offset = 0;
+
+      $print_filename = *STDOUT;
+
+      # print "URA2: newID = $newID, delete_reason_id = $delete_reason_id,\n";
+      # print LOG "URA2: newID = $newID, delete_reason_id = $delete_reason_id,\n";
+      # print "URA1000: newID = $newID, run_id = $run_id, run_key_id = $run_key_id, delete_reason_id = $delete_reason_id, prox_primer_id = $prox_primer_id, \n orientation = $orientation, distal_primer_id = $distal_primer_id, countN = $countN;\n====================\n";
+    }
+  }
+}
+
+if ($verbose_only){print "exit N13\n"; exit;}
+# uncommented to put data into db!
+&import_files;
+
+close(LOG);
+my $chgrpError = system("chgrp g454 $logFilename");
+if ($chgrpError) {warn "Unable to chgrp $logFilename file\n";}
+print "exit N14 = The End of a trimflx round\n"; exit;
+
+
+########################## SUBROUTINES #######################################
+
+
+#######################################
+#
+# prep_SQL:
+#         if running off a database, create and prepare the SQL statements
+#         The field names should be changed for databases other than the MBL.
+#
+#######################################
+sub prep_SQL
+{
+  #Select Raw Sequences
+  #$selectDistinctRawSQL = "SELECT sequence, run, lane, read_id, 1 as readcnt FROM $inSeqTable where read_id in ('GEEZDH201A000A','GEEZDH201A0014', 'GEEZDH201A0017')";
+
+  $selectFlow_h              = prep_query($dbh, "SELECT uncompress($flow_field) as flow FROM $inFlowTable WHERE read_id=?");
+  $selectQual_h              = prep_query($dbh, "SELECT uncompress($quality_field) as quality FROM $inQualTable WHERE read_id=?");
+
+  $insert_distal_primer_h    = prep_query($dbh, "INSERT IGNORE INTO $distal_primerTable (distal_primer) VALUES (?)");
+  $select_distal_primer_id_h = prep_query($dbh, "SELECT distal_primer_id from $distal_primerTable where distal_primer=?");
+
+  $insert_sequence_h         = prep_query($dbh, "INSERT IGNORE INTO $trimsequenceTable (sequence_comp) VALUES (compress(?))");
+  # mysql> SELECT trimsequence_id from trimsequence where uncompress(sequence_comp)="TGGTAGAAAAGTGCGAGGGCTACAACTCTGTATTGCGTTAGGAAACTGTGTAACTAGAGTACGTGGAGAGGTAAGCGGAACTACAAGTGTAGAGGTAGAAATTCGTAGATTATTTGTAGGAATGCCGAGTGGGGAAGCCAGCTTACTGGACAGATACTGACGCTGAAGCGACGAAAGCGTGGGTAGACAAACAGGATTAGACTACCCTGGTAGTCCGCGACCCTAAACGATGTCTACTAGTTGGTCGGGTATTAATTTCCTTAGGTAACGCAACTAACGCGTGAAGTAGACCGCCGTGGGGAGTACGGTCGCAAGAATTAAACTACAAAGGAATTGAGGGGACCCGCACAAGCGGTGGAGTATGTGGTTTAATTCGACGCAACGCGAAGAACCTTACCAGGTCTTGACATTGATGGACATAACTAGAGATAGTTCCTCTTCTTCGGAAGCCAGAAAC";
+  
+  # $select_sequence_id_h      = prep_query($dbh, "SELECT trimsequence_id from $trimsequenceTable where sequence_comp=compress(?)");
+
+  $project_id_prep           = prep_query($dbh, "SELECT project_id from $projectTable where project=?");
+  $dataset_id_prep           = prep_query($dbh, "SELECT dataset_id from $datasetTable where dataset=?");
+  $dna_region_id_prep        = prep_query($dbh, "SELECT dna_region_id from $dna_regionTable where dna_region=?");
+  $run_key_id_prep           = prep_query($dbh, "SELECT run_key_id from $run_keyTable where run_key=?");
+  $delete_reason_id_prep     = prep_query($dbh, "SELECT delete_reason_id from $deleteReasonTable where delete_reason=?");
+  $prox_primer_id_prep       = prep_query($dbh, "SELECT primer_id from $primerSeqTable where primer=?");
+  my $select_orig_seq_q = "SELECT DISTINCT primer, original_seq
+    from run_primer
+      join primer USING (primer_id)
+      join run using(run_id)
+      join run_key using(run_key_id)
+      WHERE run = ?
+      AND lane = ?
+      AND direction = ?
+      AND run_key = ?";
+  $select_orig_seq_h         = prep_query($dbh, $select_orig_seq_q);
+
+  #Write trimmed data
+  #$insertTrimSQL = "INSERT INTO $outSeqTable (read_id, run_key, deleted, delete_reason, prox_primer, distal_primer, flx_adaptor, orientation, countN, length, sequence, run, dataset, project, dna_region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  #$insertTrim_h = $dbh->prepare($insertTrimSQL);
+
+  #$insertTrimFlowSQL = "INSERT INTO $outFlowTable (run, read_id, flow) VALUES (?, ?, ?)";
+  #$insertTrimFlow_h = $dbh->prepare($insertTrimFlowSQL);
+
+  #$insertTrimQualSQL = "INSERT INTO $outQualTable (run, read_id, quality, avg_quality) VALUES (?, ?, ?, ?)";
+  #$insertTrimQual_h = $dbh->prepare($insertTrimQualSQL);
+
+  #print join ("\n", $selectPrimersSQL, $selectKeysSQL, $selectDistinctRawSQL, $selectRawDupesSQL, $selectFlowSQL, $selectQualSQL, $insertTrimSQL, $insertTrimFlowSQL, $insertTrimQualSQL, "");
+}
+
+#######################################
+#
+# load_keys
+#         load the run_keys read from either a database input or a fasta file input
+#         The field names should be changed for databases other than the MBL.
+#
+#######################################
+sub load_keys
+{
+  if ($useDB)
+  {
+    #For each runkey and lane, create lookups for sequencing direction, dataset and project names
+    #$selectKeysSQL = "SELECT DISTINCTROW run, ucase(run_key), lane, direction, dataset, project, dna_region, machine, trim, exp_length FROM $keysTable WHERE run = ? ORDER BY run_key DESC";
+
+    # $selectKeysSQL = "SELECT DISTINCTROW run, ucase(run_key), lane, direction, dataset, project, dna_region FROM $keysTable WHERE run = ? ORDER BY run_key DESC";
+
+
+    # ??? Do we need take tubelabel, barcode, adapter, pool here?
+    # $run_key, $run, $lane, $direction, $dataset, $project, $tubelabel, $barcode, $adapter, $pool, $dna_region
+    # SELECT DISTINCTROW run, ucase(run_key), lane, direction, dataset, project, dna_region
+    #   FROM $keysTable
+    #   join run using(run_id),
+    #   join run_key using(run_key_id),
+    #   join dataset using(dataset_id),
+    #   join project using(project_id),
+    #   join dna_region using(dna_region_id)
+    #   WHERE run = ?
+    #   ORDER BY run_key DESC
+
+    # $selectKeys_h = &prepare_query("SELECT DISTINCTROW run, ucase(run_key), lane, direction, dataset, project, dna_region FROM $keysTable join run using(run_id) join run_key using(run_key_id) join dataset using(dataset_id) join project using(project_id) join dna_region using(dna_region_id) WHERE run = ? ORDER BY run_key DESC");
+    # JOIN $dna_regionTable using(dna_region_id) WHERE run = ? ORDER BY run_key DESC";
+    my $select_sql = "SELECT DISTINCTROW run, ucase(run_key), lane, direction, dataset, project, dna_region \
+      FROM $keysTable \
+      JOIN $runTable using(run_id) \
+      JOIN $run_keyTable using(run_key_id) \
+      JOIN $datasetTable using(dataset_id) \
+      JOIN $projectTable using(project_id) \
+      JOIN $dna_regionTable using(dna_region_id) WHERE run = ?";
+      # JOIN $dna_regionTable using(dna_region_id) WHERE run = ? ORDER BY run_key DESC";
+# 39
+    $selectKeys_h = $dbh->prepare($select_sql);
+    $selectKeys_h->execute($run) || die "Unable to execute query using $run.\n Error: " . $dbh->errstr . "\n";
+
+    #while(my ($run, $runkey, $lane, $direction, $dataset, $project, $dna_region, $machine, $trim_type, $expected_length) = $selectKeys_h->fetchrow())
+    while(my ($run, $runkey, $lane, $direction, $dataset, $project, $dna_region) = $selectKeys_h->fetchrow())
+    {
+      if ( (! $runkey) || ($runkey eq "none") ) {$runkey = "";}
+      if (! $run_keys{$lane}{$run}) {$run_keys{$lane}{$run} = []; } #initialize
+            if ($lane != 0)
+            {
+              # just load for the specified lane
+              $projects{$runkey}{$lane}{$run} = $project;
+              $datasets{$runkey}{$lane}{$run} = $dataset;
+              $seqDirs{$runkey}{$lane}{$run} = $direction;
+              $dna_regions{$runkey}{$lane}{$run} = $dna_region;
+
+            if ($runkey) { push ( @{$run_keys{$lane}{$run}}, $runkey); }
+            } else {
+                # load for both sides of the plate if they specify 0
+                $projects{$runkey}{1}{$run} = $project;
+                $datasets{$runkey}{1}{$run} = $dataset;
+                $seqDirs{$runkey}{1}{$run} = $direction;
+                $dna_regions{$runkey}{1}{$run} = $dna_region;
+                $projects{$runkey}{2}{$run} = $project;
+                $datasets{$runkey}{2}{$run} = $dataset;
+                $seqDirs{$runkey}{2}{$run} = $direction;
+                $dna_regions{$runkey}{2}{$run} = $dna_region;
+          if ($runkey)
+                {
+                    push ( @{$run_keys{1}{$run}}, $runkey);
+                    push ( @{$run_keys{2}{$run}}, $runkey);
+                }
+           }
+            #$trims{$runkey}{$lane}{$run} = $trim_type;
+      #if ($verbose_only) {print join (", ", $run, $lane, $runkey, $dna_region, $direction, $dataset, $project, scalar @{$run_keys{$lane}{$run}}) . "\n";}
+      # print "URA6:" . join (", ", $run, $lane, $runkey, $dna_region, $direction, $dataset, $project, scalar @{$run_keys{$lane}{$run}}) . "\n";
+    }
+  } else {
+    open(KEYS, "<$metadataFile") or die("Unable to open metadata file: $metadataFile.\n");
+    while (my $line = <KEYS>)
+    {
+      #read and load the data
+    }
+  }
+}
+
+#######################################
+#
+# Get run_primer_info
+#
+#######################################
+sub get_run_primer_info
+{
+
+  my $select_primer_info_sql = "SELECT DISTINCT run_key, run, lane, primer
+  from $run_primerTable
+  join $runTable using(run_id)
+  join $run_keyTable using(run_key_id)
+  join $primerSeqTable using(primer_id)
+  WHERE run = ?";
+
+  # print "QQQ0: \$select_primer_info_sql = $select_primer_info_sql\n"
+  my $select_primer_info_h = $dbh->prepare($select_primer_info_sql);
+
+  $select_primer_info_h->execute($run) or die "Unable to execute SQL query $select_primer_info_sql using $run.\n";
+  while (my ($run_key, $run, $lane, $primer_name) = $select_primer_info_h->fetchrow())
+  {
+    push (@{$primer_info{$run_key}{$lane}{$run}}, $primer_name);
+  }
+}
+
+
+#######################################
+#
+# Take all primers for this run
+# keep forward and reverse version of each (one for proximal, another for distal)
+#
+#######################################
+sub get_all_run_primers
+{
+  # take all primers for this run
+  # expand them
+
+  # take all primers for this run
+  my $query = "SELECT DISTINCT run, primer, direction, sequence
+    FROM $run_primerTable
+    JOIN $runTable USING(run_id)
+    JOIN $primerSeqTable USING(primer_id)
+    WHERE run = $run";
+  my $selectPrimers_h = $dbh->prepare($query);
+
+  $selectPrimers_h->execute() or die "Unable to execute SQL query $selectPrimersSQL using $run.\n";
+
+  while (my ($run, $primer_name, $orig_p_direction, $sequence) = $selectPrimers_h->fetchrow())
+  {
+    my @rev_seq;
+    my $current_p_direction = $orig_p_direction;
+    my @expand_primers;
+
+    # Expand each of primer sequence
+    my @arr2;
+    push(@arr2, $sequence);
+    @expand_primers = expand_exact_primers(\@arr2);
+    $p_name_seq{$primer_name} = [ @expand_primers ];
+
+    if (! $orig_p_direction)
+    {
+      #Do nothing
+      if ($verbose) {print "No direction, can't load primers\n";}
+    }
+    elsif (($orig_p_direction ne "F") && ($orig_p_direction ne "R"))
+    {
+      if ($verbose) {print LOG "Unrecognized primer direction, for: run =  $run, primer_name = $primer_name, direction = $orig_p_direction, sequence = $sequence. Skipping...\n";}
+      print "exit N21\n"; exit;
+    }
+    elsif (($orig_p_direction eq "F") || ($orig_p_direction eq "R"))
+    {
+      # Store each expanded primer sequence as it is
+      $p_name_seq_all{$primer_name}{$orig_p_direction}{$current_p_direction} = [ @{ $p_name_seq{$primer_name}} ];
+      # Keep an original direction and take an opposit current direction (notice these brackets!)
+      ($orig_p_direction eq "F") ? ($current_p_direction = "R") : ($current_p_direction = "F");
+      # Reverse/compliment each expanded primer sequence and keep it too
+      for my $exp_seq (@{ $p_name_seq{$primer_name}})
+      {
+        my $reverse_seq = reverse_primer($exp_seq);
+        push (@rev_seq, $reverse_seq);
+      }
+      $p_name_seq_all{$primer_name}{$orig_p_direction}{$current_p_direction} = [ @rev_seq ];
+    }
+  }
+}
+
+#######################################
+#
+# reverse_primer. Call if direction is R or B: @rev_seq = reverse_primer(@{ $p_name_seq{$primer_name}})
+#
+#######################################
+sub reverse_primer
+{
+  my $seq = shift;
+  my @revers_seq;
+
+    #Reverse complement each of the primer sequences
+    $seq = uc($seq);
+    $seq =~ tr/AGCT[]/TCGA][/;  #the brackets get messed in the following reverse command
+    $seq = reverse $seq;
+    # print BOLD, BLUE, "QQQ4: \$seq = $seq\n", RESET;
+    return $seq;
+}
+
+
+#######################################
+#
+# get_seqs - step through the mothur unique file and get sequences
+#
+#######################################
+sub get_seqs
+{
+  my %seqs      = ();
+  my %dupereads = ();
+
+    # Used to be if $useDB, but still using DB to write, only using mothur to get uniques and dupes
+    if ($fasta_prefix)
+    {
+
+        my $fasta_filename = $fasta_prefix . ".fa";
+        my $fasta_uniqs_filename = $fasta_prefix . ".unique.fa";
+        my $names_filename = $fasta_prefix . ".names";
+
+        foreach my $f ($fasta_filename, $fasta_uniqs_filename, $names_filename)
+        {
+            if (! -f $f)
+            {
+              print LOG "Unable to locate fasta or names file: $fasta_filename. print \"exit N16\"; exiting.\n";
+              print "exit N17\n"; exit;
+            }
+        }
+        #
+        # get all duplicate sequences in the run
+        #
+        my %init_dupes;
+        ###  mothur no longer writes the unique.fa and the names file in the same order,
+        ###  we need to load all the names in each time to be sure we load the dupes specific
+        ###  for the current sequence.
+        # my $i = 0;
+        open(NAMES, "<$names_filename") || die("Could not open names file: $names_filename.  print \"exit N18\"; exiting...\n");
+        while (my $line = <NAMES>)
+        {
+          # $i++;
+          # if ( ($i > -1) && ($i < $first_row) ) {next;}
+          # if ( ($i > -1) && ($i >= $first_row + $num_rows) ) {last;}
+          chomp $line;
+          my ($id, $dupe_reads) = split(/\t/, $line);
+          $init_dupes{$id} = $dupe_reads;
+#           if ($id eq 'GJ7247O01DMY0E') {print "$dupe_reads\n";}
+        }
+
+        #
+        # Read the initial fasta file, where the run and lane have been imbedded in the defline
+        #
+        my %init_info;
+        open(FASTA, "<$fasta_filename") || die ("Could not read fasta file: $fasta_filename.  print \"exit N19\"; exiting...\n");
+        while (my $line = <FASTA>)
+        {
+            if ($line !~ /^>/) {next;}
+            chomp $line;
+            $line =~ s/>//;
+
+            # Read ID, Run, lane
+            my ($id, $run_date, $plate_lane) = split(/\s+/, $line);
+            $init_info{$id} = [ $run_date, $plate_lane ] ;
+            #if ($id eq 'GJ7247O01DMY0E') {print "$run_date, $plate_lane\n"; print join(", ", "array", @{$init_info{$id}}) . "\n";}
+        }
+
+        #
+        # Step through the uniques fasta file and get the set of uniq sequences by lane and run (primers and keys may vary by lane and run)
+        #
+
+        my $i = 0;
+        my $first_id = 0;
+        my $last_id = 0;
+        my $in = Bio::SeqIO->new( '-file'=> "<$fasta_uniqs_filename", '-format'=> "fasta") || die("Could not read fasta file: $fasta_uniqs_filename.  print \"exit N20\"; exiting...\n");
+        while (my $seq_object = $in->next_seq)
+        {
+          $i++;
+          if ($i < $first_row) {next;}
+          if ($i >= $first_row + $num_rows) {last;}
+
+          my %test_hash;
+          my $id = $seq_object->id;
+
+          # print to LOG file the first and last read_ids, for later
+          if ($i == $first_row) {$first_id = $id;}
+          if ($i == $first_row + $num_rows)
+          {
+              $last_id = $id;
+              print LOG "processing from read_id = $first_id to read_id = $last_id\n";
+          }
+
+          foreach my $r ( split(/,/, $init_dupes{$id}) )
+          {
+            #print "$r: \t";
+            my ($run_date, $plate_lane) = @{ $init_info{$r} };
+
+            # if the run and lane for this sequence aren't already stored in the hash, add it with the first read_id
+            # and start the array of dupes
+            # remember the sequence is assumed because we are looping through the uniq seqs
+            # and the first "dupe" is the sequence id, so just use $r not $id
+            if (! $test_hash{$run_date}{$plate_lane} )
+            {
+                $test_hash{$run_date}{$plate_lane} = $r;
+                $seqs{$r} = [ $seq_object->seq, $run_date, $plate_lane ];
+                $dupereads{$r} = [ $r ];
+            } else {
+            # add this as a dupe only
+                push( @{ $dupereads{ $test_hash{$run_date}{$plate_lane} } }, $r );
+            }
+          }
+        }
+
+        #print LOG "HERE!! " . scalar keys %seqs . "\n";
+#        foreach my $i (keys %seqs) { print LOG join("\t", $i, @{$seqs{$i} }) . "\n"; } #print "exit N"; exit;
+        if (scalar keys %seqs == 0) {print LOG "Unable to locate sequences for $limit\n";} #print "exit N"; exit;
+
+        return (\%seqs, \%dupereads);
+    }
+}
+
+#######################################
+#
+# remove_key
+#        remove the runkey from the sequence
+#
+#######################################
+sub remove_key
+{
+  my $tag = "";
+  my $keysArrayRef = shift;
+  my $seq = shift;
+  foreach my $k (@$keysArrayRef)
+  {
+    #print "Key: $k\t$seq\n";
+    if ($k eq "nil")
+    {
+      $tag="";
+      last;
+    }
+    elsif ($k eq substr($seq, 0, length($k)))
+    {
+      #V if ($verbose_only) {print "Tag: $k\n";}
+      $tag = $k;
+      $seq = substr($seq, length($k));
+      last;
+    }
+  }
+  return ($tag, $seq);
+}
+
+
+#######################################
+#
+# get_direction
+#        determine if the read is forward or reverse
+#
+#######################################
+sub get_direction
+{
+  my $tag = shift;
+  my $reg = shift;
+  my $rn = shift;
+  my $seqFwd = 0;
+  my $seqRev = 0;
+
+  # Look up the key and figure out which direction the read should be
+  if ((exists $seqDirs{$tag}{$reg}{$rn} && $seqDirs{$tag}{$reg}{$rn} =~ /^[FB]/) || (exists $seqDirs{$tag}{0}{$rn} && $seqDirs{$tag}{0}{$rn} =~ /^[FB]/) )
+  {
+    $seqFwd = 1;
+  }
+
+  if ((exists $seqDirs{$tag}{$reg}{$rn} && $seqDirs{$tag}{$reg}{$rn} =~ /^[RB]/) || (exists $seqDirs{$tag}{0}{$rn} && $seqDirs{$tag}{0}{$rn} =~ /^[RB]/) )
+  {
+    $seqRev = 1;
+  }
+
+    # Check for a final reverse complement --
+    # this happens with Forward (A-adaptor) reads based on reverse amplification, e.g., V5 -> V3
+  if ( (exists $seqDirs{$tag}{$reg}{$rn} && $seqDirs{$tag}{$reg}{$rn} =~ /RC$/) )
+  {
+    $final_revcmp = 1;
+    if ($verbose) {print "Reverse Complement the read\n";}
+  }
+
+  if ( ($seqFwd + $seqRev) == 0 )
+  {
+    return 0;
+  } elsif ( ($seqFwd + $seqRev) == 2 ) {
+    return "B";
+  } elsif ($seqFwd) {
+    return "F";
+  } else {
+    return "R";
+  }
+}
+
+#######################################
+#
+# trim_proximal_new
+#        find and remove the proximal primer (if appropriate)
+# # ($exactLeft, $offset, $seq) = trim_proximal_new($primer_name, $seq);
+
+#######################################
+
+sub trim_proximal_new
+{
+  my $primer_name = shift;
+  my $seq         = shift;
+  my $seqDir      = shift;
+  my $p_primer_found = "";
+  my $offset      = 0;
+  my $oppositDir  = "";
+  my $primerDir   = "F";
+
+  ($seqDir eq "F") ? ($oppositDir = "R") : ($oppositDir = "F");
+  #   tests:
+  # 1) $seqDir = F
+  # 2) $seqDir = R
+  # 3) $seqDir = B !? not sure if that is a valid test
+  # 4) no offset
+  # 5) with offset
+
+  # print "LLL: \$seq = $seq\n";
+  # test:
+  # $primer_name = "685F-a";
+  my $c = 0;
+
+  # PRIMER_SEQ: foreach my $p_seq (@{$p_name_seq_all{$primer_name}{$seqDir}{$oppositDir}})
+  PRIMER_SEQ: foreach my $p_seq (@{$p_name_seq_all{$primer_name}{$seqDir}{$primerDir}})
+  {
+    $c++;
+    # test:
+    # $p_seq = "CGACAGCCATGTACCACCTCT"; # print "LLL1: yes, primer in the beginning\n";
+    # $p_seq = "GCCATGTACCACCTCTCAGC"; #print "LLL2: yes, primer with an offset\n";
+    # $seq = "CGACAGCCATGTACCACCTCTCAGCTTGTCTGGCAAGGTCTTCAGCCTGGCCTTCACTCTGCTGTCGCTCCCGGTAAGGTTCCCGGCGTTGACTCCAATTAAACCGCAGGCTTCACGCCTGGTGGTGCTCCCCCGCCAATTCCTTTAAGTTTCAGCCTTGCGGCCGTACTCCCCAGGCGGCACGCTTAACGGCTTCCCTGCGGCACTGGGGCGGCTCGTGGCCGACCCAACACCTAGCGTGCATCGTTTACGGCTGGGACTACCCGGGTATCTAATCCGGTTCGCTACCCCAGCTTTCGTCCCTGACCGTCAGACGTGTTCTAGTGCACAGCCTTCGCCACTGGTGGTCCTCCGGGAGTCAAAGGATTTCGTCCCTACCCCCACGAATGCCGTACACCTCTCCCACTCTCTAGCCAGACAGTATCTCCGCCAGTCCAACGCTTGAGACGCTGGATTTAACGGAGGACTTTTCGTCCGGCTACGACCGTTAGTACGTCGTGCGGCGCGTCGGACGACGCGGACTAG";
+    # $seqDir = "F";
+    # $p_seq  = "ACCACGACGGCCATGT";
+    # $seq    = "CGACGGCCATGTACCACCTCTCAGCTAATCCGGTAAGGTCTTTAGCCTGACCTTCATCTCGCTGTCCCCTCCGGTGAGATTTCCGGTCGTTGAATCCAATTGAACCGCAAGCTCCACCCGTTGTGGTGCTCCCCCGCCAATTCCTTTAAGTTTCTAGCCTTGCGACCGTACTCCCCACGATGGCGGGCTTAACGGCTTCCCTTCGGCACTGGCATCACTCGCAGTAATGCCAATACCTAGCCCGCATCGTTTACTGCTAGGACTACCCGGGTATCTAATCCGGTTCGCTCCCCTACGCCTTCGTCCCTCACCGTCGGATCCGGTCTGATCAGACGCCTTCGCTACTGGTGGTCCCCAACGGATTAACGGATTTCTACCCCTACCCTTCGTAAGACCTTCCTGACCTCTCCGGTCCCCAAGCCACGGTAGTATTCCCTACGGTAGTCT";
+
+    if ($seq =~ /^$p_seq/)
+    {
+      $p_primer_found = $p_seq;
+      $seq =~ s/$p_seq//;
+      last PRIMER_SEQ; # prox prime is found, leave the for loop.
+    }
+      elsif ($seq =~ /^(.+)($p_seq)(.*)$/)
+    {
+      # Upon request, an offset or shift in primer is passed.
+      # but only if the position is <=10 bases from the start
+      my $tmpSeq = $1; # this is everything before the primer
+      if (length($tmpSeq) <= 10)
+      {
+        $p_primer_found = $p_seq;
+        $offset = 1;
+        $seq = $3; # trim off lead bases and primer
+        if ($verbose) { print join(", ", $p_seq, $p_primer_found, $offset, $seq) . "\n"; }
+        last PRIMER_SEQ; # prox prime is found, leave the for loop.
+      }
+    }
+  }
+  return ($p_primer_found, $offset, $seq);
+}
+
+######################################
+#
+# expand_exact_primers
+#   expand the primers list to every possibility
+#   used for proximal and distal primers
+#
+#######################################
+
+sub expand_exact_primers
+{
+  my $dist = shift;
+  my %expandedDistals;  # fully clean distals
+  my @workingDistals;    # still cleaning distals
+  my @bases = ('A','C','G','T');
+
+  foreach my $d (@$dist)
+  {
+    $d =~ s/\./N/g;  # all . go to N
+    push(@workingDistals, $d);
+  }
+
+  while (scalar @workingDistals > 0)
+  {
+    my $d = shift @workingDistals;
+
+    # For each N (blast doesn't like them) expand to 4 distals, one for each base
+    if ($d =~ /N/)
+    {
+      foreach my $b (@bases)
+      {
+        my $d1 = $d;
+        $d1 =~ s/N/$b/;
+        push (@workingDistals, $d1);
+      }
+
+    # For R, Y, W, S, M, K expand to the pair of bases
+    } elsif ($d =~ /R/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/R/A/;
+      $d2 =~ s/R/G/;
+      push (@workingDistals, $d1, $d2)
+    } elsif ($d =~ /Y/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/Y/C/;
+      $d2 =~ s/Y/T/;
+      push (@workingDistals, $d1, $d2)
+    } elsif ($d =~ /W/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/W/A/;
+      $d2 =~ s/W/T/;
+      push (@workingDistals, $d1, $d2)
+    } elsif ($d =~ /S/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/S/G/;
+      $d2 =~ s/S/C/;
+      push (@workingDistals, $d1, $d2)
+    } elsif ($d =~ /M/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/M/A/;
+      $d2 =~ s/M/C/;
+      push (@workingDistals, $d1, $d2)
+    } elsif ($d =~ /K/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/K/G/;
+      $d2 =~ s/K/T/;
+      push (@workingDistals, $d1, $d2)
+
+    # For each [CT] expand to each base
+    } elsif ($d =~ /\[.+\]/) {
+      my $baseList = $d;
+      $baseList =~ s/^.*\[//;
+      $baseList =~ s/\].*$//;
+      while ($baseList)
+      {
+        my $b = chop $baseList;
+        my $d1 = $d;
+        $d1 =~ s/^(.*)\[.+\]/$1$b/;
+        push (@workingDistals, $d1);
+      }
+
+    # expand \?
+    } elsif ($d =~ /\?/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/(.)\?/$1/; # the preceding base does exist
+      $d2 =~ s/.\?//; # the preceding base does not print "exit N"; exit;
+      push (@workingDistals, $d1, $d2);
+
+    # next expand + to 1 or 2
+    } elsif ($d =~ /\+/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      $d1 =~ s/(.)\+/$1$1/; # the preceding base exists twice
+      $d2 =~ s/(.)\+/$1/; # the preceding base exists once
+      push (@workingDistals, $d1, $d2);
+
+    # expand * to 0,1,2
+    } elsif ($d =~ /\*/) {
+      my $d1 = $d;
+      my $d2 = $d;
+      my $d3 = $d;
+      $d1 =~ s/(.)\*/$1$1/; # the preceding base exists twice
+      $d2 =~ s/(.)\*/$1/; # the preceding base exists once
+      $d3 =~ s/.\*//; # the preceding base does not exist
+      push (@workingDistals, $d1, $d2, $d3);
+
+    # For repeat bases, e.g., C{5,8} becomes Cx5, Cx6, Cx7, Cx8
+    } elsif ($d =~ /\{.*\}/) {
+      # get the base to be repeated
+      my $multiList = $d;
+      my $repeatBase = $d;
+      $repeatBase =~ s/^.*(.)\{.*$/$1/;
+
+      # get the min and max repeats of the base
+      $multiList =~ s/^.*\{//;
+      $multiList =~ s/\}.*$//;
+
+      my $minCount = $multiList;
+      $minCount =~ s/,.*//;
+      my $maxCount = $multiList;
+      $maxCount =~ s/^.*,//;
+      if (! $maxCount) {$maxCount = $minCount + 2;}
+
+      # Insert a homopolymer of each possible length
+      for (my $i = $minCount; $i<= $maxCount; $i++)
+      {
+        my $homopolymerString = $repeatBase;
+        for (my $j = 2; $j<= $i; $j++)
+        {
+          $homopolymerString .= $repeatBase;
+        }
+        my $newD = $d;
+        $newD =~ s/(^.*)(.\{.*\})/$1$homopolymerString/;
+        push(@workingDistals, $newD);
+      }
+
+    # If it made it through everything else, move it to the final set
+    # Use hash so can filter out duplicates
+    } else {
+      $expandedDistals{$d}++;
+    }
+  }
+  if ($verbose) {print join("\n", "Orig @$dist", keys %expandedDistals) . "\n";}
+  return keys %expandedDistals;
+}
+#######################################
+
+
+#######################################
+# #
+# # expand_exact_primers
+# #   expand the primers list to every possibility
+# #   used for proximal and distal primers
+# #
+# #######################################
+# sub expand_exact_primers
+# {
+#   my $primer_arr = shift;
+#   my %expanded_primer_seq;  # fully clean
+#   my %primer_seq_name = ();
+#   my @working_primer_seq;    # still cleaning
+#   my @bases = ('A','C','G','T');
+# #   $primerNames{$sequence} = $primer;
+# # $dist-arr
+#   # foreach my $primer_seq (@$primer_arr)
+#   # {
+#   #   # print "URA9: in expand_exact_primers: \$primer_seq = $primer_seq\n";
+#   #   my $primer_name = $primerNames{$primer_seq};
+#   #   # print BOLD, BLUE, "URA91: \$primerNames{".$primer_seq."} = $primer_name\n", RESET;
+#   #   # perl -e "use Term::ANSIColor qw(:constants);   print BOLD, BLUE, \"Hello\n\", RESET;"
+#   #
+#   #   $primer_seq =~ s/\./N/g;  # all . go to N
+#   #   push(@working_primer_seq, $primer_seq);
+#   #   # print BOLD, YELLOW, "URA93: primer_name = $primer_name; primer_seq = $primer_seq\n", RESET;
+#   #   if ($primer_seq and $primer_seq) {$primer_seq_name{$primer_name} = $primer_seq;}
+#   # }
+#   # foreach my $key (%primer_seq_name)
+#   # {
+#     # print BOLD, GREEN, "$key => $primer_seq_name{$key}\n", RESET;
+#   # }
+#
+#   # print $hash{Fred};
+#
+#   while (scalar @working_primer_seq > 0)
+#   {
+#     my $primer_seq = shift @working_primer_seq;
+#
+#     # my $primer_name = $primer_seq_name{$primer_seq};
+#     # print BOLD, YELLOW, "URA92: primer_name = $primer_name; primer_seq = $primer_seq\n", RESET;
+#
+#     # For each N (blast doesn't like them) expand to 4 distals, one for each base
+#     if ($primer_seq =~ /N/)
+#     {
+#       foreach my $b (@bases)
+#       {
+#         my $d1 = $primer_seq;
+#         $d1 =~ s/N/$b/;
+#         push (@working_primer_seq, $d1);
+#       }
+#
+#     # For R, Y, W, S, M, K expand to the pair of bases
+#     } elsif ($primer_seq =~ /R/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/R/A/;
+#       $d2 =~ s/R/G/;
+#       push (@working_primer_seq, $d1, $d2)
+#     } elsif ($primer_seq =~ /Y/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/Y/C/;
+#       $d2 =~ s/Y/T/;
+#       push (@working_primer_seq, $d1, $d2)
+#     } elsif ($primer_seq =~ /W/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/W/A/;
+#       $d2 =~ s/W/T/;
+#       push (@working_primer_seq, $d1, $d2)
+#     } elsif ($primer_seq =~ /S/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/S/G/;
+#       $d2 =~ s/S/C/;
+#       push (@working_primer_seq, $d1, $d2)
+#     } elsif ($primer_seq =~ /M/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/M/A/;
+#       $d2 =~ s/M/C/;
+#       push (@working_primer_seq, $d1, $d2)
+#     } elsif ($primer_seq =~ /K/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/K/G/;
+#       $d2 =~ s/K/T/;
+#       push (@working_primer_seq, $d1, $d2)
+#
+#     # For each [CT] expand to each base
+#     } elsif ($primer_seq =~ /\[.+\]/) {
+#       my $baseList = $primer_seq;
+#       $baseList =~ s/^.*\[//;
+#       $baseList =~ s/\].*$//;
+#       while ($baseList)
+#       {
+#         my $b = chop $baseList;
+#         my $d1 = $primer_seq;
+#         $d1 =~ s/^(.*)\[.+\]/$1$b/;
+#         push (@working_primer_seq, $d1);
+#       }
+#
+#     # expand \?
+#     } elsif ($primer_seq =~ /\?/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/(.)\?/$1/; # the preceding base does exist
+#       $d2 =~ s/.\?//; # the preceding base does not print "exit N"; exit;
+#       push (@working_primer_seq, $d1, $d2);
+#
+#     # next expand + to 1 or 2
+#     } elsif ($primer_seq =~ /\+/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       $d1 =~ s/(.)\+/$1$1/; # the preceding base exists twice
+#       $d2 =~ s/(.)\+/$1/; # the preceding base exists once
+#       push (@working_primer_seq, $d1, $d2);
+#
+#     # expand * to 0,1,2
+#     } elsif ($primer_seq =~ /\*/) {
+#       my $d1 = $primer_seq;
+#       my $d2 = $primer_seq;
+#       my $d3 = $primer_seq;
+#       $d1 =~ s/(.)\*/$1$1/; # the preceding base exists twice
+#       $d2 =~ s/(.)\*/$1/; # the preceding base exists once
+#       $d3 =~ s/.\*//; # the preceding base does not exist
+#       push (@working_primer_seq, $d1, $d2, $d3);
+#
+#     # For repeat bases, e.g., C{5,8} becomes Cx5, Cx6, Cx7, Cx8
+#     } elsif ($primer_seq =~ /\{.*\}/) {
+#       # get the base to be repeated
+#       my $multiList = $primer_seq;
+#       my $repeatBase = $primer_seq;
+#       $repeatBase =~ s/^.*(.)\{.*$/$1/;
+#
+#       # get the min and max repeats of the base
+#       $multiList =~ s/^.*\{//;
+#       $multiList =~ s/\}.*$//;
+#
+#       my $minCount = $multiList;
+#       $minCount =~ s/,.*//;
+#       my $maxCount = $multiList;
+#       $maxCount =~ s/^.*,//;
+#       if (! $maxCount) {$maxCount = $minCount + 2;}
+#
+#       # Insert a homopolymer of each possible length
+#       for (my $i = $minCount; $i<= $maxCount; $i++)
+#       {
+#         my $homopolymerString = $repeatBase;
+#         for (my $j = 2; $j<= $i; $j++)
+#         {
+#           $homopolymerString .= $repeatBase;
+#         }
+#         my $newD = $primer_seq;
+#         $newD =~ s/(^.*)(.\{.*\})/$1$homopolymerString/;
+#         push(@working_primer_seq, $newD);
+#       }
+#
+#     # If it made it through everything else, move it to the final set
+#     # Use hash so can filter out duplicates
+#     } else {
+#       $expanded_primer_seq{$primer_seq}++;
+#     }
+#   }
+#   if ($verbose) {print join("\n", "Orig primer_arr @$primer_arr", keys %expanded_primer_seq) . "\n";}
+#   # print join("\n", "Orig dist @$dist", keys %expanded_primer_seq) . "\n----------------\n";
+#   return keys %expanded_primer_seq;
+# }
+# #######################################
+#
+# expand_fuzzy_distal_primers
+#        expand the primers list to the most basic, without Ns
+#        selecting every possibility and running them through BLAST
+#     and fuzznuc, though, is way too slow.
+#
+#######################################
+sub expand_fuzzy_distal_primers
+{
+  my $dist = shift;
+  my %expanded_primer_seq;  # fully clean distals
+  my @working_primer_seq;    # still cleaning distals
+  my @bases = ('A','C','G','T');
+
+  foreach my $primer_seq (@$dist)
+  {
+    $primer_seq =~ s/\./N/g;  # all . go to N
+    # print "III1: \$primer_seq  = $primer_seq\n";
+    push(@working_primer_seq, $primer_seq);
+  }
+
+  while (scalar @working_primer_seq > 0)
+  {
+    my $primer_seq = shift @working_primer_seq;
+    # print "III2: \$primer_seq  = $primer_seq\n";
+
+    # For each N (blast doesn't like them) expand to 4 distals, one for each base
+    if ($primer_seq =~ /N/)
+    {
+      foreach my $b (@bases)
+      {
+        my $d1 = $primer_seq;
+        $d1 =~ s/N/$b/;
+        push (@working_primer_seq, $d1);
+      }
+
+    # For R, Y, W, S, M, K expand to the pair of bases
+    } elsif ($primer_seq =~ /R/) {
+      my $d1 = $primer_seq;
+      my $d2 = $primer_seq;
+      $d1 =~ s/R/A/;
+      $d2 =~ s/R/G/;
+      push (@working_primer_seq, $d1, $d2)
+    } elsif ($primer_seq =~ /Y/) {
+      my $d1 = $primer_seq;
+      my $d2 = $primer_seq;
+      $d1 =~ s/Y/C/;
+      $d2 =~ s/Y/T/;
+      push (@working_primer_seq, $d1, $d2)
+    } elsif ($primer_seq =~ /W/) {
+      my $d1 = $primer_seq;
+      my $d2 = $primer_seq;
+      $d1 =~ s/W/A/;
+      $d2 =~ s/W/T/;
+      push (@working_primer_seq, $d1, $d2)
+    } elsif ($primer_seq =~ /S/) {
+      my $d1 = $primer_seq;
+      my $d2 = $primer_seq;
+      $d1 =~ s/S/G/;
+      $d2 =~ s/S/C/;
+      push (@working_primer_seq, $d1, $d2)
+    } elsif ($primer_seq =~ /M/) {
+      my $d1 = $primer_seq;
+      my $d2 = $primer_seq;
+      $d1 =~ s/M/A/;
+      $d2 =~ s/M/C/;
+      push (@working_primer_seq, $d1, $d2)
+    } elsif ($primer_seq =~ /K/) {
+      my $d1 = $primer_seq;
+      my $d2 = $primer_seq;
+      $d1 =~ s/K/G/;
+      $d2 =~ s/K/T/;
+      push (@working_primer_seq, $d1, $d2)
+
+    # For each [CT] expand to each base
+    } elsif ($primer_seq =~ /\[.+\]/) {
+      my $baseList = $primer_seq;
+      $baseList =~ s/^.*\[//;
+      $baseList =~ s/\].*$//;
+      while ($baseList)
+      {
+        my $b = chop $baseList;
+        my $d1 = $primer_seq;
+        $d1 =~ s/^(.*)\[.+\]/$1$b/;
+        push (@working_primer_seq, $d1);
+      }
+
+    # expand \? to exists once
+    } elsif ($primer_seq =~ /\?/) {
+      my $d1 = $primer_seq;
+      $d1 =~ s/(.)\?/$1/; # the preceding base does exist
+      push (@working_primer_seq, $d1);
+
+    # next expand + to exists once
+    } elsif ($primer_seq =~ /\+/) {
+      my $d1 = $primer_seq;
+      $d1 =~ s/(.)\+/$1/; # the preceding base exists once
+      push (@working_primer_seq, $d1);
+
+    # expand * to exists once
+    } elsif ($primer_seq =~ /\*/) {
+      my $d1 = $primer_seq;
+      $d1 =~ s/(.)\*/$1/; # the preceding base exists once
+      push (@working_primer_seq, $d1);
+
+    # For repeat bases, e.g., C{5,8} becomes Cx5, Cx6, Cx7, Cx8
+    } elsif ($primer_seq =~ /\{.*\}/) {
+
+      # print "III3: \$primer_seq  = $primer_seq\n";
+      # print LOG "III3: \$primer_seq  = $primer_seq\n";
+
+      # get the base to be repeated
+      my $multiList = $primer_seq;
+      my $repeatBase = $primer_seq;
+      $repeatBase =~ s/^.*(.)\{.*$/$1/;
+
+      # get the min and max repeats of the base
+      $multiList =~ s/^.*\{//;
+      $multiList =~ s/\}.*$//;
+
+      my $minCount = $multiList;
+      $minCount =~ s/,.*//;
+      my $maxCount = $multiList;
+      $maxCount =~ s/^.*,//;
+      if (! $maxCount) {$maxCount = $minCount + 2;}
+
+      # Insert a homopolymer of the minimum length
+      my $homopolymerString = $repeatBase;
+      for (my $j = 2; $j<= $minCount; $j++)
+      {
+        $homopolymerString .= $repeatBase;
+      }
+      my $newD = $primer_seq;
+      $newD =~ s/(^.*)(.\{.*\})/$1$homopolymerString/;
+      push(@working_primer_seq, $newD);
+
+    # If it made it through everything else, move it to the final set
+    # Use hash so can filter out duplicates
+      # print "III4: \$primer_seq  = $primer_seq\n";
+    } else {
+      # print "III5: \$primer_seq  = $primer_seq\n";
+      $expanded_primer_seq{$primer_seq}++;
+    }
+
+  }
+  #if ($verbose) {print join("\n", keys %expanded_primer_seq) . "\n";}
+  return keys %expanded_primer_seq;
+}
+
+#######################################
+#
+# trim_exact_distal
+#        find and remove the distal primer (if appropriate)
+#        always check for the B adaptor, too, just in case
+#
+#######################################
+sub trim_exact_distal
+{
+  my $dist = shift;
+  my $adaptSeq = shift;
+  my $inSeq = shift;
+  my $id = shift;
+  my $outSeq = $inSeq;
+  my $trim_type = shift;
+  my $begin = shift;
+  my $end = shift;
+
+  if (scalar @$dist > 0 )
+  {
+    foreach my $distal (@$dist)
+    {
+      if ($outSeq =~ /$distal/)
+      {
+        # Test the location of the primer, grab the last instance
+        my $pos = rindex($outSeq, $distal);
+
+        if ($verbose) {print "Exact trimming: $distal, pos: $pos, type: $trim_type, begin & end: $begin and $end\n";}
+        # If distal trimming and not close enough to the end, skip to the next
+        if ( ($trim_type eq "distal") && ( (length($outSeq) - length($distal) - $pos) > $distal_from_end) )
+        {
+            if ($verbose){print join("Length OutSeq: " . length($outSeq), "Length d: " . length($distal), "Pos: $pos") . "\n";}
+            next;
+        # If anchor trimming, need to be within range of anchor location
+        } elsif ( ($trim_type eq "internal") && ( ($pos < $begin) || ($pos > $end) ) ) {
+            if ($verbose) {print "Exact trimming, $pos is outside window from $begin to $end\n";}
+            next;
+        }
+
+        # Trim the sequence and save out the exact bases trimmed
+        if ($verbose) {print "Pretrim: $outSeq, found $distal\n";}
+        my $distalBases = $outSeq;
+                if ($trim_type eq "distal")
+                {
+            $outSeq =~ s/$distal.*$//;
+                } else { # Internal
+            $outSeq =~ s/$distal.*$/$distal/;
+                }
+                $distalBases =~ s/$outSeq//;
+                if ($verbose) {print "Posttrim: $outSeq, removed  $distalBases\n";}
+
+        return ($distalBases, $outSeq, $distal);
+      }
+    }
+  }
+  return ("",  $outSeq, "none");
+}
+
+#######################################
+#
+# trim_fuzzy_distal
+#        Use Levenshtein distance on a sliding window
+#
+#######################################
+sub trim_fuzzy_distal
+{
+    my $anchors = shift;
+    my $outSeq = shift;
+    my $seq_direction = shift;
+    my $start_pos = shift;
+    my $end_pos = shift;
+    my $trim_type = shift;
+    my $found_fuzzy = 0;
+    my $found_exact = 0;
+    my $best_distance = $max_distance + 1;
+    my $best_position = -1;
+    my $fuzzy_match = "";
+
+    my $seq_length = length($outSeq);
+
+    # if window is outside the read for any reason, fix or skip
+    if ($start_pos < 0) {$start_pos = 0;}
+    #if ($end_pos < 0) {$end_pos = $seq_length;}
+
+    #my @anchors = ('TGGGCGTAAAG', 'CTTTACGCCCA');
+    for my $anchor (@$anchors)
+    {
+        if ($trim_type eq "distal")
+        {
+            # do a simple vanishing anchor search first...remove pieces of the anchor tail
+            # down to 6 or so and if we get a match at the exact end of the sequence then
+            # we'll accept that
+            my $short_anchor = $anchor;
+            my $min_len = 6;
+            # remove the first piece
+            chop($short_anchor);
+            my $short_anchor_length = length($short_anchor);
+            while($short_anchor_length >= $min_len )
+            {
+                # can we find the shortened anchor?
+                my $pos = index($outSeq, $short_anchor, $seq_length-$short_anchor_length);
+                # did we find it exactly where we expected it?
+                # is it exactly at the end?
+                if ( $pos == ($seq_length-$short_anchor_length))
+                {
+                    $outSeq =~ s/$short_anchor.*$//;
+                    if($verbose) {print "Found truncated distal:  $short_anchor";}
+                    return($short_anchor, 0, $outSeq, $short_anchor);
+                }
+                chop($short_anchor);
+                $short_anchor_length = length($short_anchor);
+            }
+        }
+
+        my $anchor_length = length($anchor);
+        #if($verbose) {print "Motif: $anchor, length: $anchor_length, $start_pos to $end_pos\n";}
+
+        # last position plus anchor shouldn't be longer than the sequence
+        if ( ( ($end_pos + $anchor_length - 1) > length($outSeq) ) || ($end_pos < 0) )
+        {
+            #$end_pos = length($outSeq)  - $anchor_length + 2;
+            # require at least 6 end bases to be a fuzzy distal match.
+            $end_pos = length($outSeq) - 6;
+            #if ($verbose)  {print join(", ", length($outSeq), $anchor_length, $end_pos) . "\n";}
+        }
+
+#        print "Start: $start_pos, End: $end_pos\n"; print "exit N"; exit;
+
+        # step along the sequence using a moving window
+        for my $pos ($start_pos .. $end_pos)
+        {
+            # grab the sequence at this position
+            my $seq_window = substr($outSeq, $pos, $anchor_length);
+            #if (( $verbose) && ($pos > 472 ) && ($pos < 476) ) {print "End pos: $seq_window, ($anchor_length, $anchor)\n";}
+
+            # Calculate the Levenshtein distance (String::Approx)
+            # if len(s1) > len(s2) distance < 0
+            # if len(s1) < len(s2) ignores terminal gaps,
+            # so take the maximum
+            my $dist;
+            my $dist1 = abs(adist($anchor, $seq_window));
+            my $dist2 = abs(adist($seq_window, $anchor));
+            if ($dist1 >= $dist2) {$dist = $dist1;} else {$dist = $dist2;}
+
+            ## Weird behavior with negative distances,
+            ## seems to work if you swap the sequences, otherwise, just bag it and move on
+            ##if ($verbose) {print "\t$dist";}
+            #if ($dist < 0) { $dist = adist($seq_window, $anchor); }
+            #if ($dist < 0) {next;}
+
+            ## penalize short anchors, expect them to be more accurate to be a match
+            ##if ($verbose) {print join(", ", length($seq_window), length($anchor), $dist) . "\n";}
+            #if ( length($anchor) - length($seq_window) > 3) {$dist++;}
+
+            #if ($verbose) {print "\tMD: $max_distance, BD: $best_distance";}
+            # If it is a good hit, store it, has to start on the same two bases to be valid
+            #if ( ($dist <= $max_distance) && ($dist < $best_distance)  )
+            if ( ($dist <= $max_distance) && ($dist < $best_distance)  && (substr($seq_window, 0, 2) eq substr($anchor, 0, 2) ) )
+            {
+                # check the right end as well, in case of indels
+                if ( substr($seq_window, -3) ne substr($anchor, -3) )
+                {
+                    #if ($verbose) { print "Check for deletion\n";}
+                    # check for deletion
+                    if ( substr(substr($seq_window, -4), 0, 3) eq substr($anchor, -3) )
+                    {
+                        if ($verbose) {print "Fuzzy with deletion.  Old=$seq_window, ";}
+                        chop $seq_window;
+                        if ($verbose) {print "New=$seq_window\n";}
+
+                    # check for insertion
+                    } elsif ( substr($seq_window, -3) eq substr(substr($anchor, -4), 0, 3) ) {
+                        if ($verbose) { print "Check for insertion\n";}
+                        if ($verbose) {print "Fuzzy with insertion.  Old=$seq_window, ";}
+                        $seq_window .= substr($anchor, -1) ;
+                        if ($verbose) {print "New=$seq_window\n";}
+                    }
+                }
+
+                # Found a fuzzy match within tolerances, so store it
+                $found_fuzzy = 1;
+                $best_distance = $dist;
+                $best_position = $pos;
+                $fuzzy_match = $seq_window;
+
+                if ($verbose) {print "\tnew bestd: $best_distance, fuzzy $fuzzy_match to anchor $anchor at pos $pos\n";}
+                # If you have an exact match, you're done
+                if ($dist == 0) { $found_exact = 1; last; }
+            }
+        }
+    }
+
+    # Trim the fuzz
+    my $fuzzy_right = "";
+    if ($found_fuzzy)
+    {
+        $fuzzy_right = $outSeq;
+        if ($trim_type eq "internal")
+        {
+            # leave the bases as part of the sequence (this isn't a primer)
+            if ($verbose_only) {print "0, $best_position, " . length($fuzzy_match) . "\n";}
+            $outSeq = substr($outSeq, 0, $best_position + length($fuzzy_match) );
+            $fuzzy_right =~ s/$outSeq//;
+        } else {
+            # this is a primer lane, so you have to remove it
+            $outSeq = substr($outSeq, 0, $best_position);
+            $fuzzy_right =~ s/$outSeq//;
+        }
+    }
+
+    if ($verbose) {print "Fuzzy: $fuzzy_match, $fuzzy_right, $best_distance, " . length($fuzzy_match) . ", $best_position, $start_pos, $end_pos, \n$outSeq\n";}
+    # Return
+    return($fuzzy_right, $best_distance, $outSeq, $fuzzy_match);
+}
+
+#######################################
+#
+# get_qual_flow
+#        retrieve the quality values
+#
+#######################################
+sub get_qual_flow
+{
+  my $id = shift;
+  # print "\nHERE in get_qual_flow, \$id = $id\n";
+  my $qf = shift;
+  if ($useDB)
+  {
+    my $row;
+    my @oldVal;
+    if ($qf eq "quality")
+    {
+      $selectQual_h->execute($id);
+      $row = $selectQual_h->fetchrow_hashref;
+      # print "URA80: \$id = $id; \$row-quality = $row->{quality}\n";
+      @oldVal = split(/\s+/, $row->{quality});
+    } else {
+      $selectFlow_h->execute($id);
+      $row = $selectFlow_h->fetchrow_hashref;
+      @oldVal = split(/\s+/, $row->{flow});
+    }
+    # print "URA88: \@oldVal size = " . @oldVal . "\nURA89: old_val = "; 
+    # print join(" ", @oldVal);
+    # print "\n";
+    return \@oldVal;
+  }
+}
+
+#######################################
+#
+# trim_qual_flow
+#        trim the quality sequence
+#
+#######################################
+sub trim_qual_flow
+{
+  my $oldRef = shift;
+  my $start  = shift;
+  my $stop   = shift;
+  my $dir    = shift;
+
+  my $newVal = "";
+  if ($start > -1)
+  {
+    if ( ($dir eq "F") && (! $final_revcmp) )
+    {
+      for (my $i=$start; $i<=$stop; $i++)
+      {
+        #print "New val: $newVal, \n";
+        $newVal = join(" ", $newVal, $oldRef->[$i]);        
+      }
+    } else {
+      #do the reverse
+      for (my $i=$stop; $i>=$start; $i--)
+      {
+        $newVal = join(" ", $newVal, $oldRef->[$i]);          
+      }
+    }
+  }
+  $newVal =~ s/^\s+//;
+  return $newVal;
+}
+
+# sub trim_qual_flow
+# {
+#   my $oldRef = shift;
+#   my $start  = shift;
+#   my $stop   = shift;
+#   my $dir    = shift;
+#   my $stop_point = $stop;
+#   
+#   my $newVal = "";
+#   if ($start > -1)
+#   {
+#     if ( ($dir eq "F") && (! $final_revcmp) )
+#     {
+#       # if ($platform eq "ion_torrent")
+#       # {
+#       #   $stop_point = $stop - 1;        
+#       #   # TODO: Ask Sue!
+#       # }      
+#       for (my $i=$start; $i<=$stop_point; $i++)
+#       {
+#         my $temp1 = $oldRef->[$i];
+#         # unless($temp1) 
+#         # {
+#         #   print "URA7101: old ref = @{$oldRef}\n";
+#         #   print "URA711: \$i = $i; New val: $newVal, stop = $stop; start = $start; old_ref-i = ".$oldRef->[$i]."\n\n";        
+#         # }        
+#         unless($newVal) 
+#         {
+#           my @raw_line_arr = split(/ /, $oldRef);
+#           # print "URA8: size of raw_line_arr: " . @raw_line_arr . ".\n";        
+#           # print "URA81: size of raw_line_arr: " . $oldRef . ".\n";        
+#           # my $raw_line_arr_size = scalar (@raw_line_arr);
+#           # print "URA8: old array size = $raw_line_arr_size\n";        
+#           # print "URA710: old ref = @{$oldRef}\n";
+#           # print "URA71: \$i = $i; New val: $newVal, stop = $stop; start = $start; old_ref-i = ".$oldRef->[$i]."\n\n";        
+#         }
+#         $newVal = join(" ", $newVal, $oldRef->[$i]);
+#         # print "New val: $newVal, \n";
+#       }
+#     } else {
+#       #do the reverse
+#       for (my $i=$stop; $i>=$start; $i--)
+#       {
+#         # print "URA7: \$i = $i; stop = $stop; start = $start; old_ref-i\n".$oldRef->[$i]."\n\n";
+#         # unless($newVal) {print "URA71: \$i = $i; New val: $newVal, stop = $stop; start = $start; old_ref-i = ".$oldRef->[$i]."\n\n";}
+#         $newVal = join(" ", $newVal, $oldRef->[$i]);
+#       }
+#     }
+#   }
+#   $newVal =~ s/^\s+//;
+#   # print "URA720: new array = $newVal\n";
+#   # print "URA721: new arraysize = scalar (@{$newVal})\n";  
+#   return $newVal;
+# }
+
+#######################################
+#
+# calc_avg_qual
+#        calculate the average quality score for the trimmed sequence
+#
+#######################################
+# sub calc_avg_qual
+# {
+#     my $qual_scores = shift; # space-delimited string of quality scores
+#     my $total_qual_score = 0;
+#     my $count_qual_scores = 0;
+#     my $avg_qual_score = 0;
+#
+#     #if ($verbose) {print "Quals:\t";}
+#     foreach my $q (split(" ", $qual_scores))
+#     {
+#         #if ($verbose) {print "$q, ";}
+#         $total_qual_score += $q;
+#         $count_qual_scores++;
+#     }
+#     #if ($verbose){print "\n";}
+#
+#     if ($count_qual_scores)
+#     {
+#         $avg_qual_score = int( ($total_qual_score / $count_qual_scores) + 0.5) ;
+#     }
+#     #if ($verbose){print "Total: $total_qual_score, Count: $count_qual_scores, Average: $avg_qual_score\n";}
+#     return $avg_qual_score;
+# }
+
+sub calc_avg_qual
+{
+    my $qual_scores = shift; # space-delimited string of quality scores
+    my $total_qual_score  = 0;
+    my $count_qual_scores = 0;
+    my $avg_qual_score    = 0;
+
+    my @qual_scores_array = split(" ", $qual_scores);
+    $total_qual_score  = sum(@qual_scores_array);
+    $count_qual_scores = scalar(@qual_scores_array);
+
+    if ($count_qual_scores)
+    {
+        $avg_qual_score = int( ($total_qual_score / $count_qual_scores) + 0.5) ;
+    }
+    if ($verbose) {print "Total: $total_qual_score, Count: $count_qual_scores, Average: $avg_qual_score\n";}
+    # print "in sub calc_avg_qual, RRR1: Total: $total_qual_score, Count: $count_qual_scores, Average: $avg_qual_score\n";
+    return $avg_qual_score;
+}
+
+#######################################
+#
+# import_files
+#        load up the SEQ, QUAL, FLOW files and clean them out
+#
+#######################################
+sub import_files
+{
+  close(TRIMSEQ);
+  close(TRIMSEQ_DELETED);
+  close(TRIMMING);
+  close(FLOW);
+  close(QUAL);
+
+
+  # if($verbose) {print LOG "Importing trimmed data into the database\n";}
+  #my $sth = $dbh->prepare("LOAD DATA LOCAL INFILE '" . $seq_filename . "' into table $outSeqTable");
+  #$sth->execute || die "Unable to load local infile \"$seq_filename\" into table \"$outSeqTable\". Error: " . $sth->errstr . "\n";
+  # my $loadErr = system("$load_cmd $seq_filename");
+  # if ($loadErr) {print LOG "Error while loading $seq_filename.  print "exit N"; exiting.\n"; print "exit N"; exit -1}
+
+  if($verbose) {print LOG "Importing trimmed not deleted data into the database\n";}
+  &prep_exec_query($dbh, "LOAD DATA LOCAL INFILE '" . $trimseq_filename . "'  INTO TABLE $outTrimseqTable (read_id, run_id, dataset_id, project_id, dna_region_id, trimsequence_id)");
+
+  if($verbose) {print LOG "Importing trimmed deleted data into the database\n";}
+  &prep_exec_query($dbh, "LOAD DATA LOCAL INFILE '" . $trimseq_deleted_filename . "' INTO TABLE $outTrimseq_deletedTable (read_id, run_id, dataset_id, project_id, dna_region_id, trimsequence_id)");
+
+  # if($verbose) {print LOG "Importing trimmed not deleted data into the database\n";}
+  # &prep_exec_query($dbh, "LOAD DATA LOCAL INFILE '" . $trimseq_filename . "'  INTO TABLE $outTrimseqTable (read_id, \@var1, run_id, dataset_id, project_id, dna_region_id) SET $sequence_field = compress(\@var1)");
+  # 
+  # if($verbose) {print LOG "Importing trimmed deleted data into the database\n";}
+  # &prep_exec_query($dbh, "LOAD DATA LOCAL INFILE '" . $trimseq_deleted_filename . "' INTO TABLE $outTrimseq_deletedTable (read_id, \@var1, run_id, dataset_id, project_id, dna_region_id) SET $sequence_field = compress(\@var1)");
+
+  if($verbose) {print LOG "Importing trimming info data into the database\n";}
+  &prep_exec_query($dbh, "LOAD DATA LOCAL INFILE '" . $trimming_filename . "' INTO TABLE $outTrimmingTable (read_id, run_id, run_key_id, delete_reason_id, prox_primer_id, orientation, distal_primer_id, countN, p_offset)");
+
+  if($verbose) {print LOG "Importing trim flow data into the database\n";}
+  &prep_exec_query($dbh, "LOAD DATA LOCAL INFILE '" . $flow_filename . "' INTO TABLE $outFlowTable (run_id, read_id, \@var1) SET $flow_field = compress(\@var1)");
+
+  if($verbose) {print LOG "Importing trim quality data into the database\n";}
+  &prep_exec_query($dbh, "LOAD DATA LOCAL INFILE '" . $qual_filename . "' INTO TABLE $outQualTable (run_id, read_id, \@var1, avg_quality) SET $quality_field = compress(\@var1)");
+
+  if ($verbose) {print LOG "Removing temporary text files\n";}
+
+  `rm $trimseq_filename`;
+  `rm $trimseq_deleted_filename`;
+  `rm $trimming_filename`;
+  `rm $flow_filename`;
+  `rm $qual_filename`;
+}
