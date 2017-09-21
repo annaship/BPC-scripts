@@ -1,6 +1,6 @@
 #!/bin/bash
 
-title="Illumina gast. Run on grendel."
+title="Illumina gast. Run on any cluster."
 prompt="Please select a file name pattern:"
 #options=("*.unique.nonchimeric.fa" "*.unique.nonchimeric.fa for Fungi (ITS1)" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaeae" "*MAX-MISMATCH-3.unique")
 options=("*.unique.nonchimeric.fa v4v5" "*.unique.nonchimeric.fa Euk v4" "*.unique.nonchimeric.fa Fungi ITS1" "*-PERFECT_reads.fa.unique" "*-PERFECT_reads.fa.unique for Archaeae" "*MAX-MISMATCH-3.unique")
@@ -40,6 +40,7 @@ echo "NAME_PAT = $NAME_PAT"
 echo "Files number: = `echo $NAME_PAT | wc -w`"
 
 for file in $NAME_PAT
+
 do
   echo "============="
   #echo $file
