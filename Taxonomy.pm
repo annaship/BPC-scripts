@@ -141,7 +141,7 @@ sub depth
 {
 	my $self = shift;
 	my $depth = "NA";
-	my @ranks = ("domain", "phylum", "class", "orderx", "family", "genus", "species", "strain" );
+	my @ranks = ("domain", "phylum", "class", "order", "family", "genus", "species", "strain" );
 	#for (my $i=0; $i<=7; $i++)
 	for (my $i=0; $i < scalar @{$self}; $i++)
 	{
@@ -170,7 +170,7 @@ sub consensus
 	my $taxCount = scalar @_;
 	my $minRankIndex = -1;
 	my $minRank = "NA";
-	my @ranks = ("domain", "phylum", "class", "orderx", "family", "genus", "species", "strain" );
+	my @ranks = ("domain", "phylum", "class", "order", "family", "genus", "species", "strain" );
 
 	# 
 	# Calculate the Consensus
