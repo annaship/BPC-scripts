@@ -7,7 +7,9 @@ function verbose_log () {
     fi
 }
 
-USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: analysis/gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-t vsearch threads (default: 0)] [-v verbosity (default: 0)] [-h this statement]"
+USAGE="Illumina gast. Run on grendel. Optional arguments: [-d gast output directory (default: analysis/gast)] [-s script name] [-g path to gast ref files (default: /xraid2-2/g454/blastdbs/gast_distributions)] [-v verbosity (default: 0)] [-h this statement]"
+
+# [-t vsearch threads (default: 0)] - removed Tue Nov 28 2017 by Rich's request, ASh
 
 # args
 # DEFAULT
@@ -15,7 +17,7 @@ gast_dir="../gast"
 # RUN_LANE="RUN_LANE"
 RUN_LANE=`pwd | sed 's,^/xraid2-2/g454/run_new_pipeline/illumina/\(.*\)/\(lane_1_[^/]*\)/.*,\1_\2,g' | sed 's#/#_#g'`
 
-threads="0"
+# threads="0"
 gast_db_path="/xraid2-2/g454/blastdbs/gast_distributions"
 verbosity=0
 
@@ -25,7 +27,7 @@ do
     case $add_option in
         d  )    gast_dir=$OPTARG;;
         s  )    RUN_LANE=$OPTARG;;
-        t  )    threads=$OPTARG;;
+        # t  )    threads=$OPTARG;;
         g  )    gast_db_path=$OPTARG;;
         v  )    verbosity=1;;
         h  )    echo $USAGE; exit;;
@@ -51,7 +53,7 @@ FULL_OPTION=""
 
 verbose_log "gast_dir = $gast_dir"
 verbose_log "RUN_LANE = $RUN_LANE"
-verbose_log "threads  = $threads"
+# verbose_log "threads  = $threads"
 verbose_log "gast_db_path = $gast_db_path"
 
 select opt in "${options[@]}"; do 
@@ -124,9 +126,9 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   echo "file name is \$INFILE"
   echo
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads"
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc"
 
-  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc -threads $threads
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc
   
   chmod 666 clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
   
