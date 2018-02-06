@@ -243,6 +243,9 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-strand") {
 		shift @ARGV;
 		$strand = shift @ARGV;
+	} elsif ($ARGV[0] eq "-id") {
+		shift @ARGV;
+		$min_pctid = shift @ARGV;
 	} elsif ($ARGV[0] eq "-v") {
 		$verbose = 1;
 		shift @ARGV;
