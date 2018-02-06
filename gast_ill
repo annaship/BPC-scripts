@@ -51,48 +51,74 @@ use Taxonomy;
 my $script_help = "
  gast - reads a fasta file of trimmed 16S sequences, compares each sequence to
  a set of similarly trimmed ( or full-length ) 16S reference sequences and assigns taxonomy.
- Now uses vsearch, needs fasta files as a reference, not .udb.
+ Now uses vsearch, needs fasta files as a reference, not .udb. Tested for Illumina.
 \n";
 
 my $usage = "
-   Usage:  gast -in input_fasta -ref reference_uniques_fasta -rtax reference_dupes_taxonomy [-mp min_pct_id] [-m majority] -out output_file
-
-      ex:  gast -in mydata.trimmed.fa -ref refv3v5 -rtax refv3v5.tax -out mydata.gast
-           gast -in mydata.trimmed.fa -ref refv3v5 -rtax refv3v5.tax -mp 0.80 -m 100 -out mydata.gast
-   Illumina ex:
-           gast_ill -saveuc -nodup  -in reference_uniques_fasta -db /xraid2-2/g454/blastdbs/gast_distributions/refv4v5.fa -rtax /xraid2-2/g454/blastdbs/gast_distributions/refv4v5.tax -out mydata.gast
+   Usage example: gast_ill -saveuc -nodup -in mydata.unique.nonchimeric.fa -db refv4v5.fa -rtax refv4v5.tax -out mydata.unique.nonchimeric.fa.gast -uc mydata.unique.nonchimeric.fa.uc
    ITS1 ex:
-   (use -ignoregaps)
-   gast_ill -ignoregaps -saveuc -nodup  -in my.fasta -db /xraid2-2/g454/blastdbs/gast_distributions/refits1.fa -rtax /xraid2-2/g454/blastdbs/gast_distributions/refits1.tax -out my.gast
+      (use -ignoregaps)
+      gast_ill -ignoregaps -saveuc -nodup  -in my.fasta -db /xraid2-2/g454/blastdbs/gast_distributions/refits1.fa -rtax /xraid2-2/g454/blastdbs/gast_distributions/refits1.tax -out my.gast
 
- Options:
-           -in     input fasta file
-           -ref/-db    reference fasta file containing unique sequences of known taxonomy
-                   The definition line should include the ID used in the reference taxonomy file.
-                   Any other information on the definition line should be separated by a space or a \"|\" symbol.
-           -rtax   reference taxa file with taxonomy for all copies of the sequences in the reference fasta file
-                   This is a tab-delimited file, three columns, describing the taxonomy of the reference sequences
-                   The ID matching the reference fasta, the taxonomy and the number of reference sequences with this
-                      this same taxonomy.
-           -out    output filename
-           -terse  minimal output, includes only ID, taxonomy, and distance
-                   See GAST manual for description of other fields
+Options (https://github.com/torognes/vsearch/releases/download/v2.6.2/vsearch_manual.pdf):\n";
+ 
+$usage .= "-----\n";
 
-           -maxa   [Optional] usearch --max_accepts parameter [default: 15]
-           -maxr   [Optional] usearch --max_rejects parameter [default: 0]
-           -strand [Optional] usearch --strand parameter (plus/both) [default: plus]
-           -maj    percent majority required for taxonomic consensus [default: 66]
-           -nodup  instead of uniquing sequences with mothur just make a copy of existing file with .unique.fa
-           -full   input data will be compared against full length 16S reference sequences [default: not full length]
-           -threads number of threads to use, zero for all cores (0) [default: 4]
-           -uc      uclust_filename [default: 'input fasta file'.uc]
+# $usearch_cmd .= " -notrunclabels -gapopen 6I/1E -usearch_global $uniques_filename -strand $strand -uc_allhits -uc $uclust_filename -maxaccepts $max_accepts -maxrejects $max_rejects $curr_threads -id $min_pctid";
+# notrunclabels: https://www.drive5.com/usearch/manual/opt_notrunclabels.html
+# gapopen: https://www.drive5.com/usearch/manual/aln_params.html
+# https://www.drive5.com/usearch/manual/cmd_usearch_global.html
+# ‑uc_allhits option (No longer supported). https://www.drive5.com/usearch/manual/opt_uc_allhits.html
 
-      Optional database output
-           -host   mysql server host name
-           -db     database name
-           -table  database table to receive data
+$usage .= "Required:\n";
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-in:", "in_filename;", "Input fasta file", "(REQUIRED)");
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-ref:", "ref_filename;", "reference fasta file containing unique sequences of known taxonomy. The definition line should include the ID used in the reference taxonomy file. Any other information on the definition line should be separated by a space or a '|' symbol.", "(REQUIRED)");
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-db:", "udb_filename;", "the same as -ref", "(REQUIRED)");
 
-\n";
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-rtax:", "reftax_filename;", "reference taxa file with taxonomy for all copies of the sequences in the reference fasta file. This is a tab-delimited file, three columns, describing the taxonomy of the reference sequences. The ID matching the reference fasta, the taxonomy and the number of reference sequences with this same taxonomy.", "(REQUIRED)");
+$usage .= "-----\n";
+
+$usage .= "Either an output file or a mysql database table name is required:\n";
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-out:", "out_filename;", "output filename", "");
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-table:", "gast_table;", "mysql database table", "");
+$usage .= "-----\n";
+
+$usage .= "Optional:\n";
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-full:", "use_full_length = 1;", "input data will be compared against full length 16S reference sequences [default: not full length]", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-host:", "db_host;", "mysql server host name", "(DEFAULT: 'bpcdb1')");
+
+$usage .= sprintf("%-13s %-17s %-37s %-13s\n", "-ignoregaps:", "ignore_all_gaps = 1;", "", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-maj:", "majority;", "percent majority required for taxonomic consensus", "(DEFAULT: 66)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-maxa:", "max_accepts;", "www.drive5.com/usearch/manual/termination_options.html", "(DEFAULT: 15)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-maxg:", "max_gap;", "if too large a gap, tends to be indicative of chimera or other non-matches", "(DEFAULT: 10)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-maxr:", "max_rejects;", "www.drive5.com/usearch/manual/termination_options.html", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-id:", "min_pctid;", "specifies the minimum sequence identity of a hit", "(DEFAULT: 0.80)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-nodup:", "nodup = 1;", "instead of uniquing sequences with mothur just make a copy of existing file with .unique.fa", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-36s %-13s\n", "-saveuc:", "save_uclust_file = 1;", "", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-sql_db:", "db_name;", "mysql database name", "(DEFAULT: 'env454')");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-strand:", "strand;", "www.drive5.com/usearch/manual/cmd_closed_ref.html [plus/both].", "(DEFAULT: 'plus')");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-termg:", "ignore_terminal_gaps = 1;", "only ignore for max gap size, still included in the distance calculations", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-terse:", "terse = 1;", "minimal output, includes only ID, taxonomy, and distance", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-threads:", "threads;", "number of threads to use, zero for all cores", "(DEFAULT: 0)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-uc:", "uclust_filename;", "", "(DEFAULT: 'input fasta file'.uc)");
+
+$usage .= sprintf("%-13s %-17s %-40s %-13s\n", "-v:", "verbose = 1;", "", "(DEFAULT: 0)");
+
+
 
 #######################################
 #
@@ -125,7 +151,6 @@ my $min_pctid   = 0.80;
 my $max_accepts = 15;
 my $max_rejects = 0;
 my $strand      = "plus";
-# my $threads     = 0;
 my $threads;
 my $uclust_filename = "";
 
@@ -167,9 +192,6 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-ref") {
 		shift @ARGV;
 		$ref_filename = shift @ARGV;
-	} elsif ($ARGV[0] eq "-udb") {
-		shift @ARGV;
-		$udb_filename = shift @ARGV;
 	} elsif ($ARGV[0] eq "-db") {
 		shift @ARGV;
 		$udb_filename = shift @ARGV;
@@ -197,7 +219,7 @@ while ((scalar @ARGV > 0) && ($ARGV[0] =~ /^-/))
 	} elsif ($ARGV[0] eq "-ignoregaps") {
 		$ignore_all_gaps = 1;
 		shift @ARGV;
-	} elsif ($ARGV[0] eq "-db") {
+	} elsif ($ARGV[0] eq "-sql_db") {
 		shift @ARGV;
 		$db_name = shift @ARGV;
 	} elsif ($ARGV[0] eq "-host") {
