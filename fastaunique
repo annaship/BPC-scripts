@@ -6,9 +6,7 @@
 #
 
 import sys
-
-sys.path.append('/bioware/pythonmodules/fastalib')
-import fastalib as u
+import IlluminaUtils.lib.fastalib as fastalib as u
 
 def main(args):
     try:
