@@ -6,7 +6,7 @@
 #
 
 import sys
-import IlluminaUtils.lib.fastalib as fastalib as u
+import IlluminaUtils.lib.fastalib as u
 
 def main(args):
     try:
