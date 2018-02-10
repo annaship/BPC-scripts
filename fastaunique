@@ -41,7 +41,7 @@ def main(args):
         sys.exit(-1)
 
     
-    while input.next():
+    while next(input):
         if args.dont_truncate_sequences:
             if args.dont_include_frequencies:
                 output.store(input, split = False, store_frequencies = False)
