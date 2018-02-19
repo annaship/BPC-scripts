@@ -151,7 +151,7 @@ my $user_contact_table      = "new_user_contact";
 # todo: new_read_id on prod!!!
 # my $read_id_table           = "new_read_id";
 # dop table
-my $vamps_auth_table        = "vamps_auth";
+my $vamps_auth_table        = "vamps2.user";
 my $vamps_sequences_transfer_temp_table = "vamps_sequences_transfer_temp";
 
 my %previous_res_count;
@@ -1117,8 +1117,8 @@ if ( ($start eq "norm_tables") )
     ";
 
   my $update_new_user = "INSERT IGNORE INTO $user_table" . $tblSuffix . " (user, passwd, active, security_level)
-          SELECT distinct user, passwd, active, security_level
-          FROM $vamps_auth_table";
+  SELECT distinct username as user, encrypted_password as passwd, active, security_level
+            FROM $vamps_auth_table";
 
   my $update_new_contact1 = "INSERT IGNORE INTO $contact_table" . $tblSuffix . " (first_name, last_name, email, institution, contact)
     SELECT distinct first_name, last_name, email, institution, concat(first_name, ' ', last_name)
@@ -1157,11 +1157,23 @@ if ( ($start eq "norm_tables") )
       JOIN $project_dataset_table" . $illSuffix . " USING(project_dataset, project, dataset)";
 
   my $update_new_user_contact = "INSERT IGNORE INTO $user_contact_table" . $illSuffix . " (contact_id, user_id, contact, user)
-    SELECT distinct contact_id, user_id, contact, user
-    FROM $vamps_auth_table
-      JOIN $contact_table" . $tblSuffix . " USING(first_name, last_name, email, institution)
-      JOIN $user_table" . $tblSuffix . " USING(USER, passwd, active, security_level)
-      WHERE contact_id IS NOT null";
+  SELECT distinct contact_id, new_user.user_id, contact, new_user.user
+        #     FROM vamps2.user
+        #           JOIN new_contact USING(first_name, last_name, email, institution)
+        # JOIN new_user USING(active, security_level)
+        FROM $vamps_auth_table
+          JOIN $contact_table" . $tblSuffix . " USING(first_name, last_name, email, institution)
+          JOIN $user_table" . $tblSuffix . " USING(active, security_level)
+        WHERE contact_id IS NOT null
+        and
+        USER = username
+        and passwd = encrypted_password
+  
+    # SELECT distinct contact_id, user_id, contact, user
+    # FROM $vamps_auth_table
+    #   JOIN $contact_table" . $tblSuffix . " USING(first_name, last_name, email, institution)
+    #   JOIN $user_table" . $tblSuffix . " USING(USER, passwd, active, security_level)
+    #   WHERE contact_id IS NOT null";
 
   my $update_new_project1 = "INSERT IGNORE INTO $project_table" . $tblSuffix . " (project, title, project_description, env_sample_source_id, contact_id)
     SELECT distinct project_name, title, description, env_source_id, contact_id
