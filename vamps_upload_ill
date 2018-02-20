@@ -1157,7 +1157,7 @@ if ( ($start eq "norm_tables") )
       JOIN $project_dataset_table" . $illSuffix . " USING(project_dataset, project, dataset)";
 
   my $update_new_user_contact = "INSERT IGNORE INTO $user_contact_table" . $illSuffix . " (contact_id, user_id, contact, user)
-  SELECT distinct contact_id, new_user.user_id, contact, new_user.user
+  SELECT distinct contact_id, $user_table" . $tblSuffix . ".user_id, contact, $user_table" . $tblSuffix . ".user
         #     FROM vamps2.user
         #           JOIN new_contact USING(first_name, last_name, email, institution)
         # JOIN new_user USING(active, security_level)
@@ -1955,7 +1955,10 @@ sub update_table_w_file()
 
   my $sql_prep = $dbhVamps->prepare($write_to_db) || die "Unable to prepare query: $write_to_db\nError: " . $dbhVamps->errstr . "\n";
   &print_out("Executing: write_to_db = $write_to_db\n");
-  $sql_prep->execute() || die "Unable to execute MySQL statement: $write_to_db\nError: " . $dbhVamps->errstr . "(" . (localtime) . ")\n";
+  unless ($test_only == 1)
+  {
+    $sql_prep->execute() || die "Unable to execute MySQL statement: $write_to_db\nError: " . $dbhVamps->errstr . "(" . (localtime) . ")\n";
+  }
 
   my $remove_temp_file = system("rm $temp_aux_filename");
   if ($remove_temp_file) {warn "Error removing $temp_aux_filename\n";}
