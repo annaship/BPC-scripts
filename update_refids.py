@@ -183,7 +183,7 @@ class Update_refhvr_ids:
     #   """
     l = len(column_names_arr)
     query = "ALTER TABLE refids_per_dataset_temp drop column %s" % column_names_arr[0]
-    if len > 1:
+    if l > 1:
       for x in range(1, l):
         query += ", drop column %s" % (column_names_arr[x])
     print(query)
