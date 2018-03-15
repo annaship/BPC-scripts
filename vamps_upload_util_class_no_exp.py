@@ -187,61 +187,61 @@ class SqlUtil:
       return suff_table_names
 
     def update_intermediate_from_illumina_transfer(self, intermediate_names, transfer_names):      
-      insert_vamps_data_cube_q         = """INSERT IGNORE INTO %s (project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
+      insert_vamps_data_cube_q         = """REPLACE INTO %s (project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier) SELECT project, dataset, taxon_string, superkingdom, phylum, class, `order`, family, genus, species, strain, rank, knt, frequency, dataset_count, classifier 
       FROM %s
-      ON DUPLICATE KEY UPDATE
-       project = VALUES(project),
-       dataset = VALUES(dataset),
-       taxon_string = VALUES(taxon_string)
+      # ON DUPLICATE KEY UPDATE
+      #  project = VALUES(project),
+      #  dataset = VALUES(dataset),
+      #  taxon_string = VALUES(taxon_string)
       """ % (intermediate_names['vamps_data_cube'], transfer_names['vamps_data_cube'])
  #     insert_vamps_export_q            = """INSERT IGNORE INTO %s (read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed) SELECT read_id, project, dataset, refhvr_ids, distance, taxonomy, sequence, rank, date_trimmed 
  #                                             FROM %s""" % (intermediate_names['vamps_export'], transfer_names['vamps_export'])
-      insert_vamps_junk_data_cube_q    = """INSERT IGNORE INTO %s (taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier) SELECT taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier 
+      insert_vamps_junk_data_cube_q    = """REPLACE INTO %s (taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier) SELECT taxon_string, knt, frequency, dataset_count, rank, project, dataset, project_dataset, classifier 
       FROM %s
-      ON DUPLICATE KEY UPDATE
-       project_dataset = VALUES(project_dataset),
-       taxon_string = VALUES(taxon_string)          
+      # ON DUPLICATE KEY UPDATE
+      #  project_dataset = VALUES(project_dataset),
+      #  taxon_string = VALUES(taxon_string)
       """ % (intermediate_names['vamps_junk_data_cube'], transfer_names['vamps_junk_data_cube'])
 
-      insert_vamps_projects_datasets_q = """INSERT IGNORE INTO %s (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info) SELECT project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info 
+      insert_vamps_projects_datasets_q = """REPLACE INTO %s (project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info) SELECT project, dataset, dataset_count, has_sequence, date_trimmed, dataset_info 
       FROM %s
-      ON DUPLICATE KEY UPDATE
-       project = VALUES(project),
-       dataset = VALUES(dataset)                                              
+      # ON DUPLICATE KEY UPDATE
+      #  project = VALUES(project),
+      #  dataset = VALUES(dataset)                                          
        """ % (intermediate_names['vamps_projects_datasets'], transfer_names['vamps_projects_datasets'])
        
-      insert_vamps_projects_info_q     = """INSERT IGNORE INTO %s (project_name, title, description, contact, email, institution, env_source_id, edits) SELECT project_name, title, description, contact, email, institution, env_source_id, edits 
+      insert_vamps_projects_info_q     = """REPLACE INTO %s (project_name, title, description, contact, email, institution, env_source_id, edits) SELECT project_name, title, description, contact, email, institution, env_source_id, edits 
       FROM %s
-      ON DUPLICATE KEY UPDATE
-       project_name = VALUES(project_name),
-       contact = VALUES(contact),
-       email = VALUES(email),
-       institution = VALUES(institution)    
+      # ON DUPLICATE KEY UPDATE
+      #  project_name = VALUES(project_name),
+      #  contact = VALUES(contact),
+      #  email = VALUES(email),
+      #  institution = VALUES(institution)
       """ % (intermediate_names['vamps_projects_info'], transfer_names['vamps_projects_info'])
 
-      insert_vamps_sequences_q         = """INSERT IGNORE INTO %s (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset) SELECT sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset 
+      insert_vamps_sequences_q         = """REPLACE INTO %s (sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset) SELECT sequence, project, dataset, taxonomy, refhvr_ids, rank, seq_count, frequency, distance, rep_id, project_dataset 
                                               FROM %s""" % (intermediate_names['vamps_sequences'], transfer_names['vamps_sequences'])
       
-      insert_vamps_taxonomy_q          = """INSERT IGNORE INTO %s (taxon_string, rank, num_kids) SELECT taxon_string, rank, num_kids 
+      insert_vamps_taxonomy_q          = """REPLACE INTO %s (taxon_string, rank, num_kids) SELECT taxon_string, rank, num_kids 
                                               FROM %s""" % (intermediate_names['vamps_taxonomy'], transfer_names['vamps_taxonomy'])
       
-      insert_new_superkingdom_q        = """INSERT IGNORE INTO %s (superkingdom) SELECT superkingdom 
+      insert_new_superkingdom_q        = """REPLACE INTO %s (superkingdom) SELECT superkingdom 
                                               FROM %s""" % (intermediate_names['new_superkingdom'], transfer_names['new_superkingdom'])
       
-      insert_new_phylum_q              = """INSERT IGNORE INTO %s (phylum) SELECT phylum 
+      insert_new_phylum_q              = """REPLACE INTO %s (phylum) SELECT phylum 
                                               FROM %s""" % (intermediate_names['new_phylum'], transfer_names['new_phylum'])
       
-      insert_new_class_q               = """INSERT IGNORE INTO %s (class) SELECT class FROM %s""" % (intermediate_names['new_class'], transfer_names['new_class'])
-      insert_new_orderx_q              = """INSERT IGNORE INTO %s (`order`) SELECT `order` FROM %s""" % (intermediate_names['new_orderx'], transfer_names['new_orderx'])
-      insert_new_family_q              = """INSERT IGNORE INTO %s (family) SELECT family FROM %s""" % (intermediate_names['new_family'], transfer_names['new_family'])
-      insert_new_genus_q               = """INSERT IGNORE INTO %s (genus) SELECT genus FROM %s""" % (intermediate_names['new_genus'], transfer_names['new_genus'])
-      insert_new_species_q             = """INSERT IGNORE INTO %s (species) SELECT species FROM %s""" % (intermediate_names['new_species'], transfer_names['new_species'])
-      insert_new_strain_q              = """INSERT IGNORE INTO %s (strain) SELECT strain FROM %s""" % (intermediate_names['new_strain'], transfer_names['new_strain'])
-      insert_new_taxon_string_q        = """INSERT IGNORE INTO %s (taxon_string, rank_number) SELECT taxon_string, rank_number FROM %s""" % (intermediate_names['new_taxon_string'], transfer_names['new_taxon_string'])
-      insert_new_user_q                = """INSERT IGNORE INTO %s (user, passwd, active, security_level) SELECT user, passwd, active, security_level FROM %s""" % (intermediate_names['new_user'], transfer_names['new_user'])
-      insert_new_contact_q             = """INSERT IGNORE INTO %s (first_name, last_name, email, institution, contact) SELECT first_name, last_name, email, institution, contact 
+      insert_new_class_q               = """REPLACE INTO %s (class) SELECT class FROM %s""" % (intermediate_names['new_class'], transfer_names['new_class'])
+      insert_new_orderx_q              = """REPLACE INTO %s (`order`) SELECT `order` FROM %s""" % (intermediate_names['new_orderx'], transfer_names['new_orderx'])
+      insert_new_family_q              = """REPLACE INTO %s (family) SELECT family FROM %s""" % (intermediate_names['new_family'], transfer_names['new_family'])
+      insert_new_genus_q               = """REPLACE INTO %s (genus) SELECT genus FROM %s""" % (intermediate_names['new_genus'], transfer_names['new_genus'])
+      insert_new_species_q             = """REPLACE INTO %s (species) SELECT species FROM %s""" % (intermediate_names['new_species'], transfer_names['new_species'])
+      insert_new_strain_q              = """REPLACE INTO %s (strain) SELECT strain FROM %s""" % (intermediate_names['new_strain'], transfer_names['new_strain'])
+      insert_new_taxon_string_q        = """REPLACE INTO %s (taxon_string, rank_number) SELECT taxon_string, rank_number FROM %s""" % (intermediate_names['new_taxon_string'], transfer_names['new_taxon_string'])
+      insert_new_user_q                = """REPLACE INTO %s (user, passwd, active, security_level) SELECT user, passwd, active, security_level FROM %s""" % (intermediate_names['new_user'], transfer_names['new_user'])
+      insert_new_contact_q             = """REPLACE INTO %s (first_name, last_name, email, institution, contact) SELECT first_name, last_name, email, institution, contact 
                                               FROM %s""" % (intermediate_names['new_contact'], transfer_names['new_contact'])
-      insert_new_user_contact_q        = """INSERT IGNORE INTO %s (contact_id, user_id) 
+      insert_new_user_contact_q        = """REPLACE INTO %s (contact_id, user_id) 
         SELECT new_contact.contact_id, new_user.user_id
         FROM new_user_contact_ill
         join %s as new_user using(user)
@@ -254,7 +254,7 @@ class SqlUtil:
       #   JOIN %s using(contact_id)
       #   """ % (intermediate_names['new_project'], transfer_names['new_project'], intermediate_names['new_contact'])
       
-      insert_new_project_q             = """INSERT IGNORE INTO %s (project, title, project_description, funding, env_sample_source_id, contact_id) 
+      insert_new_project_q             = """REPLACE INTO %s (project, title, project_description, funding, env_sample_source_id, contact_id) 
         SELECT project, title, project_description, funding, env_sample_source_id, new_contact_intermediate.contact_id  
         FROM %s
         JOIN %s using(contact_id)
@@ -268,7 +268,7 @@ class SqlUtil:
         #       JOIN new_contact_transfer USING(contact_id)
         #       JOIN new_contact_intermediate USING(contact, email, institution)
       
-      insert_new_taxonomy_q            = """INSERT IGNORE INTO %s (taxon_string_id, superkingdom_id, phylum_id, class_id, orderx_id, family_id, genus_id, species_id, strain_id, rank_id, classifier) 
+      insert_new_taxonomy_q            = """REPLACE INTO %s (taxon_string_id, superkingdom_id, phylum_id, class_id, orderx_id, family_id, genus_id, species_id, strain_id, rank_id, classifier) 
         SELECT new_taxon_string.taxon_string_id, new_superkingdom.superkingdom_id, new_phylum.phylum_id, new_class.class_id, new_orderx.orderx_id, new_family.family_id, 
           new_genus.genus_id, new_species.species_id, new_strain.strain_id, new_rank.rank_id, classifier
         FROM new_taxonomy_ill
@@ -282,19 +282,19 @@ class SqlUtil:
           JOIN %s as new_species USING(species)
           JOIN %s as new_strain USING(strain)
           JOIN %s as new_rank USING(rank)""" % (intermediate_names['new_taxonomy'], intermediate_names['new_taxon_string'], intermediate_names['new_superkingdom'], intermediate_names['new_phylum'], intermediate_names['new_class'], intermediate_names['new_orderx'], intermediate_names['new_family'], intermediate_names['new_genus'], intermediate_names['new_species'], intermediate_names['new_strain'], 'new_rank')
-      insert_new_dataset_q             = """INSERT IGNORE INTO %s (dataset, dataset_description, reads_in_dataset, has_sequence, project_id, date_trimmed) 
+      insert_new_dataset_q             = """REPLACE INTO %s (dataset, dataset_description, reads_in_dataset, has_sequence, project_id, date_trimmed) 
         SELECT dataset, dataset_description, reads_in_dataset, has_sequence, new_project.project_id, date_trimmed 
         FROM new_dataset_ill
         join %s as new_project using(project)""" % (intermediate_names['new_dataset'], intermediate_names['new_project'])
 
-      insert_new_project_dataset_q     = """INSERT IGNORE INTO %s (project_dataset, dataset_id, project_id) 
+      insert_new_project_dataset_q     = """REPLACE INTO %s (project_dataset, dataset_id, project_id) 
         SELECT project_dataset, new_dataset.dataset_id, new_project.project_id 
         FROM new_project_dataset_ill
           join %s as new_project using(project)
           join %s as new_dataset using(dataset)
           where new_dataset.project_id = new_project.project_id
           """ % (intermediate_names['new_project_dataset'], intermediate_names['new_project'], intermediate_names['new_dataset'])
-      insert_new_summed_data_cube_q    = """INSERT IGNORE INTO %s (taxon_string_id, knt, frequency, dataset_count, rank_number, project_id, dataset_id, project_dataset_id, classifier) 
+      insert_new_summed_data_cube_q    = """REPLACE INTO %s (taxon_string_id, knt, frequency, dataset_count, rank_number, project_id, dataset_id, project_dataset_id, classifier) 
         SELECT new_taxon_string.taxon_string_id, knt, frequency, dataset_count, rank_number, new_project.project_id, new_dataset.dataset_id, new_project_dataset.project_dataset_id, classifier 
         FROM new_summed_data_cube_ill
           join %s as new_project using(project)
