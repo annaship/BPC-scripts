@@ -25,8 +25,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     if not os.path.exists(args.in_fastq_file_name):
-        print "Input fastq file '%s' does not exist." % args.in_fastq_file_name
-        print
+        print("Input fastq file '%s' does not exist." % args.in_fastq_file_name)
         sys.exit()
     
     #     if len(sys.argv)==1:
@@ -38,23 +37,23 @@ if __name__ == '__main__':
 
     # =========
     demultiplex.get_file_name_by_barcode_from_prep()
-    print "demultiplex.get_file_name_by_barcode_from_prep()"
+    print("demultiplex.get_file_name_by_barcode_from_prep()")
 
     demultiplex.open_sample_files()
-    print "demultiplex.open_sample_files()"
+    print("demultiplex.open_sample_files()")
     
     demultiplex.write_to_files_r1()
-    print "demultiplex.write_to_files_r1()"
+    print("demultiplex.write_to_files_r1()")
     
     demultiplex.write_to_files_r2()
-    print "demultiplex.write_to_files_r2()"
+    print("demultiplex.write_to_files_r2()")
     
     # illumina_files.create_inis()
-    # print "illumina_files.create_inis()"
+    # print("illumina_files.create_inis()")
     # 
     # command_name = "merge-illumina-pairs"
     # 
     # illumina_files.create_job_array_script(command_name)
-    # print "illumina_files.create_job_array_script(command_name, its) = %s,  time: %s" % (command_name, elapsed)
+    # print("illumina_files.create_job_array_script(command_name, its) = %s,  time: %s" % (command_name, elapsed))
 
     
