@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--out_dir', default = "",
                                         help = 'Output directory. Default is res_\{IN_FASTQ_FILE_NAME\}. Should be created upfront manually.')
     parser.add_argument('--compressed', '-c', action = "store_true", default = False,
-                                        help = 'Use if fastq compressed. Default is a %(default)s.')
+                                        help = 'Use if fastq compressed. Default is %(default)s.')
                                         
     args = parser.parse_args()
     
