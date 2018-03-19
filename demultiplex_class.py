@@ -91,7 +91,7 @@ class Demultiplex:
     def write_to_files_r1(self):
       fastq_input = self.open_current_file(self.in_fastq_file_name)
 
-      while fastq_input.next(raw = True):
+      while fastq_input.next():
           e = fastq_input.entry
           # num = e.pair_no
           # print("int(e.pair_no)")
