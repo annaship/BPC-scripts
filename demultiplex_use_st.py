@@ -1,5 +1,5 @@
 import os, sys
-from demultiplex_class import Demultiplex
+from demultiplex_class_st import Demultiplex
 
 # todo: make time work
 

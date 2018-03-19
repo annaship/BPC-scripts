@@ -71,16 +71,15 @@ class Demultiplex:
         return
 
     def make_id_dataset_idx(self, e_header_line, barcode):
-        short_id1 = e_header_line.split()[0]
-        short_id2 = ":".join(e_header_line.split()[1].split(":")[1:])
-        id2 = short_id1 + " 2:" + short_id2
+        short_id1 = e_header_line.split("/")[0]
+        short_id2 = e_header_line.split("/")[0]
+        # short_id2 = ":".join(e_header_line.split()[1].split(":")[1:])
+        id2 = short_id1 + "/2"
         self.id_sample_idx[id2] = barcode
 
-    def get_run_key(self, e_sequence):
-        if self.has_ns():
-            return ("NNNN" + e_sequence[4:9])
-        else:
-            return e_sequence[0:5]
+    def get_run_key(self, header_line):
+        return header_line.split("#")[1][0:8]
+
 
     def has_ns(self):
         return any("NNNN" in s for s in self.sample_barcodes)
@@ -96,22 +95,22 @@ class Demultiplex:
           # num = e.pair_no
           # print("int(e.pair_no)")
           # print(int(num))
-          if int(e.pair_no) == 1:
-              barcode = self.get_run_key(e.sequence)
-              self.make_id_dataset_idx(e.header_line, barcode)
-              try:
-                  self.out_files[barcode + "_R1"].store_entry(e)
-              except:
-                  self.out_files["unknown"].store_entry(e)
+          # if int(e.pair_no) == 1:
+          barcode = self.get_run_key(e.header_line)
+          self.make_id_dataset_idx(e.header_line, barcode)
+          try:
+              self.out_files[barcode + "_R1"].store_entry(e)
+          except:
+              self.out_files["unknown"].store_entry(e)
 
     def write_to_files_r2(self):
-      file_r2_name = re.sub(r'_R1_', '_R2_', self.in_fastq_file_name)
+      file_r2_name = re.sub(r'_R1', '_R2', self.in_fastq_file_name)
 
       f2_input = self.open_current_file(file_r2_name)
 
-      while f2_input.next():
+      while f2_input.next(raw = True):
           e = f2_input.entry
-          if (int(e.pair_no) == 2) and (e.header_line in self.id_sample_idx):
+          if e.header_line in self.id_sample_idx:
               file_name = self.id_sample_idx[e.header_line] + "_R2"
               # print("file_name = %s" % file_name)
               try:
