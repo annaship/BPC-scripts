@@ -778,9 +778,9 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       KEY `project_dataset` (`project`,`dataset`),
       KEY `dataset` (`dataset`),
       KEY `sequence` (`sequence`(350)),
-      KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)
-    # ) ENGINE=aria DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";
+      KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)    
     ) ENGINE=InnoDB DEFAULT CHARSET=latin1";
+# ) ENGINE=aria DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";    
 
     &print_query_out("q 6-9) create_vamps_sequences_transfer", $vampsHost." ".$create_vamps_sequences_transfer);
     ExecuteInsert($create_vamps_sequences_transfer);
