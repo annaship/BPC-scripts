@@ -779,7 +779,8 @@ if ( ($start eq "projectdataset") || ($start eq "sequences") )
       KEY `dataset` (`dataset`),
       KEY `sequence` (`sequence`(350)),
       KEY `project_dataset_conc_taxonomy` (`project_dataset`,`taxonomy`)
-    ) ENGINE=aria DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";
+    # ) ENGINE=aria DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1";
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1";
 
     &print_query_out("q 6-9) create_vamps_sequences_transfer", $vampsHost." ".$create_vamps_sequences_transfer);
     ExecuteInsert($create_vamps_sequences_transfer);
@@ -1361,7 +1362,7 @@ sub CreateEmpty
       `dataset_info` varchar(100) NOT NULL default '',
       PRIMARY KEY (`id`),
       UNIQUE KEY project_dataset (`project`,`dataset`)
-      ) ENGINE=aria DEFAULT CHARSET=latin1; ";
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1; ";
   }
   elsif($tmpTable eq 'vamps_export_transfer')
   {
@@ -1381,7 +1382,7 @@ sub CreateEmpty
       key dataset (dataset),
       key project_dataset (`project`,`dataset`),
       KEY `taxonomy` (`taxonomy`)
-      ) ENGINE=aria DEFAULT CHARSET=latin1 DELAY_KEY_WRITE=1; ";
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1; ";
   }
   elsif($tmpTable eq 'vamps_junk_data_cube_transfer')
   {
@@ -1401,7 +1402,7 @@ sub CreateEmpty
       KEY `project_dataset` (`project`,`dataset`),
       KEY `taxon_string` (`taxon_string`),
       UNIQUE KEY `project_dataset_conc_tax` (`project_dataset`, `taxon_string`)
-      ) ENGINE=aria DEFAULT CHARSET=latin1;";
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1;";
   }
   elsif($tmpTable eq 'vamps_data_cube_transfer')
   {
@@ -1426,7 +1427,7 @@ sub CreateEmpty
       PRIMARY KEY (`id`),
       KEY taxon_string (taxon_string),
       UNIQUE KEY project_dataset_taxon (project, dataset, taxon_string)
-      ) ENGINE=aria DEFAULT CHARSET=latin1;";
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1;";
       # KEY project_dataset_taxon (`project`,`dataset`,`taxon_string`),
   }
   elsif($tmpTable eq 'vamps_projects_info_transfer')
@@ -1444,7 +1445,7 @@ sub CreateEmpty
       PRIMARY KEY (`id`),
       UNIQUE KEY pr_cont_email_inst (project_name, contact, email, institution),
       KEY cont_email_inst (contact, email, institution)
-      ) ENGINE=aria DEFAULT CHARSET=latin1;";
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1;";
   }
   elsif($tmpTable eq 'vamps_sequences_transfer')
   {
@@ -1461,7 +1462,7 @@ sub CreateEmpty
       PRIMARY KEY (`id`),
       KEY taxon_string_rank (`taxon_string`,`rank`),
       UNIQUE KEY taxon_string (taxon_string)
-      ) ENGINE=aria DEFAULT CHARSET=latin1;";
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1;";
   }
 
   ExecuteInsert($dropQuery);
