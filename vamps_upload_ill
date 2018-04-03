@@ -969,7 +969,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       # q 4)
       my $insertQuery =
         "INSERT INTO $tmp_summed_taxes_table
-        SELECT DISTINCT 0, concat_ws(';', $ranks_list) as taxonomy,
+        SELECT 0, concat_ws(';', $ranks_list) as taxonomy,
         sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
         ? AS rank, project, dataset, concat(project,'--',dataset), classifier
         FROM $source_table
