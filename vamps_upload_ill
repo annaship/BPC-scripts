@@ -966,9 +966,24 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       # From http://search.cpan.org/~timb/DBI-1.632/DBI.pm#Placeholders_and_Bind_Values
 
 
+      # temporary use temp table to get distinct
+      my $vamps_junk_data_cube_temp_table = "CREATE TABLE IF NOT EXISTS `vamps_junk_data_cube_temp` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `taxon_string` varchar(255) NOT NULL DEFAULT '',
+          `knt` bigint(20) NOT NULL DEFAULT 0,
+          `frequency` double NOT NULL DEFAULT 0,
+          `dataset_count` mediumint(9) unsigned NOT NULL,
+          `rank` int(11) NOT NULL DEFAULT 0,
+          `project` varchar(64) NOT NULL DEFAULT '',
+          `dataset` varchar(64) NOT NULL DEFAULT '',
+          `project_dataset` varchar(100) NOT NULL DEFAULT '',
+          `classifier` varchar(8) NOT NULL DEFAULT '',
+          PRIMARY KEY (`id`)"
+      ExecuteInsert($vamps_junk_data_cube_temp_table);
+
       # q 4)
-      my $insertQuery =
-        "INSERT INTO $tmp_summed_taxes_table
+            my $insertQuery =
+        "INSERT INTO $vamps_junk_data_cube_temp_table
         SELECT 0, concat_ws(';', $ranks_list) as taxonomy,
         sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
         ? AS rank, project, dataset, concat(project,'--',dataset), classifier
@@ -977,6 +992,17 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
         GROUP BY project, dataset, $ranks_list
         HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= $i";
       &print_query_out("q 4) insertQuery", "dbhVamps ".$insertQuery);
+
+     # my $insertQuery =
+     #   "INSERT INTO $tmp_summed_taxes_table
+     #   SELECT 0, concat_ws(';', $ranks_list) as taxonomy,
+     #   sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
+     #   ? AS rank, project, dataset, concat(project,'--',dataset), classifier
+     #   FROM $source_table
+     #   WHERE taxon_string != ''
+     #   GROUP BY project, dataset, $ranks_list
+     #   HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= $i";
+     # &print_query_out("q 4) insertQuery", "dbhVamps ".$insertQuery);
 
       # Use the ranks_list and the rank index to execute the query
       ExecuteInsertPassVar($insertQuery, $i);
