@@ -967,7 +967,8 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
 
 
       # temporary use temp table to get distinct
-      my $vamps_junk_data_cube_temp_table = "CREATE TABLE IF NOT EXISTS `vamps_junk_data_cube_temp` (
+      $vamps_junk_data_cube_temp_table = 'vamps_junk_data_cube_temp'
+      my $vamps_junk_data_cube_temp_table_create = "CREATE TABLE IF NOT EXISTS `vamps_junk_data_cube_temp` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
           `taxon_string` varchar(255) NOT NULL DEFAULT '',
           `knt` bigint(20) NOT NULL DEFAULT 0,
@@ -979,10 +980,10 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
           `project_dataset` varchar(100) NOT NULL DEFAULT '',
           `classifier` varchar(8) NOT NULL DEFAULT '',
           PRIMARY KEY (`id`)"
-      ExecuteInsert($vamps_junk_data_cube_temp_table);
+      ExecuteInsert($vamps_junk_data_cube_temp_table_create);
 
       # q 4)
-            my $insertQuery =
+       my $insertQuery =
         "INSERT INTO $vamps_junk_data_cube_temp_table
         SELECT 0, concat_ws(';', $ranks_list) as taxonomy,
         sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
@@ -992,6 +993,15 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
         GROUP BY project, dataset, $ranks_list
         HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= $i";
       &print_query_out("q 4) insertQuery", "dbhVamps ".$insertQuery);
+      ExecuteInsert($insertQuery);
+
+      # q 4a)
+      my $insertQuery1 =
+        "INSERT ignore INTO $tmp_summed_taxes_table
+        SELECT *
+        FROM $vamps_junk_data_cube_temp_table;"
+      &print_query_out("q 4a) insertQuery", "dbhVamps ".$insertQuery1);
+      ExecuteInsert($insertQuery1);
 
      # my $insertQuery =
      #   "INSERT INTO $tmp_summed_taxes_table
