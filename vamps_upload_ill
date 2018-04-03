@@ -967,8 +967,9 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
 
 
       # temporary use temp table to get distinct
-      $vamps_junk_data_cube_temp_table = 'vamps_junk_data_cube_temp'
-      my $vamps_junk_data_cube_temp_table_create = "CREATE TABLE IF NOT EXISTS `vamps_junk_data_cube_temp` (
+      my $vamps_junk_data_cube_temp_table = 'vamps_junk_data_cube_temp';
+
+      my $vamps_junk_data_cube_temp_table_create = "CREATE TABLE IF NOT EXISTS $vamps_junk_data_cube_temp_table (
           `id` int(11) NOT NULL AUTO_INCREMENT,
           `taxon_string` varchar(255) NOT NULL DEFAULT '',
           `knt` bigint(20) NOT NULL DEFAULT 0,
@@ -979,7 +980,9 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
           `dataset` varchar(64) NOT NULL DEFAULT '',
           `project_dataset` varchar(100) NOT NULL DEFAULT '',
           `classifier` varchar(8) NOT NULL DEFAULT '',
-          PRIMARY KEY (`id`)"
+          PRIMARY KEY (`id`)
+      )";
+
       ExecuteInsert($vamps_junk_data_cube_temp_table_create);
 
       # q 4)
@@ -999,7 +1002,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       my $insertQuery1 =
         "INSERT ignore INTO $tmp_summed_taxes_table
         SELECT *
-        FROM $vamps_junk_data_cube_temp_table;"
+        FROM $vamps_junk_data_cube_temp_table;";
       &print_query_out("q 4a) insertQuery", "dbhVamps ".$insertQuery1);
       ExecuteInsert($insertQuery1);
 
