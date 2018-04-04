@@ -988,15 +988,15 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       # q 4)
        my $insertQuery =
         "INSERT INTO $vamps_junk_data_cube_temp_table
-        SELECT 0, concat_ws(';', $ranks_list) as taxonomy,
+        SELECT 0, concat_ws(';', $ranks_list) as taxon_string,
         sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
-        ? AS rank, project, dataset, concat(project,'--',dataset), classifier
+        ? AS rank, project, dataset, concat(project,'--',dataset) as project_dataset, classifier
         FROM $source_table
         WHERE taxon_string != ''
         GROUP BY project, dataset, $ranks_list
         HAVING length(taxonomy) - length(replace(taxonomy,';','')) >= $i";
       &print_query_out("q 4) insertQuery", "dbhVamps ".$insertQuery);
-      ExecuteInsert($insertQuery);
+      ExecuteInsertPassVar($insertQuery, $i);
 
       # q 4a)
       my $insertQuery1 =
@@ -1008,7 +1008,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
 
      # my $insertQuery =
      #   "INSERT INTO $tmp_summed_taxes_table
-     #   SELECT 0, concat_ws(';', $ranks_list) as taxonomy,
+     #   SELECT distinct 0, concat_ws(';', $ranks_list) as taxonomy,
      #   sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
      #   ? AS rank, project, dataset, concat(project,'--',dataset), classifier
      #   FROM $source_table
@@ -1018,7 +1018,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
      # &print_query_out("q 4) insertQuery", "dbhVamps ".$insertQuery);
 
       # Use the ranks_list and the rank index to execute the query
-      ExecuteInsertPassVar($insertQuery, $i);
+      # ExecuteInsertPassVar($insertQuery, $i);
     }
 
     #
