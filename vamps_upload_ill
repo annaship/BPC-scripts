@@ -988,7 +988,7 @@ if ( ($start eq "taxonomy") || ($start eq "sequences") || ($start eq "projectdat
       # q 4)
        my $insertQuery =
         "INSERT INTO $vamps_junk_data_cube_temp_table
-        SELECT 0, concat_ws(';', $ranks_list) as taxon_string,
+        SELECT 0, concat_ws(';', $ranks_list) as taxonomy,
         sum(knt) as sum_tax_counts, sum(knt) / dataset_count AS frequency, dataset_count,
         ? AS rank, project, dataset, concat(project,'--',dataset) as project_dataset, classifier
         FROM $source_table
