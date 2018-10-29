@@ -118,7 +118,8 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
 # Now the script will iterate $FILE_NUMBER times.
 
   . /xraid/bioware/Modules/etc/profile.modules
-  module load bioware
+  module load bioware   
+  module load vsearch
 
   LISTFILE=./filenames.list
   INFILE=\`sed -n "\${SGE_TASK_ID}p" \$LISTFILE\`
