@@ -3,7 +3,7 @@ import sys
 import os
 import shutil
 import shared #use shared to call connection from outside of the module
-from pprint import pprint
+from pprint(import pprint)
 
 class MyConnection:
   """
@@ -30,33 +30,36 @@ class MyConnection:
       self.lastrowid = None
               
       try:
-          print "=" * 40
-          print "host = " + str(host) + ", db = "  + str(db) + ", group = " + str(read_default_group)
-          print "=" * 40
+          print("=" * 40)
+          print("host = " + str(host) + ", db = "  + str(db) + ", group = " + str(read_default_group))
+          print("=" * 40)
 
           self.conn   = MySQLdb.connect(host=host, db=db, read_default_group=read_default_group, read_default_file="~/.my.cnf")
           self.cursor = self.conn.cursor()
                  
-      except MySQLdb.OperationalError, e:
-        print "=" * 40
-        # print "No read_default_group, use host and db. (MySQLdb.OperationalError)"
-        print "host = " + str(host) + ", db = "  + str(db)
-        print "=" * 40
+      except MySQLdb.OperationalError:
+        e = sys.exc_info()[1]
+        print("Error %d: %s" % (e.args[0], e.args[1]))
+        print("=" * 40)
+        # print("No read_default_group, use host and db. (MySQLdb.OperationalError)")
+        print("host = " + str(host) + ", db = "  + str(db))
+        print("=" * 40)
         
         self.conn   = MySQLdb.connect(host=host, db=db, read_default_file="~/.my.cnf")
         self.cursor = self.conn.cursor()      
         
-      except MySQLdb.Error, e:
-          print "Error %d: %s" % (e.args[0], e.args[1])
+      except MySQLdb.Error:
+          e = sys.exc_info()[1]
+          print("Error %d: %s" % (e.args[0], e.args[1]))
           raise
       except:                       # catch everything
-          print "Unexpected:"         # handle unexpected exceptions
-          print sys.exc_info()[0]     # info about curr exception (type,value,traceback)
+          print("Unexpected:"         # handle unexpected exceptions)
+          print(sys.exc_info()[0]     # info about curr exception (type,value,traceback))
           raise                       # re-throw caught exception   
 
   def close(self):
     if self.cursor:
-      # print dir(self.cursor)
+      # print(dir(self.cursor))
       self.cursor.close()
       self.conn.close()
       
@@ -79,18 +82,18 @@ class MySQLUtil:
         
     def remove_all_new_files(self, path = "."):
         for filename in os.listdir(path):            
-            print filename
+            print(filename)
             # [shutil.copyfile(os.path.join(path, filename), os.path.join(path, filename.replace(dict_name, self.names_dict[dict_name]))) for dict_name in self.names_dict.keys() if filename.startswith(dict_name)]            
             for new_filename in self.names_dict.values():
                 if filename.startswith(new_filename):
-                    # print filename
+                    # print(filename)
                     try:
                         os.remove(filename)
                     except OSError:
                         pass
-        # print "Please remove all files starting with project name after you done with them"
+        # print("Please remove all files starting with project name after you done with them")
         # l = [("rm %s*" % (x)) for x in set(self.names_dict.values())]
-        # print l
+        # print(l)
                 
         
     def rename_files_to_pr_dataset(self):
@@ -110,7 +113,7 @@ class MySQLUtil:
             for dict_name in self.names_dict.keys():
                 if filename.startswith(dict_name):
                     new_name = filename.replace(dict_name, self.names_dict[dict_name])
-                    # print "Copying %s to %s" % (filename, new_name)
+                    # print("Copying %s to %s" % (filename, new_name))
                     shutil.copyfile(os.path.join(path, filename), os.path.join(path, new_name))
         
     def make_names_dict(self, res_names):
@@ -126,7 +129,7 @@ class MySQLUtil:
 			JOIN env454.dataset USING(dataset_id) 
 			WHERE run = \"20130419\" AND lane = 1 
             """
-        print query_sel_name
+        print(query_sel_name)
         shared.my_conn.cursor.execute (query_sel_name)
         res_names = shared.my_conn.cursor.fetchall ()
         return res_names
