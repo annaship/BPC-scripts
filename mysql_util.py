@@ -49,12 +49,9 @@ class MyConnection:
         self.cursor = self.conn.cursor()      
         
       except MySQLdb.Error:
-          e = sys.exc_info()[1]
-          print("Error %d: %s" % (e.args[0], e.args[1]))
           raise
       except:                       # catch everything
-          print("Unexpected:"         # handle unexpected exceptions)
-          print(sys.exc_info()[0]     # info about curr exception (type,value,traceback))
+          print("Unexpected:")         # handle unexpected exceptions)
           raise                       # re-throw caught exception   
 
   def close(self):
