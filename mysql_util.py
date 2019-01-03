@@ -1,4 +1,10 @@
-import MySQLdb
+try:
+    import mysqlclient as mysql
+except ImportError:
+    try:
+        import pymysql as mysql
+    except ImportError:
+        import MySQLdb as mysql
 import sys
 import os
 import shutil
@@ -34,21 +40,21 @@ class MyConnection:
           print("host = " + str(host) + ", db = "  + str(db) + ", group = " + str(read_default_group))
           print("=" * 40)
 
-          self.conn   = MySQLdb.connect(host=host, db=db, read_default_group=read_default_group, read_default_file="~/.my.cnf")
+          self.conn   = mysql.connect(host=host, db=db, read_default_group=read_default_group, read_default_file="~/.my.cnf")
           self.cursor = self.conn.cursor()
                  
-      except MySQLdb.OperationalError:
+      except mysql.OperationalError:
         e = sys.exc_info()[1]
         print("Error %d: %s" % (e.args[0], e.args[1]))
         print("=" * 40)
-        # print("No read_default_group, use host and db. (MySQLdb.OperationalError)")
+        # print("No read_default_group, use host and db. (mysql.OperationalError)")
         print("host = " + str(host) + ", db = "  + str(db))
         print("=" * 40)
         
-        self.conn   = MySQLdb.connect(host=host, db=db, read_default_file="~/.my.cnf")
+        self.conn   = mysql.connect(host=host, db=db, read_default_file="~/.my.cnf")
         self.cursor = self.conn.cursor()      
         
-      except MySQLdb.Error:
+      except mysql.Error:
           raise
       except:                       # catch everything
           print("Unexpected:")         # handle unexpected exceptions)
