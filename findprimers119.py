@@ -220,7 +220,7 @@ class Findprimer:
 
       return  "aligned_primer = %s\nalign_start_pos\t= %s\nalign_end_pos\t= %s\n" %(aligned_primer, align_start_pos, align_end_pos)
       
-    except Exception, err:
+    except Exception:
       print("Couldn't find %s in db. Try reverse compliment." % (self.search_in_db))
       traceback.print_exc(file=sys.stdout)
       sys.exit(0)
