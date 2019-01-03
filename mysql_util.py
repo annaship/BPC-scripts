@@ -3,7 +3,7 @@ import sys
 import os
 import shutil
 import shared #use shared to call connection from outside of the module
-from pprint(import pprint)
+from pprint import pprint
 
 class MyConnection:
   """
