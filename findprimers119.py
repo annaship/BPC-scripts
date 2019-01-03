@@ -8,6 +8,7 @@ from argparse import RawTextHelpFormatter
 import socket
 import re
 import traceback
+import functools
 
 # todo:
 # done) add possibility work without groups in .my.cnf
@@ -177,7 +178,7 @@ class Findprimer:
     
   def convert_regexp_to_one_letter(self, regexp):
     self.print_v("From convert_regexp(), convert each regexp to one letter")
-    return reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
+    return functools.reduce(lambda x, y: x.replace(y, self.d_to_letter[y]), self.d_to_letter, regexp)
     
   def add_align_signs_after_each_nucleotide(self, regexp):
     self.print_v("Add possible align signs after each nucleotide.")
@@ -185,7 +186,7 @@ class Findprimer:
     
   def convert_ambiguity_characters_back_to_regexp(self, regexp):
     self.print_v("Convert one letter back to regexp where needed.")
-    return reduce(lambda x, y: x.replace(y, self.d_from_letter[y]), self.d_from_letter, ''.join(regexp))
+    return functools.reduce(lambda x, y: x.replace(y, self.d_from_letter[y]), self.d_from_letter, ''.join(regexp))
 
   def convert_regexp(self, regexp):
     self.make_dicts()
@@ -320,8 +321,8 @@ class Findprimer:
     except IndexError:
         print("Couldn't find %s in db. Try reverse compliment." % (self.search_in_db))
         traceback.print_exc(file=sys.stdout)
-        
-        sys.exit(0)        
+        sys.exit(0)      
+        raise  
     except:                       # catch everything
         print("Unexpected:")         # handle unexpected exceptions
         print(sys.exc_info()[0])     # info about curr exception (type,value,traceback)
