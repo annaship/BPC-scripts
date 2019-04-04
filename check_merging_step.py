@@ -1,4 +1,4 @@
-#! /bioware/python-2.7.5/bin/python
+#! python
 
 class bcolors:
     HEADER = '\033[95m'
@@ -25,14 +25,14 @@ for f in sorted(files):
   for suff in suff_list:    
     if f.endswith(suff):
       unique_fasta_files.append(f)
-      break
 
 print("="*50)    
 print(current_dir)
-meging_step_worked = len(unique_fasta_files) > 0
+count_unique_fasta_files = len(unique_fasta_files)
+meging_step_worked = count_unique_fasta_files > 0
 if meging_step_worked:
   color = bcolors.OKGREEN
-  msg = "The merging step has finished sucessfully"
+  msg = "The merging step has finished sucessfully with %s uniqued file(s), is it correct?" % (count_unique_fasta_files)
   print("%s%s %s" % (color, msg, bcolors.ENDC))
 else:
   color = bcolors.FAIL
