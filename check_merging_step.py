@@ -1,4 +1,4 @@
-#! python
+#! /groups/vampsweb/seqinfobin/anaconda3/bin/python
 
 class bcolors:
     HEADER = '\033[95m'
@@ -13,7 +13,8 @@ class bcolors:
 
 import os
 unique_fasta_files = []
-suff_list = ['.nonchimeric.fa', '.fa.unique', 'MERGED_V6_PRIMERS_REMOVED.unique']
+used_suff = []
+suff_list = ['unique.nonchimeric.fa', '.fa.unique', 'MERGED_V6_PRIMERS_REMOVED.unique']
 
 files = []
 current_dir = os.getcwd()
@@ -25,6 +26,7 @@ for f in sorted(files):
   for suff in suff_list:    
     if f.endswith(suff):
       unique_fasta_files.append(f)
+      used_suff.append(suff)
 
 print("="*50)    
 print(current_dir)
@@ -32,13 +34,11 @@ count_unique_fasta_files = len(unique_fasta_files)
 meging_step_worked = count_unique_fasta_files > 0
 if meging_step_worked:
   color = bcolors.OKGREEN
-  msg = "The merging step has finished sucessfully with %s uniqued file(s), is it correct?" % (count_unique_fasta_files)
+  used_suff_str = ", ".join(list(set(used_suff)))
+  msg = "The merging step has finished with %s '%s' file(s), is it correct?" % (count_unique_fasta_files, used_suff_str)
   print("%s%s %s" % (color, msg, bcolors.ENDC))
 else:
   color = bcolors.FAIL
   msg = "The merging step hasn't finished sucessfully, there are no files with endings like %s" % (", ".join(suff_list))
   print("%s%s %s" % (color, msg, bcolors.ENDC))
-
-
-
 
