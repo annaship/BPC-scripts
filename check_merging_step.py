@@ -14,7 +14,7 @@ class bcolors:
 import os
 unique_fasta_files = []
 used_suff = []
-suff_list = ['unique.nonchimeric.fa', '.fa.unique', 'MERGED_V6_PRIMERS_REMOVED.unique']
+suff_list = ['MERGED-MAX-MISMATCH-3.unique', 'PERFECT_reads.fa.unique', '.fa.unique', 'MERGED_V6_PRIMERS_REMOVED.unique']
 
 files = []
 current_dir = os.getcwd()
