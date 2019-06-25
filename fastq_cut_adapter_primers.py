@@ -2,10 +2,26 @@ import IlluminaUtils.lib.fastqlib as fq
 import os
 import sys
 
+class Utils():
+  def __init__(self, args):
+    self.verbatim  = args.verbatim
+    
+  def check_if_verb(self):
+    try:
+      if self.verbatim:
+        return True
+    except IndexError:
+      return False
+    except:
+      raise
+      # print "Unexpected error:", sys.exc_info()[0]
+      # return False
+    return False
+  
+
 class Files():
     def __init__(self, args):
-      self.start_dir   = self.get_start_dir(args)
-      self.verbatim    = args.verbatim
+      self.start_dir   = self.get_start_dir(args) 
       self.compressed  = args.compressed
       if args.ext is None and self.compressed == True:
           self.ext     = "1_R1.fastq.gz"
@@ -26,16 +42,14 @@ class Files():
       return args.start_dir
         
     def get_dirs(self):
-
-      all_dirs = set()
+      # all_dirs = set()
 
       #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
       # "/xraid2-2/sequencing/Illumina/20151014ns"
       print "Getting file names"
-      fq_files = reads.get_files()
-      print "Found %s %s" % (len(fq_files), reads.ext)
-
-      check_if_verb = reads.check_if_verb()
+      fq_files = self.get_files()
+      print "Found %s %s" % (len(fq_files), self.ext)
+      return fq_files
         
     def get_files(self):
         files = {}
@@ -53,18 +67,6 @@ class Files():
 class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
-
-    def check_if_verb(self):
-      try:
-        if self.verbatim:
-          return True
-      except IndexError:
-        return False
-      except:
-        raise
-        # print "Unexpected error:", sys.exc_info()[0]
-        # return False
-      return False
 
     def compare_w_score(self, f_input, file_name, all_dirs):
       for _ in range(50):
@@ -142,6 +144,11 @@ if __name__ == '__main__':
     # print "Found %s %s" % (len(fq_files), reads.ext)
     #
     # check_if_verb = reads.check_if_verb()
+    
+    utils = Utils(args)
+    check_if_verb = utils.check_if_verb()
+    
+    fq_files = files.get_dirs()
 
     for file_name in fq_files:
       if (check_if_verb):
