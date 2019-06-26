@@ -81,15 +81,24 @@ class Reads():
       except IndexError:
         print("File name should have INDEX_ADAPTER at the beginning. This file name (%s) is not valid for removing adapters" % file_name)
         sys.exit()
-
       return adapter
         
     def remove_adapters(self, f_input, file_name, all_dirs):
       for _ in range(50):
         f_input.next(raw = True)
         e = f_input.entry
-        adapter_len = self.get_adapter(file_name)
+        adapter = self.get_adapter(file_name)
+        print(adapter)        
+
+        
+        adapter_len = len(adapter)
+        seq_no_adapter = e.sequence[adapter_len:]
+        print("adapter_len = ") 
+        print(adapter_len)
         print(e.sequence)
+        print("seq_no_adapter:")
+        print(seq_no_adapter)
+        print("---")
         
     def remove_adapters_n_primers(self, f_input, file_name, all_dirs):
         pass
