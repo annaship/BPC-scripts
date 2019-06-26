@@ -71,14 +71,14 @@ class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
         
-    def remove_adapters(f_input, file_name, all_dirs):
+    def remove_adapters(self, f_input, file_name, all_dirs):
       for _ in range(50):
         f_input.next(raw = True)
         e = f_input.entry
         
-        pprint(e)
+        print(e._dir_)
         
-    def remove_adapters_n_primers(f_input, file_name, all_dirs):
+    def remove_adapters_n_primers(self, f_input, file_name, all_dirs):
         pass
         
     def compare_w_score(self, f_input, file_name, all_dirs):
