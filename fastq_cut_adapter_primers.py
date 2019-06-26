@@ -70,20 +70,19 @@ class Files():
 class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
-        
-    # def get_adapter(self, file_name, adapter_len = 5):
-    #   adapter_len = get_adapter_len(self, file_name, adapter_len = 5)
-      
-    
-    def get_adapter(self, file_name, adapter_len = 5):
-      ns = "NNNN"
+
+    def get_adapter(self, file_name):
       file_name_arr = file_name.split("_")
-      adapter = file_name_arr[1]
-      print(file_name_arr)
-      if adapter.startswith(ns):
-        adapter_len = adapter_len + len(ns)
-      # print(adapter_len)
-      return adapter_len
+      try:
+        adapter = file_name_arr[1]
+        if any(ch not in 'ACGTN' for ch in adapter): 
+          print("File name should have INDEX_ADAPTER at the beginning. This file name (%s) is not valid for removing adapters" % file_name)
+          sys.exit()
+      except IndexError:
+        print("File name should have INDEX_ADAPTER at the beginning. This file name (%s) is not valid for removing adapters" % file_name)
+        sys.exit()
+
+      return adapter
         
     def remove_adapters(self, f_input, file_name, all_dirs):
       for _ in range(50):
