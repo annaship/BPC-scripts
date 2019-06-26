@@ -71,12 +71,26 @@ class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
         
+    # def get_adapter(self, file_name, adapter_len = 5):
+    #   adapter_len = get_adapter_len(self, file_name, adapter_len = 5)
+      
+    
+    def get_adapter(self, file_name, adapter_len = 5):
+      ns = "NNNN"
+      file_name_arr = file_name.split("_")
+      adapter = file_name_arr[1]
+      print(file_name_arr)
+      if adapter.startswith(ns):
+        adapter_len = adapter_len + len(ns)
+      # print(adapter_len)
+      return adapter_len
+        
     def remove_adapters(self, f_input, file_name, all_dirs):
       for _ in range(50):
         f_input.next(raw = True)
         e = f_input.entry
-        
-        print(e._dir_)
+        adapter_len = self.get_adapter(file_name)
+        print(e.sequence)
         
     def remove_adapters_n_primers(self, f_input, file_name, all_dirs):
         pass
