@@ -30,7 +30,12 @@ class Files():
       else:
           self.ext     = "1_R1.fastq"
       print("extension = %s" % self.ext)
-        
+
+    def open_write_close(file_name, text):
+        file = open(file_name, "w")
+        file.write(text)
+        file.close()
+
     def get_start_dir(self, args):
       if not os.path.exists(args.start_dir):
           # try:
@@ -84,21 +89,28 @@ class Reads():
       return adapter
         
     def remove_adapters(self, f_input, file_name, all_dirs):
+      output_file_name = file_name + '_adapters_trimmed.fastq'
+      output = fq.FastQOutput(output_file_name)
+      
       for _ in range(50):
         f_input.next(raw = True)
         e = f_input.entry
         adapter = self.get_adapter(file_name)
         print(adapter)        
-
         
         adapter_len = len(adapter)
         seq_no_adapter = e.sequence[adapter_len:]
-        print("adapter_len = ") 
-        print(adapter_len)
-        print(e.sequence)
-        print("seq_no_adapter:")
-        print(seq_no_adapter)
-        print("---")
+        
+        e.sequence = seq_no_adapter
+        
+        output.store_entry(e)
+        
+        # print("adapter_len = ")
+        # print(adapter_len)
+        # print(e.sequence)
+        # print("seq_no_adapter:")
+        # print(seq_no_adapter)
+        # print("---")
         
     def remove_adapters_n_primers(self, f_input, file_name, all_dirs):
         pass
@@ -177,8 +189,11 @@ if __name__ == '__main__':
         print(file_name)
 
       try:
-        f_input  = fq.FastQSource(file_name, args.compressed)
+        f_input  = fq.FastQSource(file_name, compressed = args.compressed)        
         reads.remove_adapters(f_input, file_name, all_dirs)
+        # input  = fq.FastQSource(in_file_name, compressed = True)
+#         output = fq.FastQOutput('unknown_good_runkey.fastq')
+#
         # reads.remove_adapters_n_primers(f_input, file_name, all_dirs)
         # reads.compare_w_score(f_input, file_name, all_dirs)
         # reads.get_seq_len(f_input, file_name, all_dirs)
