@@ -1,6 +1,7 @@
 import IlluminaUtils.lib.fastqlib as fq
 import os
 import sys
+import pprint
 
 class Utils():
   def __init__(self, args):
@@ -14,11 +15,10 @@ class Utils():
       return False
     except:
       raise
-      # print "Unexpected error:", sys.exc_info()[0]
+      # print("Unexpected error:", sys.exc_info()[0])
       # return False
     return False
   
-
 class Files():
     def __init__(self, args):
       self.start_dir   = self.get_start_dir(args) 
@@ -29,26 +29,29 @@ class Files():
           self.ext     = args.ext
       else:
           self.ext     = "1_R1.fastq"
-      print "extension = %s" % self.ext
+      print("extension = %s" % self.ext)
         
     def get_start_dir(self, args):
       if not os.path.exists(args.start_dir):
           # try:
-          print "Input fastq file with the '%s' extension does not exist in %s" % (reads.ext, reads.start_dir)
+          print("Input fastq file with the '%s' extension does not exist in %s" % (reads.ext, reads.start_dir))
           # except AttributeError:
-          #     print "Input fastq file with a '%s' extension does not exist in ." % (args.ext)
+          #     print("Input fastq file with a '%s' extension does not exist in ." % (args.ext))
           sys.exit()
-      print "Start from %s" % args.start_dir
+      print("Start from %s" % args.start_dir)
       return args.start_dir
-        
-    def get_dirs(self):
-      # all_dirs = set()
 
+    def get_dirs(self, fq_files):
+      # all_dirs = set()
+      # all_dirs.add(fq_files[file_name][0])
+      return [file_name[0] for file_name in fq_files]
+        
+    def get_fq_files_info(self):
       #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
       # "/xraid2-2/sequencing/Illumina/20151014ns"
-      print "Getting file names"
+      print("Getting file names")
       fq_files = self.get_files()
-      print "Found %s %s" % (len(fq_files), self.ext)
+      print("Found %s %s" % (len(fq_files), self.ext))
       return fq_files
         
     def get_files(self):
@@ -67,28 +70,40 @@ class Files():
 class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
-
+        
+    def remove_adapters(f_input, file_name, all_dirs):
+      for _ in range(50):
+        f_input.next(raw = True)
+        e = f_input.entry
+        
+        pprint(e)
+        
+    def remove_adapters_n_primers(f_input, file_name, all_dirs):
+        pass
+        
     def compare_w_score(self, f_input, file_name, all_dirs):
       for _ in range(50):
         f_input.next(raw = True)
         e = f_input.entry
         
+        pprint(e)
+        
         seq_len = len(e.sequence)
         qual_scores_len = len(e.qual_scores)
         try:
             if self.quality_len:
-                print "\n=======\nCOMPARE_W_SCORE"
-                print "seq_len = %s" % (seq_len)
-                print "qual_scores_len = %s" % (qual_scores_len)
+                print("\n=======\nCOMPARE_W_SCORE")
+                print("seq_len = %s" % (seq_len))
+                print("qual_scores_len = %s" % (qual_scores_len))
         except IndexError:
             pass
         except:
             raise
-        # print e.header_line
+        # print(e.header_line)
         if (seq_len != qual_scores_len):
-          print "WARNING, sequence and qual_scores_line have different length in %s for %s" % (file_name, e.header_line)
-          print "seq_len = %s" % (seq_len)
-          print "qual_scores_len = %s" % (qual_scores_len)
+          print("WARNING, sequence and qual_scores_line have different length in %s for %s" % (file_name, e.header_line))
+          print("seq_len = %s" % (seq_len))
+          print("qual_scores_len = %s" % (qual_scores_len))
           
           all_dirs.add(fq_files[file_name][0])
 
@@ -99,9 +114,9 @@ class Reads():
         e = f_input.entry
         seq_len = len(e.sequence)
         seq_lens.append(seq_len)
-        # print seq_len
-      print "sorted seq_lens:"
-      print sorted(set(seq_lens))
+        # print(seq_len)
+      print("sorted seq_lens:")
+      print(sorted(set(seq_lens)))
 
 if __name__ == '__main__':
     import argparse
@@ -124,47 +139,34 @@ if __name__ == '__main__':
                         help = 'Print outs.')
 
     args = parser.parse_args()
-    print args
+    print(args)
 
     files = Files(args)
     reads = Reads(args)
-    # if not os.path.exists(args.start_dir):
-    #     # try:
-    #     print "Input fastq file with the '%s' extension does not exist in %s" % (reads.ext, reads.start_dir)
-    #     # except AttributeError:
-    #     #     print "Input fastq file with a '%s' extension does not exist in ." % (args.ext)
-    #     sys.exit()
-    #
-    # all_dirs = set()
-    #
-    # #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
-    # # "/xraid2-2/sequencing/Illumina/20151014ns"
-    # print "Getting file names"
-    # fq_files = reads.get_files()
-    # print "Found %s %s" % (len(fq_files), reads.ext)
-    #
-    # check_if_verb = reads.check_if_verb()
-    
     utils = Utils(args)
     check_if_verb = utils.check_if_verb()
     
-    fq_files = files.get_dirs()
+    fq_files = files.get_fq_files_info()
+    all_dirs = files.get_dirs(fq_files)
+    print(all_dirs)
 
     for file_name in fq_files:
       if (check_if_verb):
-        print file_name
+        print(file_name)
 
       try:
         f_input  = fq.FastQSource(file_name, args.compressed)
-        reads.compare_w_score(f_input, file_name, all_dirs)
-        reads.get_seq_len(f_input, file_name, all_dirs)
+        reads.remove_adapters(f_input, file_name, all_dirs)
+        # reads.remove_adapters_n_primers(f_input, file_name, all_dirs)
+        # reads.compare_w_score(f_input, file_name, all_dirs)
+        # reads.get_seq_len(f_input, file_name, all_dirs)
       except RuntimeError:
         if (check_if_verb):
-          print sys.exc_info()[0]
+          print(sys.exc_info()[0])
       except:
         raise
-        # print "Unexpected error:", sys.exc_info()[0]
+        # print("Unexpected error:", sys.exc_info()[0])
         # next
 
-    print "Directories: %s" % all_dirs
+    print("Directories: %s" % all_dirs)
     
