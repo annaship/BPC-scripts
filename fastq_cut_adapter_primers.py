@@ -1,7 +1,7 @@
 import IlluminaUtils.lib.fastqlib as fq
 import os
 import sys
-import pprint
+import re
 
 class Utils():
   def __init__(self, args):
@@ -88,15 +88,14 @@ class Reads():
         sys.exit()
       return adapter
         
-    def remove_adapters(self, f_input, file_name, all_dirs):
+    def remove_adapters(self, f_input, file_name):
       output_file_name = file_name + '_adapters_trimmed.fastq'
       output = fq.FastQOutput(output_file_name)
       
-      for _ in range(50):
+      while f_input.next():
         f_input.next(raw = True)
         e = f_input.entry
         adapter = self.get_adapter(file_name)
-        print(adapter)        
         
         adapter_len = len(adapter)
         seq_no_adapter = e.sequence[adapter_len:]
@@ -104,7 +103,45 @@ class Reads():
         e.sequence = seq_no_adapter
         
         output.store_entry(e)
+
+    def remove_adapters_n_primers(self, f_input, file_name):
+      output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
+      output = fq.FastQOutput(output_file_name)
+      B_forward_primer_re = "^CCAGCAGC[CT]GCGGTAA."
+      
+      while f_input.next():
+        f_input.next(raw = True)
+        e = f_input.entry
+        adapter = self.get_adapter(file_name)
+        print(adapter)        
         
+        adapter_len = len(adapter)
+        seq_no_adapter = e.sequence[adapter_len:]
+        print("seq_no_adapter:")
+        print(seq_no_adapter)
+        
+        m = re.search(B_forward_primer_re, seq_no_adapter)
+        forward_primer = m.group(0)
+        print("forward_primer:")
+        print(forward_primer)
+        
+        primer_len = len(forward_primer)
+        
+        
+        # m.group(0):
+        # CCAGCAGCTGCGGTAAC
+        seq_no_primer = seq_no_adapter[primer_len:]
+        print("seq_no_primer:")
+        print(seq_no_primer)
+        
+        e.sequence = seq_no_primer
+        # print("e.sequence:")
+        # print(e.sequence)
+        
+        output.store_entry(e)
+        
+        # TODO: fix
+        # TODO cut other lines (score etc.)
         # print("adapter_len = ")
         # print(adapter_len)
         # print(e.sequence)
@@ -112,8 +149,6 @@ class Reads():
         # print(seq_no_adapter)
         # print("---")
         
-    def remove_adapters_n_primers(self, f_input, file_name, all_dirs):
-        pass
         
     def compare_w_score(self, f_input, file_name, all_dirs):
       for _ in range(50):
@@ -190,11 +225,11 @@ if __name__ == '__main__':
 
       try:
         f_input  = fq.FastQSource(file_name, compressed = args.compressed)        
-        reads.remove_adapters(f_input, file_name, all_dirs)
+        # reads.remove_adapters(f_input, file_name)
         # input  = fq.FastQSource(in_file_name, compressed = True)
 #         output = fq.FastQOutput('unknown_good_runkey.fastq')
 #
-        # reads.remove_adapters_n_primers(f_input, file_name, all_dirs)
+        reads.remove_adapters_n_primers(f_input, file_name)
         # reads.compare_w_score(f_input, file_name, all_dirs)
         # reads.get_seq_len(f_input, file_name, all_dirs)
       except RuntimeError:
