@@ -88,21 +88,29 @@ class Reads():
         sys.exit()
       return adapter
         
-    def remove_adapters(self, f_input, file_name):
-      output_file_name = file_name + '_adapters_trimmed.fastq'
-      output = fq.FastQOutput(output_file_name)
+    def remove_adapters(self, f_input_entry, file_name, output):
+
+        # cnt = 1
       
-      while f_input.next():
-        f_input.next(raw = True)
-        e = f_input.entry
+      # while f_input.next():
+        # f_input.next(raw = True)
+        e = f_input_entry
+        print("e.header_line: %s" % e.header_line)
+        print("e.sequence: %s" % e.sequence)
+        print("e.optional: %s" % e.optional)
+        print("e.qual_scores: %s" % e.qual_scores)
         adapter = self.get_adapter(file_name)
-        
+        print("adapter: %s" % adapter)
         adapter_len = len(adapter)
         seq_no_adapter = e.sequence[adapter_len:]
+        qual_scores_short = e.qual_scores[adapter_len:]
         
         e.sequence = seq_no_adapter
+        e.qual_scores = qual_scores_short
         
         output.store_entry(e)
+        # cnt += 1
+        # print(cnt)
 
     def remove_adapters_n_primers(self, f_input, file_name):
       output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
@@ -155,7 +163,7 @@ class Reads():
         f_input.next(raw = True)
         e = f_input.entry
         
-        pprint(e)
+        print(e)
         
         seq_len = len(e.sequence)
         qual_scores_len = len(e.qual_scores)
@@ -223,15 +231,27 @@ if __name__ == '__main__':
       if (check_if_verb):
         print(file_name)
 
+      # input  = fq.FastQSource(file_name)
+
+      
+
       try:
-        f_input  = fq.FastQSource(file_name, compressed = args.compressed)        
-        # reads.remove_adapters(f_input, file_name)
-        # input  = fq.FastQSource(in_file_name, compressed = True)
-#         output = fq.FastQOutput('unknown_good_runkey.fastq')
-#
-        reads.remove_adapters_n_primers(f_input, file_name)
-        # reads.compare_w_score(f_input, file_name, all_dirs)
-        # reads.get_seq_len(f_input, file_name, all_dirs)
+        f_input  = fq.FastQSource(file_name, compressed = args.compressed) 
+        while f_input.next():
+          print("input")
+          print(f_input)
+          print("---\n")       
+          
+          output_file_name = file_name + '_adapters_trimmed.fastq'
+          output = fq.FastQOutput(output_file_name)
+          
+          reads.remove_adapters(f_input.entry, file_name, output)
+          # input  = fq.FastQSource(in_file_name, compressed = True)
+  #         output = fq.FastQOutput('unknown_good_runkey.fastq')
+  #
+          # reads.remove_adapters_n_primers(f_input, file_name)
+          reads.compare_w_score(f_input.entry, file_name, all_dirs)
+          # reads.get_seq_len(f_input, file_name, all_dirs)
       except RuntimeError:
         if (check_if_verb):
           print(sys.exc_info()[0])
