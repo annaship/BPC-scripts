@@ -265,10 +265,21 @@ if __name__ == '__main__':
         if cnt == 3:
           temp_d["optional"]  = line
         if cnt == 4:
-          temp_d["qscore"]  = line
+          temp_d["qual_scores"]  = line
+          content.append(temp_d)
 
           print(temp_d)
-
+          adapter = reads.get_adapter(file_name)
+          print("adapter: %s" % adapter)
+          adapter_len = len(adapter)
+          seq_no_adapter = temp_d["sequence"][adapter_len:]
+          qual_scores_short = temp_d["qual_scores"][adapter_len:]
+        
+          temp_d["sequence"] = seq_no_adapter
+          temp_d["qual_scores"] = qual_scores_short
+        
+          e = "%s%s%s%s" % (temp_d["header"], temp_d["sequence"], temp_d["optional"], temp_d["qual_scores"])
+          output.write(e)
         
 
         if not line:
@@ -297,4 +308,5 @@ if __name__ == '__main__':
 
       
     print("Directories: %s" % all_dirs)
-    
+    output.close()
+    file.close()
