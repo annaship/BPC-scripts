@@ -1,4 +1,3 @@
-import IlluminaUtils.lib.fastqlib as fq
 import os
 import sys
 import re
@@ -114,7 +113,7 @@ class Reads():
 
     def remove_adapters_n_primers(self, f_input, file_name):
       output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
-      output = fq.FastQOutput(output_file_name)
+      output = open(output_file_name, 'a')
       B_forward_primer_re = "^CCAGCAGC[CT]GCGGTAA."
       
       while f_input.next():
@@ -227,38 +226,55 @@ if __name__ == '__main__':
     all_dirs = files.get_dirs(fq_files)
     print(all_dirs)
 
+    # for file_name in fq_files:
+    #     file = open(f)
+    #     if (verbose):
+    #       print f
+    #     while 1:
+    #         line = file.readline()
+    #
+    #         if not line:
+    #           break
+    #         try:
+    print(fq_files)
+
     for file_name in fq_files:
-      if (check_if_verb):
-        print(file_name)
+      file = open(file_name)
+      # if (check_if_verb):
+      print(file_name)
 
-      # input  = fq.FastQSource(file_name)
-
-      
-
-      try:
-        f_input  = fq.FastQSource(file_name, compressed = args.compressed) 
-        while f_input.next():
-          print("input")
-          print(f_input)
+      output_file_name = file_name + '_adapters_trimmed.fastq'
+      output = open(output_file_name, "a")
+        
+      while 1:
+          line = file.readline()
+          print("line")
+          print(line)
           print("---\n")       
+        
+          if not line:
+            break
+          try:
+      
+            print("file_name")
+            print(file_name)
+            print("---\n")       
           
-          output_file_name = file_name + '_adapters_trimmed.fastq'
-          output = fq.FastQOutput(output_file_name)
           
-          reads.remove_adapters(f_input.entry, file_name, output)
-          # input  = fq.FastQSource(in_file_name, compressed = True)
-  #         output = fq.FastQOutput('unknown_good_runkey.fastq')
-  #
-          # reads.remove_adapters_n_primers(f_input, file_name)
-          reads.compare_w_score(f_input.entry, file_name, all_dirs)
-          # reads.get_seq_len(f_input, file_name, all_dirs)
-      except RuntimeError:
-        if (check_if_verb):
-          print(sys.exc_info()[0])
-      except:
-        raise
-        # print("Unexpected error:", sys.exc_info()[0])
-        # next
+            # reads.remove_adapters(f_input.entry, file_name, output)
+            # input  = fq.FastQSource(in_file_name, compressed = True)
+    #         output = fq.FastQOutput('unknown_good_runkey.fastq')
+    #
+            # reads.remove_adapters_n_primers(f_input, file_name)
+            # reads.compare_w_score(f_input.entry, file_name, all_dirs)
+            # reads.get_seq_len(f_input, file_name, all_dirs)
+          except RuntimeError:
+            if (check_if_verb):
+              print(sys.exc_info()[0])
+          except:
+            raise
+            # print("Unexpected error:", sys.exc_info()[0])
+            # next
 
     print("Directories: %s" % all_dirs)
     
