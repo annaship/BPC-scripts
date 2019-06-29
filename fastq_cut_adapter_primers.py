@@ -246,35 +246,49 @@ if __name__ == '__main__':
       output_file_name = file_name + '_adapters_trimmed.fastq'
       output = open(output_file_name, "a")
         
+      cnt = 1
       while 1:
-          line = file.readline()
-          print("line")
-          print(line)
+        if cnt == 5:
+          cnt = 1
+
+        line = file.readline()
+        print("line")
+        print(line)
+        print("---\n")       
+        if cnt == 1:
+          header = line
+        if cnt == 2:
+          sequence = line
+        if cnt == 3:
+          optional = line
+        if cnt == 4:
+          qscore = line
+
+
+
+        if not line:
+          break
+        try:
+
+          print("file_name")
+          print(file_name)
           print("---\n")       
-        
-          if not line:
-            break
-          try:
-      
-            print("file_name")
-            print(file_name)
-            print("---\n")       
-          
-          
-            # reads.remove_adapters(f_input.entry, file_name, output)
-            # input  = fq.FastQSource(in_file_name, compressed = True)
-    #         output = fq.FastQOutput('unknown_good_runkey.fastq')
-    #
-            # reads.remove_adapters_n_primers(f_input, file_name)
-            # reads.compare_w_score(f_input.entry, file_name, all_dirs)
-            # reads.get_seq_len(f_input, file_name, all_dirs)
-          except RuntimeError:
-            if (check_if_verb):
-              print(sys.exc_info()[0])
-          except:
-            raise
-            # print("Unexpected error:", sys.exc_info()[0])
-            # next
+
+
+          # reads.remove_adapters(f_input.entry, file_name, output)
+          # input  = fq.FastQSource(in_file_name, compressed = True)
+          #         output = fq.FastQOutput('unknown_good_runkey.fastq')
+          #
+          # reads.remove_adapters_n_primers(f_input, file_name)
+          # reads.compare_w_score(f_input.entry, file_name, all_dirs)
+          # reads.get_seq_len(f_input, file_name, all_dirs)
+        except RuntimeError:
+          if (check_if_verb):
+            print(sys.exc_info()[0])
+        except:
+          raise
+        # print("Unexpected error:", sys.exc_info()[0])
+        # next
 
     print("Directories: %s" % all_dirs)
     
