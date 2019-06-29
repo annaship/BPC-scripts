@@ -241,37 +241,42 @@ if __name__ == '__main__':
     for file_name in fq_files:
       file = open(file_name)
       # if (check_if_verb):
-      print(file_name)
+      # print(file_name)
 
       output_file_name = file_name + '_adapters_trimmed.fastq'
       output = open(output_file_name, "a")
         
-      cnt = 1
+      cnt = 0
+      content = []
+      temp_d = {}
       while 1:
+        cnt += 1
         if cnt == 5:
           cnt = 1
 
         line = file.readline()
-        print("line")
-        print(line)
+        print("cnt %s, line %s" % (cnt, line))
+        # print(line)
         print("---\n")       
         if cnt == 1:
-          header = line
+          temp_d["header"] = line
         if cnt == 2:
-          sequence = line
+          temp_d["sequence"]  = line
         if cnt == 3:
-          optional = line
+          temp_d["optional"]  = line
         if cnt == 4:
-          qscore = line
+          temp_d["qscore"]  = line
 
+          print(temp_d)
 
+        
 
         if not line:
           break
         try:
 
-          print("file_name")
-          print(file_name)
+          # print("file_name")
+          # print(file_name)
           print("---\n")       
 
 
@@ -290,5 +295,6 @@ if __name__ == '__main__':
         # print("Unexpected error:", sys.exc_info()[0])
         # next
 
+      
     print("Directories: %s" % all_dirs)
     
