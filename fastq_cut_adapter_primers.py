@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import gzip
 
 class Utils():
   def __init__(self, args):
@@ -94,10 +95,10 @@ class Reads():
       # while f_input.next():
         # f_input.next(raw = True)
         e = f_input_entry
-        print("e.header_line: %s" % e.header_line)
-        print("e.sequence: %s" % e.sequence)
-        print("e.optional: %s" % e.optional)
-        print("e.qual_scores: %s" % e.qual_scores)
+        # print("e.header_line: %s" % e.header_line)
+        # print("e.sequence: %s" % e.sequence)
+        # print("e.optional: %s" % e.optional)
+        # print("e.qual_scores: %s" % e.qual_scores)
         adapter = self.get_adapter(file_name)
         print("adapter: %s" % adapter)
         adapter_len = len(adapter)
@@ -120,7 +121,7 @@ class Reads():
         f_input.next(raw = True)
         e = f_input.entry
         adapter = self.get_adapter(file_name)
-        print(adapter)        
+        # print(adapter)
         
         adapter_len = len(adapter)
         seq_no_adapter = e.sequence[adapter_len:]
@@ -239,12 +240,23 @@ if __name__ == '__main__':
     print(fq_files)
 
     for file_name in fq_files:
-      file = open(file_name)
+      # file = open(file_name)
       # if (check_if_verb):
       # print(file_name)
+      compressed = True
+      
+      if compressed:
+          file = gzip.open(file_name, 'r')
+      else:
+          file = open(file_name, 'r')
 
       output_file_name = file_name + '_adapters_trimmed.fastq'
-      output = open(output_file_name, "a")
+      # output = open(output_file_name, "a")
+      if compressed:
+          output_file_name = output_file_name + ".gz"
+          output = gzip.open(output_file_name, 'at')
+      else:
+          output = open(output_file_name, 'a')
         
       cnt = 0
       content = []
@@ -254,10 +266,10 @@ if __name__ == '__main__':
         if cnt == 5:
           cnt = 1
 
-        line = file.readline()
-        print("cnt %s, line %s" % (cnt, line))
+        line = file.readline().strip()
+        # print("cnt %s, line %s" % (cnt, line))
         # print(line)
-        print("---\n")       
+        # print("---\n")       
         if cnt == 1:
           temp_d["header"] = line
         if cnt == 2:
@@ -268,9 +280,9 @@ if __name__ == '__main__':
           temp_d["qual_scores"]  = line
           content.append(temp_d)
 
-          print(temp_d)
+          # print(temp_d)
           adapter = reads.get_adapter(file_name)
-          print("adapter: %s" % adapter)
+          # print("adapter: %s" % adapter)
           adapter_len = len(adapter)
           seq_no_adapter = temp_d["sequence"][adapter_len:]
           qual_scores_short = temp_d["qual_scores"][adapter_len:]
@@ -279,30 +291,35 @@ if __name__ == '__main__':
           temp_d["qual_scores"] = qual_scores_short
         
           e = "%s%s%s%s" % (temp_d["header"], temp_d["sequence"], temp_d["optional"], temp_d["qual_scores"])
-          output.write(e)
-        
+          # output.write(e.encode())
+          # output.write(e)
+          print(temp_d["header"].decode('utf-8'), file=output)
+          print(temp_d["sequence"].decode('utf-8'), file=output)
+          print(temp_d["optional"].decode('utf-8'), file=output)
+          print(temp_d["qual_scores"].decode('utf-8'), file=output)
+          
 
         if not line:
           break
-        try:
-
-          # print("file_name")
-          # print(file_name)
-          print("---\n")       
-
-
-          # reads.remove_adapters(f_input.entry, file_name, output)
-          # input  = fq.FastQSource(in_file_name, compressed = True)
-          #         output = fq.FastQOutput('unknown_good_runkey.fastq')
-          #
-          # reads.remove_adapters_n_primers(f_input, file_name)
-          # reads.compare_w_score(f_input.entry, file_name, all_dirs)
-          # reads.get_seq_len(f_input, file_name, all_dirs)
-        except RuntimeError:
-          if (check_if_verb):
-            print(sys.exc_info()[0])
-        except:
-          raise
+        # try:
+        #
+        #   # print("file_name")
+        #   # print(file_name)
+        #   print("---\n")
+        #
+        #
+        #   # reads.remove_adapters(f_input.entry, file_name, output)
+        #   # input  = fq.FastQSource(in_file_name, compressed = True)
+        #   #         output = fq.FastQOutput('unknown_good_runkey.fastq')
+        #   #
+        #   # reads.remove_adapters_n_primers(f_input, file_name)
+        #   # reads.compare_w_score(f_input.entry, file_name, all_dirs)
+        #   # reads.get_seq_len(f_input, file_name, all_dirs)
+        # except RuntimeError:
+        #   if (check_if_verb):
+        #     print(sys.exc_info()[0])
+        # except:
+        #   raise
         # print("Unexpected error:", sys.exc_info()[0])
         # next
 
