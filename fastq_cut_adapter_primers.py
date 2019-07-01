@@ -123,71 +123,56 @@ class Reads():
         sys.exit()
       return adapter
 
-    def get_line(self, file_name, compressed):
-      if compressed:
-        with gzip.open(file_name) as file_handler:
-          for block in self.read_large_file(file_handler):
-              print(block)
-
-      else:
-        with open(file_name) as file_handler:
-          for block in self.read_large_file(file_handler):
-              print(block)
-
-    def read_large_file(self, file_handler, block_size=4):
-        block = []
-        for line in file_handler:
-            block.append(line)
-            if len(block) == block_size:
-                yield block
-                block = []
-
-        # don't forget to yield the last block
-        if block:
-            yield block
-    
     def go_over_input(self, file_name, compressed):
-      self.read_large_file(file_name, compressed)
+      with gzip.open(file_name) as f:
+        n = 4
+        while True:
+            next_n_lines = list(islice(f, n))
+            if not next_n_lines:
+                break
+            # process next_n_lines
+            print(next_n_lines)
+
 
     # def go_over_input(self, file_name, compressed):
       
       
       
-      input_file_p = files.get_input_file_pointer(file_name, compressed)
-      output_file_p  = files.get_output_file_pointer(file_name, compressed)
-
-      cnt = 0
-      # content = []
-      one_fastq_dict = {}
-
-      
-      while 1:
-        lines_required = 4
-        gen = self.get_line(file_name, compressed)
-        try:
-          chunk = [next(gen) for i in range(lines_required)]
-          print(chunk)
-        except TypeError:
-          break
-
-
-        cnt += 1
-        if cnt == 5:
-          cnt = 1
-
-        line = input_file_p.readline().strip()
-        one_fastq_dict = reads.get_one_fastq_dict(line, one_fastq_dict, cnt)
-        if cnt == 4:
-          # content.append(one_fastq_dict)
-          # print(content)
-          
-          one_fastq_dict = self.remove_adapters(one_fastq_dict, file_name)
-          utils.print_output(one_fastq_dict, output_file_p )
-
-        if not line:
-          break
-      output_file_p.close()
-      input_file_p.close()
+      # input_file_p = files.get_input_file_pointer(file_name, compressed)
+      # output_file_p  = files.get_output_file_pointer(file_name, compressed)
+      #
+      # cnt = 0
+      # # content = []
+      # one_fastq_dict = {}
+      #
+      #
+      # while 1:
+      #   lines_required = 4
+      #   gen = self.get_line(file_name, compressed)
+      #   try:
+      #     chunk = [next(gen) for i in range(lines_required)]
+      #     print(chunk)
+      #   except TypeError:
+      #     break
+      #
+      #
+      #   cnt += 1
+      #   if cnt == 5:
+      #     cnt = 1
+      #
+      #   line = input_file_p.readline().strip()
+      #   one_fastq_dict = reads.get_one_fastq_dict(line, one_fastq_dict, cnt)
+      #   if cnt == 4:
+      #     # content.append(one_fastq_dict)
+      #     # print(content)
+      #
+      #     one_fastq_dict = self.remove_adapters(one_fastq_dict, file_name)
+      #     utils.print_output(one_fastq_dict, output_file_p )
+      #
+      #   if not line:
+      #     break
+      # output_file_p.close()
+      # input_file_p.close()
       
     def remove_adapters(self, one_fastq_dict, file_name):
 
