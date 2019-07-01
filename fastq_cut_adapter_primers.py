@@ -20,11 +20,17 @@ class Utils():
       # return False
     return False
 
-  def print_output(self, one_fastq_dict, output):
-    print(one_fastq_dict["header"].decode('utf-8'), file=output)
-    print(one_fastq_dict["sequence"].decode('utf-8'), file=output)
-    print(one_fastq_dict["optional"].decode('utf-8'), file=output)
-    print(one_fastq_dict["qual_scores"].decode('utf-8'), file=output)
+  # def print_output(self, one_fastq_dict, output):
+  #   print(one_fastq_dict["header"].decode('utf-8'), file=output)
+  #   print(one_fastq_dict["sequence"].decode('utf-8'), file=output)
+  #   print(one_fastq_dict["optional"].decode('utf-8'), file=output)
+  #   print(one_fastq_dict["qual_scores"].decode('utf-8'), file=output)
+
+  def print_output(self, one_fastq, output):
+    print(one_fastq[0].decode('utf-8').strip(), file=output)
+    print(one_fastq[1].decode('utf-8').strip(), file=output)
+    print(one_fastq[2].decode('utf-8').strip(), file=output)
+    print(one_fastq[3].decode('utf-8').strip(), file=output)
 
 class Files():
     def __init__(self, args):
@@ -125,6 +131,8 @@ class Reads():
 
     def go_over_input(self, file_name, compressed):
       with gzip.open(file_name) as f:
+        output_file_p  = files.get_output_file_pointer(file_name, compressed)
+        
         n = 4
         while True:
             next_n_lines = list(islice(f, n))
@@ -133,8 +141,9 @@ class Reads():
             # process next_n_lines
             # print(next_n_lines)
             one_fastq_removed_adapters = self.remove_adapters(next_n_lines, file_name)
-            print(one_fastq_removed_adapters)
-
+            # print(one_fastq_removed_adapters)
+            utils.print_output(one_fastq_removed_adapters, output_file_p )
+      output_file_p.close()
 
     # def go_over_input(self, file_name, compressed):
       
