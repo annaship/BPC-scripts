@@ -91,7 +91,8 @@ class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
     
-    def get_one_fastq_dict(self, line, cnt):
+    def get_one_fastq_dict(self, line, one_fastq_dict, cnt):
+      
       if cnt == 1:
         one_fastq_dict["header"] = line
       if cnt == 2:
@@ -114,20 +115,43 @@ class Reads():
         sys.exit()
       return adapter
 
-    def remove_adapters(self, f_input_entry, file_name, output):
+    def remove_adapters(self, file_name, compressed):
 
-        e = f_input_entry
-        adapter = self.get_adapter(file_name)
-        print("adapter: %s" % adapter)
-        adapter_len = len(adapter)
-        seq_no_adapter = e.sequence[adapter_len:]
-        qual_scores_short = e.qual_scores[adapter_len:]
+      if compressed:
+          file = gzip.open(file_name, 'r')
+      else:
+          file = open(file_name, 'r')
 
-        e.sequence = seq_no_adapter
-        e.qual_scores = qual_scores_short
+      output = files.get_output_file_pointer(file_name)
 
-        output.store_entry(e)
+      cnt = 0
+      content = []
+      one_fastq_dict = {}
+      while 1:
+        cnt += 1
+        if cnt == 5:
+          cnt = 1
 
+        line = file.readline().strip()
+        one_fastq_dict = reads.get_one_fastq_dict(line, one_fastq_dict, cnt)
+        if cnt == 4:
+          content.append(one_fastq_dict)
+
+          adapter = reads.get_adapter(file_name)
+          adapter_len = len(adapter)
+          seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
+          qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
+
+          one_fastq_dict["sequence"] = seq_no_adapter
+          one_fastq_dict["qual_scores"] = qual_scores_short
+
+          utils.print_output(one_fastq_dict, output)
+
+        if not line:
+          break
+      output.close()
+      file.close()
+      
     # def remove_adapters_n_primers(self, f_input, file_name):
     #   output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
     #   output = open(output_file_name, 'a')
@@ -244,51 +268,42 @@ if __name__ == '__main__':
 
     for file_name in fq_files:
       compressed  = args.compressed
+      reads.remove_adapters(file_name, compressed)
 
-      if compressed:
-          file = gzip.open(file_name, 'r')
-      else:
-          file = open(file_name, 'r')
-
-      output = files.get_output_file_pointer(file_name)
-
-      cnt = 0
-      content = []
-      one_fastq_dict = {}
-      while 1:
-        cnt += 1
-        if cnt == 5:
-          cnt = 1
-
-        line = file.readline().strip()
-        one_fastq_dict = reads.get_one_fastq_dict(line, cnt)
-        # 
-        #
-        # if cnt == 1:
-        #   one_fastq_dict["header"] = line
-        # if cnt == 2:
-        #   one_fastq_dict["sequence"]  = line
-        # if cnt == 3:
-        #   one_fastq_dict["optional"]  = line
-        # if cnt == 4:
-        #   one_fastq_dict["qual_scores"]  = line
-        if cnt == 4:
-          content.append(one_fastq_dict)
-
-          adapter = reads.get_adapter(file_name)
-          adapter_len = len(adapter)
-          seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
-          qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
-
-          one_fastq_dict["sequence"] = seq_no_adapter
-          one_fastq_dict["qual_scores"] = qual_scores_short
-
-          utils.print_output(one_fastq_dict, output)
-
-        if not line:
-          break
-      output.close()
-      file.close()
+      # if compressed:
+      #     file = gzip.open(file_name, 'r')
+      # else:
+      #     file = open(file_name, 'r')
+      #
+      # output = files.get_output_file_pointer(file_name)
+      #
+      # cnt = 0
+      # content = []
+      # one_fastq_dict = {}
+      # while 1:
+      #   cnt += 1
+      #   if cnt == 5:
+      #     cnt = 1
+      #
+      #   line = file.readline().strip()
+      #   one_fastq_dict = reads.get_one_fastq_dict(line, cnt)
+      #   if cnt == 4:
+      #     content.append(one_fastq_dict)
+      #
+      #     adapter = reads.get_adapter(file_name)
+      #     adapter_len = len(adapter)
+      #     seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
+      #     qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
+      #
+      #     one_fastq_dict["sequence"] = seq_no_adapter
+      #     one_fastq_dict["qual_scores"] = qual_scores_short
+      #
+      #     utils.print_output(one_fastq_dict, output)
+      #
+      #   if not line:
+      #     break
+      # output.close()
+      # file.close()
 
         #   # reads.remove_adapters(f_input.entry, file_name, output)
         #   # input  = fq.FastQSource(in_file_name, compressed = True)
