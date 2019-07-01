@@ -105,18 +105,6 @@ class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
     
-    def get_one_fastq_dict(self, line, one_fastq_dict, cnt):
-      
-      if cnt == 1:
-        one_fastq_dict["header"] = line
-      if cnt == 2:
-        one_fastq_dict["sequence"]  = line
-      if cnt == 3:
-        one_fastq_dict["optional"]  = line
-      if cnt == 4:
-        one_fastq_dict["qual_scores"]  = line
-      return one_fastq_dict
-
     def get_adapter(self, file_name):
       file_name_arr = file_name.split("_")
       try:
@@ -135,55 +123,12 @@ class Reads():
         
         n = 4
         while True:
-            next_n_lines = list(islice(f, n))
-            if not next_n_lines:
-                break
-            # process next_n_lines
-            # print(next_n_lines)
-            one_fastq_removed_adapters = self.remove_adapters(next_n_lines, file_name)
-            # print(one_fastq_removed_adapters)
-            utils.print_output(one_fastq_removed_adapters, output_file_p )
+          next_n_lines = list(islice(f, n))
+          if not next_n_lines:
+            break
+          one_fastq_removed_adapters = self.remove_adapters(next_n_lines, file_name)
+          utils.print_output(one_fastq_removed_adapters, output_file_p )
       output_file_p.close()
-
-    # def go_over_input(self, file_name, compressed):
-      
-      
-      
-      # input_file_p = files.get_input_file_pointer(file_name, compressed)
-      # output_file_p  = files.get_output_file_pointer(file_name, compressed)
-      #
-      # cnt = 0
-      # # content = []
-      # one_fastq_dict = {}
-      #
-      #
-      # while 1:
-      #   lines_required = 4
-      #   gen = self.get_line(file_name, compressed)
-      #   try:
-      #     chunk = [next(gen) for i in range(lines_required)]
-      #     print(chunk)
-      #   except TypeError:
-      #     break
-      #
-      #
-      #   cnt += 1
-      #   if cnt == 5:
-      #     cnt = 1
-      #
-      #   line = input_file_p.readline().strip()
-      #   one_fastq_dict = reads.get_one_fastq_dict(line, one_fastq_dict, cnt)
-      #   if cnt == 4:
-      #     # content.append(one_fastq_dict)
-      #     # print(content)
-      #
-      #     one_fastq_dict = self.remove_adapters(one_fastq_dict, file_name)
-      #     utils.print_output(one_fastq_dict, output_file_p )
-      #
-      #   if not line:
-      #     break
-      # output_file_p.close()
-      # input_file_p.close()
       
     def remove_adapters(self, one_fastq, file_name):
 
