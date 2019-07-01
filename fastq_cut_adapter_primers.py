@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import gzip
+from itertools import islice
 
 class Utils():
   def __init__(self, args):
@@ -122,19 +123,28 @@ class Reads():
         sys.exit()
       return adapter
 
+    def get_line(self, file_name):
+        with gzip.open(file_name) as file:
+            for i in file:
+                yield i
+
     def go_over_input(self, file_name, compressed):
       input_file_p = files.get_input_file_pointer(file_name, compressed)
-      # if compressed:
-      #     input_file_p = gzip.open(file_name, 'r')
-      # else:
-      #     input_file_p = open(file_name, 'r')
-
       output_file_p  = files.get_output_file_pointer(file_name, compressed)
 
       cnt = 0
       # content = []
       one_fastq_dict = {}
+
+      
       while 1:
+        lines_required = 4
+        gen = self.get_line(file_name)
+        chunk = [next(gen) for i in range(lines_required)]
+        print(chunk)
+
+
+
         cnt += 1
         if cnt == 5:
           cnt = 1
