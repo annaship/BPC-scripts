@@ -123,8 +123,13 @@ class Reads():
         sys.exit()
       return adapter
 
-    def get_line(self, file_name):
+    def get_line(self, file_name, compressed):
+      if compressed:
         with gzip.open(file_name) as file:
+            for i in file:
+                yield i
+      else:
+        with open(file_name) as file:
             for i in file:
                 yield i
 
@@ -139,7 +144,7 @@ class Reads():
       
       while 1:
         lines_required = 4
-        gen = self.get_line(file_name)
+        gen = self.get_line(file_name, compressed)
         chunk = [next(gen) for i in range(lines_required)]
         print(chunk)
 
