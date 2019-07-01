@@ -125,15 +125,34 @@ class Reads():
 
     def get_line(self, file_name, compressed):
       if compressed:
-        with gzip.open(file_name) as file:
-            for i in file:
-                yield i
-      else:
-        with open(file_name) as file:
-            for i in file:
-                yield i
+        with gzip.open(file_name) as file_handler:
+          for block in self.read_large_file(file_handler):
+              print(block)
 
+      else:
+        with open(file_name) as file_handler:
+          for block in self.read_large_file(file_handler):
+              print(block)
+
+    def read_large_file(self, file_handler, block_size=4):
+        block = []
+        for line in file_handler:
+            block.append(line)
+            if len(block) == block_size:
+                yield block
+                block = []
+
+        # don't forget to yield the last block
+        if block:
+            yield block
+    
     def go_over_input(self, file_name, compressed):
+      self.read_large_file(file_name, compressed)
+
+    # def go_over_input(self, file_name, compressed):
+      
+      
+      
       input_file_p = files.get_input_file_pointer(file_name, compressed)
       output_file_p  = files.get_output_file_pointer(file_name, compressed)
 
@@ -145,9 +164,11 @@ class Reads():
       while 1:
         lines_required = 4
         gen = self.get_line(file_name, compressed)
-        chunk = [next(gen) for i in range(lines_required)]
-        print(chunk)
-
+        try:
+          chunk = [next(gen) for i in range(lines_required)]
+          print(chunk)
+        except TypeError:
+          break
 
 
         cnt += 1
