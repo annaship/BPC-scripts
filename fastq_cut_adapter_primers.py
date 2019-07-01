@@ -1,12 +1,12 @@
 import os
 import sys
-import re
 import gzip
 from itertools import islice
 
-class Utils():
+
+class Utils:
   def __init__(self, args):
-    self.verbatim  = args.verbatim
+    self.verbatim = args.verbatim
 
   def check_if_verb(self):
     try:
@@ -14,8 +14,8 @@ class Utils():
         return True
     except IndexError:
       return False
-    except:
-      raise
+    # except:
+    #   raise
       # print("Unexpected error:", sys.exc_info()[0])
       # return False
     return False
@@ -32,27 +32,23 @@ class Utils():
     print(one_fastq[2].decode('utf-8').strip(), file=output)
     print(one_fastq[3].decode('utf-8').strip(), file=output)
 
-class Files():
-    def __init__(self, args):
-      self.start_dir   = self.get_start_dir(args)
-      self.compressed  = args.compressed
-      if args.ext is None and self.compressed == True:
-          self.ext     = "1_R1.fastq.gz"
-      elif args.ext is not None:
-          self.ext     = args.ext
-      else:
-          self.ext     = "1_R1.fastq"
-      print("extension = %s" % self.ext)
 
-    def open_write_close(file_name, text):
-        file_p = open(file_name, "w")
-        file_p.write(text)
-        file_p.close()
+class Files:
+    def __init__(self, args):
+      self.start_dir  = self.get_start_dir(args)
+      self.compressed = args.compressed
+      if args.ext is None and self.compressed is True:
+          self.ext    = "1_R1.fastq.gz"
+      elif args.ext is not None:
+          self.ext    = args.ext
+      else:
+          self.ext    = "1_R1.fastq"
+      print("extension = %s" % self.ext)
 
     def get_start_dir(self, args):
       if not os.path.exists(args.start_dir):
           # try:
-          print("Input fastq file with the '%s' extension does not exist in %s" % (reads.ext, reads.start_dir))
+          print("Input fastq file with the '%s' extension does not exist in %s" % (self.ext, self.start_dir))
           # except AttributeError:
           #     print("Input fastq file with a '%s' extension does not exist in ." % (args.ext))
           sys.exit()
@@ -65,7 +61,7 @@ class Files():
       return [file_name[0] for file_name in fq_files]
 
     def get_fq_files_info(self):
-      #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
+      # fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
       # "/xraid2-2/sequencing/Illumina/20151014ns"
       print("Getting file names")
       fq_files = self.get_files()
@@ -74,7 +70,7 @@ class Files():
 
     def get_files(self):
         files = {}
-        filenames = []
+
         for dirname, dirnames, filenames in os.walk(self.start_dir, followlinks=True):
             if self.ext:
                 filenames = [f for f in filenames if f.endswith(self.ext)]
@@ -101,7 +97,8 @@ class Files():
           input_file_p = open(file_name, 'r')
       return input_file_p
 
-class Reads():
+
+class Reads:
     def __init__(self, args):
         self.quality_len = args.quality_len
     
@@ -127,7 +124,7 @@ class Reads():
           if not next_n_lines:
             break
           one_fastq_removed_adapters = self.remove_adapters(next_n_lines, file_name)
-          utils.print_output(one_fastq_removed_adapters, output_file_p )
+          utils.print_output(one_fastq_removed_adapters, output_file_p)
       output_file_p.close()
       
     def remove_adapters(self, one_fastq, file_name):
@@ -142,7 +139,6 @@ class Reads():
       
       return one_fastq
 
-      
     # def remove_adapters_n_primers(self, f_input, file_name):
     #   output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
     #   output = open(output_file_name, 'a')
@@ -201,30 +197,17 @@ class Reads():
         try:
             if self.quality_len:
                 print("\n=======\nCOMPARE_W_SCORE")
-                print("seq_len = %s" % (seq_len))
-                print("qual_scores_len = %s" % (qual_scores_len))
+                print("seq_len = %s" % seq_len)
+                print("qual_scores_len = %s" % qual_scores_len)
         except IndexError:
             pass
-        except:
-            raise
-        # print(e.header_line)
-        if (seq_len != qual_scores_len):
+
+        if seq_len != qual_scores_len:
           print("WARNING, sequence and qual_scores_line have different length in %s for %s" % (file_name, e.header_line))
-          print("seq_len = %s" % (seq_len))
-          print("qual_scores_len = %s" % (qual_scores_len))
+          print("seq_len = %s" % seq_len)
+          print("qual_scores_len = %s" % qual_scores_len)
 
           all_dirs.add(fq_files[file_name][0])
-
-    def get_seq_len(self, f_input, file_name, all_dirs):
-      seq_lens = []
-      for _ in range(50):
-        f_input.next(raw = True)
-        e = f_input.entry
-        seq_len = len(e.sequence)
-        seq_lens.append(seq_len)
-        # print(seq_len)
-      print("sorted seq_lens:")
-      print(sorted(set(seq_lens)))
 
 if __name__ == '__main__':
     import argparse
@@ -258,7 +241,7 @@ if __name__ == '__main__':
     all_dirs = files.get_dirs(fq_files)
 
     for file_name in fq_files:
-      compressed  = args.compressed
+      compressed = args.compressed
       reads.go_over_input(file_name, compressed)
 
       # if compressed:
@@ -295,22 +278,5 @@ if __name__ == '__main__':
       #     break
       # output.close()
       # file.close()
-
-        #   # reads.remove_adapters(f_input.entry, file_name, output)
-        #   # input  = fq.FastQSource(in_file_name, compressed = True)
-        #   #         output = fq.FastQOutput('unknown_good_runkey.fastq')
-        #   #
-        #   # reads.remove_adapters_n_primers(f_input, file_name)
-        #   # reads.compare_w_score(f_input.entry, file_name, all_dirs)
-        #   # reads.get_seq_len(f_input, file_name, all_dirs)
-        # except RuntimeError:
-        #   if (check_if_verb):
-        #     print(sys.exc_info()[0])
-        # except:
-        #   raise
-        # print("Unexpected error:", sys.exc_info()[0])
-        # next
-
-
 
     print("Directories: %s" % set(all_dirs))
