@@ -18,6 +18,12 @@ class Utils():
       # print("Unexpected error:", sys.exc_info()[0])
       # return False
     return False
+    
+  def print_output(self, one_fastq_dict, output):
+    print(one_fastq_dict["header"].decode('utf-8'), file=output)
+    print(one_fastq_dict["sequence"].decode('utf-8'), file=output)
+    print(one_fastq_dict["optional"].decode('utf-8'), file=output)
+    print(one_fastq_dict["qual_scores"].decode('utf-8'), file=output)
   
 class Files():
     def __init__(self, args):
@@ -244,7 +250,7 @@ if __name__ == '__main__':
         
       cnt = 0
       content = []
-      temp_d = {}
+      one_fastq_dict = {}
       while 1:
         cnt += 1
         if cnt == 5:
@@ -255,32 +261,28 @@ if __name__ == '__main__':
         # print(line)
         # print("---\n")       
         if cnt == 1:
-          temp_d["header"] = line
+          one_fastq_dict["header"] = line
         if cnt == 2:
-          temp_d["sequence"]  = line
+          one_fastq_dict["sequence"]  = line
         if cnt == 3:
-          temp_d["optional"]  = line
+          one_fastq_dict["optional"]  = line
         if cnt == 4:
-          temp_d["qual_scores"]  = line
-          content.append(temp_d)
+          one_fastq_dict["qual_scores"]  = line
+          content.append(one_fastq_dict)
 
-          # print(temp_d)
           adapter = reads.get_adapter(file_name)
-          # print("adapter: %s" % adapter)
           adapter_len = len(adapter)
-          seq_no_adapter = temp_d["sequence"][adapter_len:]
-          qual_scores_short = temp_d["qual_scores"][adapter_len:]
+          seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
+          qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
         
-          temp_d["sequence"] = seq_no_adapter
-          temp_d["qual_scores"] = qual_scores_short
+          one_fastq_dict["sequence"] = seq_no_adapter
+          one_fastq_dict["qual_scores"] = qual_scores_short
         
-          e = "%s%s%s%s" % (temp_d["header"], temp_d["sequence"], temp_d["optional"], temp_d["qual_scores"])
-          # output.write(e.encode())
-          # output.write(e)
-          print(temp_d["header"].decode('utf-8'), file=output)
-          print(temp_d["sequence"].decode('utf-8'), file=output)
-          print(temp_d["optional"].decode('utf-8'), file=output)
-          print(temp_d["qual_scores"].decode('utf-8'), file=output)
+          utils.print_output(one_fastq_dict, output)
+          # print(temp_d["header"].decode('utf-8'), file=output)
+          # print(temp_d["sequence"].decode('utf-8'), file=output)
+          # print(temp_d["optional"].decode('utf-8'), file=output)
+          # print(temp_d["qual_scores"].decode('utf-8'), file=output)
         if not line:
           break
 
