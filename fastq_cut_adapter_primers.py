@@ -38,9 +38,9 @@ class Files():
       print("extension = %s" % self.ext)
 
     def open_write_close(file_name, text):
-        file = open(file_name, "w")
-        file.write(text)
-        file.close()
+        file_p = open(file_name, "w")
+        file_p.write(text)
+        file_p.close()
 
     def get_start_dir(self, args):
       if not os.path.exists(args.start_dir):
@@ -78,14 +78,21 @@ class Files():
                 files[full_name] = (dirname, file_base, file_extension)
         return files
 
-    def get_output_file_pointer(self, file_name):
+    def get_output_file_pointer(self, file_name, compressed = False):
       output_file_name = file_name + '_adapters_trimmed.fastq'
       if compressed:
           output_file_name = output_file_name + ".gz"
-          output = gzip.open(output_file_name, 'at')
+          output_file_p = gzip.open(output_file_name, 'at')
       else:
-          output = open(output_file_name, 'a')
-      return output
+          output_file_p = open(output_file_name, 'a')
+      return output_file_p
+      
+    def get_input_file_pointer(self, file_name, compressed = False):
+      if compressed:
+          input_file_p = gzip.open(file_name, 'r')
+      else:
+          input_file_p = open(file_name, 'r')
+      return input_file_p
 
 class Reads():
     def __init__(self, args):
@@ -116,12 +123,13 @@ class Reads():
       return adapter
 
     def go_over_input(self, file_name, compressed):
-      if compressed:
-          file = gzip.open(file_name, 'r')
-      else:
-          file = open(file_name, 'r')
+      input_file_p = files.get_input_file_pointer(file_name, compressed)
+      # if compressed:
+      #     input_file_p = gzip.open(file_name, 'r')
+      # else:
+      #     input_file_p = open(file_name, 'r')
 
-      output = files.get_output_file_pointer(file_name)
+      output_file_p  = files.get_output_file_pointer(file_name, compressed)
 
       cnt = 0
       # content = []
@@ -131,19 +139,19 @@ class Reads():
         if cnt == 5:
           cnt = 1
 
-        line = file.readline().strip()
+        line = input_file_p.readline().strip()
         one_fastq_dict = reads.get_one_fastq_dict(line, one_fastq_dict, cnt)
         if cnt == 4:
           # content.append(one_fastq_dict)
           # print(content)
           
           one_fastq_dict = self.remove_adapters(one_fastq_dict, file_name)
-          utils.print_output(one_fastq_dict, output)
+          utils.print_output(one_fastq_dict, output_file_p )
 
         if not line:
           break
-      output.close()
-      file.close()
+      output_file_p.close()
+      input_file_p.close()
       
     def remove_adapters(self, one_fastq_dict, file_name):
 
@@ -277,9 +285,9 @@ if __name__ == '__main__':
       reads.go_over_input(file_name, compressed)
 
       # if compressed:
-      #     file = gzip.open(file_name, 'r')
+      #     input_file_p = gzip.open(file_name, 'r')
       # else:
-      #     file = open(file_name, 'r')
+      #     input_file_p = open(file_name, 'r')
       #
       # output = files.get_output_file_pointer(file_name)
       #
