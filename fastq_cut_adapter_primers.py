@@ -6,7 +6,7 @@ import gzip
 class Utils():
   def __init__(self, args):
     self.verbatim  = args.verbatim
-    
+
   def check_if_verb(self):
     try:
       if self.verbatim:
@@ -18,16 +18,16 @@ class Utils():
       # print("Unexpected error:", sys.exc_info()[0])
       # return False
     return False
-    
+
   def print_output(self, one_fastq_dict, output):
     print(one_fastq_dict["header"].decode('utf-8'), file=output)
     print(one_fastq_dict["sequence"].decode('utf-8'), file=output)
     print(one_fastq_dict["optional"].decode('utf-8'), file=output)
     print(one_fastq_dict["qual_scores"].decode('utf-8'), file=output)
-  
+
 class Files():
     def __init__(self, args):
-      self.start_dir   = self.get_start_dir(args) 
+      self.start_dir   = self.get_start_dir(args)
       self.compressed  = args.compressed
       if args.ext is None and self.compressed == True:
           self.ext     = "1_R1.fastq.gz"
@@ -56,7 +56,7 @@ class Files():
       # all_dirs = set()
       # all_dirs.add(fq_files[file_name][0])
       return [file_name[0] for file_name in fq_files]
-        
+
     def get_fq_files_info(self):
       #fq_files = get_files("/xraid2-2/sequencing/Illumina", ".fastq.gz")
       # "/xraid2-2/sequencing/Illumina/20151014ns"
@@ -64,7 +64,7 @@ class Files():
       fq_files = self.get_files()
       print("Found %s %s" % (len(fq_files), self.ext))
       return fq_files
-        
+
     def get_files(self):
         files = {}
         filenames = []
@@ -76,8 +76,8 @@ class Files():
                 full_name = os.path.join(dirname, file_name)
                 (file_base, file_extension) = os.path.splitext(os.path.join(dirname, file_name))
                 files[full_name] = (dirname, file_base, file_extension)
-        return files        
-        
+        return files
+
     def get_output_file_pointer(self, file_name):
       output_file_name = file_name + '_adapters_trimmed.fastq'
       if compressed:
@@ -86,23 +86,34 @@ class Files():
       else:
           output = open(output_file_name, 'a')
       return output
-        
+
 class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
+    
+    def get_one_fastq_dict(self, line, cnt):
+      if cnt == 1:
+        one_fastq_dict["header"] = line
+      if cnt == 2:
+        one_fastq_dict["sequence"]  = line
+      if cnt == 3:
+        one_fastq_dict["optional"]  = line
+      if cnt == 4:
+        one_fastq_dict["qual_scores"]  = line
+      return one_fastq_dict
 
     def get_adapter(self, file_name):
       file_name_arr = file_name.split("_")
       try:
         adapter = file_name_arr[1]
-        if any(ch not in 'ACGTN' for ch in adapter): 
+        if any(ch not in 'ACGTN' for ch in adapter):
           print("File name should have INDEX_ADAPTER at the beginning. This file name (%s) is not valid for removing adapters" % file_name)
           sys.exit()
       except IndexError:
         print("File name should have INDEX_ADAPTER at the beginning. This file name (%s) is not valid for removing adapters" % file_name)
         sys.exit()
       return adapter
-        
+
     def remove_adapters(self, f_input_entry, file_name, output):
 
         e = f_input_entry
@@ -111,10 +122,10 @@ class Reads():
         adapter_len = len(adapter)
         seq_no_adapter = e.sequence[adapter_len:]
         qual_scores_short = e.qual_scores[adapter_len:]
-        
+
         e.sequence = seq_no_adapter
         e.qual_scores = qual_scores_short
-        
+
         output.store_entry(e)
 
     # def remove_adapters_n_primers(self, f_input, file_name):
@@ -161,15 +172,15 @@ class Reads():
     #     # print("seq_no_adapter:")
     #     # print(seq_no_adapter)
     #     # print("---")
-    #   
-        
+    #
+
     def compare_w_score(self, f_input, file_name, all_dirs):
       for _ in range(50):
         f_input.next(raw = True)
         e = f_input.entry
-        
+
         print(e)
-        
+
         seq_len = len(e.sequence)
         qual_scores_len = len(e.qual_scores)
         try:
@@ -186,7 +197,7 @@ class Reads():
           print("WARNING, sequence and qual_scores_line have different length in %s for %s" % (file_name, e.header_line))
           print("seq_len = %s" % (seq_len))
           print("qual_scores_len = %s" % (qual_scores_len))
-          
+
           all_dirs.add(fq_files[file_name][0])
 
     def get_seq_len(self, f_input, file_name, all_dirs):
@@ -227,27 +238,20 @@ if __name__ == '__main__':
     reads = Reads(args)
     utils = Utils(args)
     check_if_verb = utils.check_if_verb()
-    
+
     fq_files = files.get_fq_files_info()
     all_dirs = files.get_dirs(fq_files)
-    # print(set(all_dirs))
 
     for file_name in fq_files:
       compressed  = args.compressed
-      
+
       if compressed:
           file = gzip.open(file_name, 'r')
       else:
           file = open(file_name, 'r')
-      
+
       output = files.get_output_file_pointer(file_name)
-      # output_file_name = file_name + '_adapters_trimmed.fastq'
-      # if compressed:
-      #     output_file_name = output_file_name + ".gz"
-      #     output = gzip.open(output_file_name, 'at')
-      # else:
-      #     output = open(output_file_name, 'a')
-        
+
       cnt = 0
       content = []
       one_fastq_dict = {}
@@ -257,46 +261,35 @@ if __name__ == '__main__':
           cnt = 1
 
         line = file.readline().strip()
-        # print("cnt %s, line %s" % (cnt, line))
-        # print(line)
-        # print("---\n")       
-        if cnt == 1:
-          one_fastq_dict["header"] = line
-        if cnt == 2:
-          one_fastq_dict["sequence"]  = line
-        if cnt == 3:
-          one_fastq_dict["optional"]  = line
+        one_fastq_dict = reads.get_one_fastq_dict(line, cnt)
+        # 
+        #
+        # if cnt == 1:
+        #   one_fastq_dict["header"] = line
+        # if cnt == 2:
+        #   one_fastq_dict["sequence"]  = line
+        # if cnt == 3:
+        #   one_fastq_dict["optional"]  = line
+        # if cnt == 4:
+        #   one_fastq_dict["qual_scores"]  = line
         if cnt == 4:
-          one_fastq_dict["qual_scores"]  = line
           content.append(one_fastq_dict)
 
           adapter = reads.get_adapter(file_name)
           adapter_len = len(adapter)
           seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
           qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
-        
+
           one_fastq_dict["sequence"] = seq_no_adapter
           one_fastq_dict["qual_scores"] = qual_scores_short
-        
+
           utils.print_output(one_fastq_dict, output)
-          # print(temp_d["header"].decode('utf-8'), file=output)
-          # print(temp_d["sequence"].decode('utf-8'), file=output)
-          # print(temp_d["optional"].decode('utf-8'), file=output)
-          # print(temp_d["qual_scores"].decode('utf-8'), file=output)
+
         if not line:
           break
-
-          
       output.close()
       file.close()
 
-        # try:
-        #
-        #   # print("file_name")
-        #   # print(file_name)
-        #   print("---\n")
-        #
-        #
         #   # reads.remove_adapters(f_input.entry, file_name, output)
         #   # input  = fq.FastQSource(in_file_name, compressed = True)
         #   #         output = fq.FastQOutput('unknown_good_runkey.fastq')
@@ -312,7 +305,6 @@ if __name__ == '__main__':
         # print("Unexpected error:", sys.exc_info()[0])
         # next
 
-      
+
 
     print("Directories: %s" % set(all_dirs))
-      
