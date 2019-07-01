@@ -131,7 +131,9 @@ class Reads():
             if not next_n_lines:
                 break
             # process next_n_lines
-            print(next_n_lines)
+            # print(next_n_lines)
+            one_fastq_removed_adapters = self.remove_adapters(next_n_lines, file_name)
+            print(one_fastq_removed_adapters)
 
 
     # def go_over_input(self, file_name, compressed):
@@ -174,17 +176,17 @@ class Reads():
       # output_file_p.close()
       # input_file_p.close()
       
-    def remove_adapters(self, one_fastq_dict, file_name):
+    def remove_adapters(self, one_fastq, file_name):
 
       adapter = reads.get_adapter(file_name)
       adapter_len = len(adapter)
-      seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
-      qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
+      seq_no_adapter = one_fastq[1][adapter_len:]
+      qual_scores_short = one_fastq[3][adapter_len:]
 
-      one_fastq_dict["sequence"] = seq_no_adapter
-      one_fastq_dict["qual_scores"] = qual_scores_short
+      one_fastq[1] = seq_no_adapter
+      one_fastq[3] = qual_scores_short
       
-      return one_fastq_dict
+      return one_fastq
 
       
     # def remove_adapters_n_primers(self, f_input, file_name):
