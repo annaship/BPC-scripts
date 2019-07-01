@@ -115,8 +115,7 @@ class Reads():
         sys.exit()
       return adapter
 
-    def remove_adapters(self, file_name, compressed):
-
+    def go_over_input(self, file_name, compressed):
       if compressed:
           file = gzip.open(file_name, 'r')
       else:
@@ -136,14 +135,18 @@ class Reads():
         one_fastq_dict = reads.get_one_fastq_dict(line, one_fastq_dict, cnt)
         if cnt == 4:
           content.append(one_fastq_dict)
-
-          adapter = reads.get_adapter(file_name)
-          adapter_len = len(adapter)
-          seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
-          qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
-
-          one_fastq_dict["sequence"] = seq_no_adapter
-          one_fastq_dict["qual_scores"] = qual_scores_short
+          print(content)
+          
+          self.remove_adapters(one_fastq_dict, file_name)
+          # content.append(one_fastq_dict)
+          #
+          # adapter = reads.get_adapter(file_name)
+          # adapter_len = len(adapter)
+          # seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
+          # qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
+          #
+          # one_fastq_dict["sequence"] = seq_no_adapter
+          # one_fastq_dict["qual_scores"] = qual_scores_short
 
           utils.print_output(one_fastq_dict, output)
 
@@ -151,6 +154,19 @@ class Reads():
           break
       output.close()
       file.close()
+      
+    def remove_adapters(self, one_fastq_dict, file_name):
+
+      adapter = reads.get_adapter(file_name)
+      adapter_len = len(adapter)
+      seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
+      qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
+
+      one_fastq_dict["sequence"] = seq_no_adapter
+      one_fastq_dict["qual_scores"] = qual_scores_short
+      
+      return one_fastq_dict
+
       
     # def remove_adapters_n_primers(self, f_input, file_name):
     #   output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
@@ -268,7 +284,7 @@ if __name__ == '__main__':
 
     for file_name in fq_files:
       compressed  = args.compressed
-      reads.remove_adapters(file_name, compressed)
+      reads.go_over_input(file_name, compressed)
 
       # if compressed:
       #     file = gzip.open(file_name, 'r')
