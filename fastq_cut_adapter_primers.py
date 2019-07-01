@@ -124,7 +124,7 @@ class Reads():
       output = files.get_output_file_pointer(file_name)
 
       cnt = 0
-      content = []
+      # content = []
       one_fastq_dict = {}
       while 1:
         cnt += 1
@@ -134,20 +134,10 @@ class Reads():
         line = file.readline().strip()
         one_fastq_dict = reads.get_one_fastq_dict(line, one_fastq_dict, cnt)
         if cnt == 4:
-          content.append(one_fastq_dict)
-          print(content)
-          
-          self.remove_adapters(one_fastq_dict, file_name)
           # content.append(one_fastq_dict)
-          #
-          # adapter = reads.get_adapter(file_name)
-          # adapter_len = len(adapter)
-          # seq_no_adapter = one_fastq_dict["sequence"][adapter_len:]
-          # qual_scores_short = one_fastq_dict["qual_scores"][adapter_len:]
-          #
-          # one_fastq_dict["sequence"] = seq_no_adapter
-          # one_fastq_dict["qual_scores"] = qual_scores_short
-
+          # print(content)
+          
+          one_fastq_dict = self.remove_adapters(one_fastq_dict, file_name)
           utils.print_output(one_fastq_dict, output)
 
         if not line:
