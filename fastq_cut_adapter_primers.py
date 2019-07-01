@@ -125,7 +125,7 @@ class Reads:
             break
           one_fastq_removed_adapters = self.remove_adapters(next_n_lines, file_name)
           utils.print_output(one_fastq_removed_adapters, output_file_p)
-      output_file_p.close()
+        output_file_p.close()
       
     def remove_adapters(self, one_fastq, file_name):
 
