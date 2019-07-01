@@ -90,12 +90,11 @@ class Files:
           output_file_p = open(output_file_name, 'a')
       return output_file_p
       
-    def get_input_file_pointer(self, file_name, compressed = False):
-      if compressed:
-          input_file_p = gzip.open(file_name, 'r')
-      else:
-          input_file_p = open(file_name, 'r')
-      return input_file_p
+    def get_input_file_pointer(self, file_name, compressed = False, mode = 'r'):
+        if compressed:
+            return gzip.open(file_name, mode)
+        else:
+            return open(file_name, mode)
 
 
 class Reads:
@@ -115,7 +114,7 @@ class Reads:
       return adapter
 
     def go_over_input(self, file_name, compressed):
-      with gzip.open(file_name) as f:
+      with files.get_input_file_pointer(file_name, compressed) as f:
         output_file_p  = files.get_output_file_pointer(file_name, compressed)
         
         n = 4
