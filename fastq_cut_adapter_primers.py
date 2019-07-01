@@ -72,6 +72,15 @@ class Files():
                 files[full_name] = (dirname, file_base, file_extension)
         return files        
         
+    def get_output_file_pointer(self, file_name):
+      output_file_name = file_name + '_adapters_trimmed.fastq'
+      if compressed:
+          output_file_name = output_file_name + ".gz"
+          output = gzip.open(output_file_name, 'at')
+      else:
+          output = open(output_file_name, 'a')
+      return output
+        
 class Reads():
     def __init__(self, args):
         self.quality_len = args.quality_len
@@ -90,15 +99,7 @@ class Reads():
         
     def remove_adapters(self, f_input_entry, file_name, output):
 
-        # cnt = 1
-      
-      # while f_input.next():
-        # f_input.next(raw = True)
         e = f_input_entry
-        # print("e.header_line: %s" % e.header_line)
-        # print("e.sequence: %s" % e.sequence)
-        # print("e.optional: %s" % e.optional)
-        # print("e.qual_scores: %s" % e.qual_scores)
         adapter = self.get_adapter(file_name)
         print("adapter: %s" % adapter)
         adapter_len = len(adapter)
@@ -109,54 +110,52 @@ class Reads():
         e.qual_scores = qual_scores_short
         
         output.store_entry(e)
-        # cnt += 1
-        # print(cnt)
 
-    def remove_adapters_n_primers(self, f_input, file_name):
-      output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
-      output = open(output_file_name, 'a')
-      B_forward_primer_re = "^CCAGCAGC[CT]GCGGTAA."
-      
-      while f_input.next():
-        f_input.next(raw = True)
-        e = f_input.entry
-        adapter = self.get_adapter(file_name)
-        # print(adapter)
-        
-        adapter_len = len(adapter)
-        seq_no_adapter = e.sequence[adapter_len:]
-        print("seq_no_adapter:")
-        print(seq_no_adapter)
-        
-        m = re.search(B_forward_primer_re, seq_no_adapter)
-        forward_primer = m.group(0)
-        print("forward_primer:")
-        print(forward_primer)
-        
-        primer_len = len(forward_primer)
-        
-        
-        # m.group(0):
-        # CCAGCAGCTGCGGTAAC
-        seq_no_primer = seq_no_adapter[primer_len:]
-        print("seq_no_primer:")
-        print(seq_no_primer)
-        
-        e.sequence = seq_no_primer
-        # print("e.sequence:")
-        # print(e.sequence)
-        
-        output.store_entry(e)
-        
-        # TODO: fix
-        # TODO cut other lines (score etc.)
-        # print("adapter_len = ")
-        # print(adapter_len)
-        # print(e.sequence)
-        # print("seq_no_adapter:")
-        # print(seq_no_adapter)
-        # print("---")
-        
+    # def remove_adapters_n_primers(self, f_input, file_name):
+    #   output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
+    #   output = open(output_file_name, 'a')
+    #   B_forward_primer_re = "^CCAGCAGC[CT]GCGGTAA."
+    #
+    #   while f_input.next():
+    #     f_input.next(raw = True)
+    #     e = f_input.entry
+    #     adapter = self.get_adapter(file_name)
+    #     # print(adapter)
+    #
+    #     adapter_len = len(adapter)
+    #     seq_no_adapter = e.sequence[adapter_len:]
+    #     print("seq_no_adapter:")
+    #     print(seq_no_adapter)
+    #
+    #     m = re.search(B_forward_primer_re, seq_no_adapter)
+    #     forward_primer = m.group(0)
+    #     print("forward_primer:")
+    #     print(forward_primer)
+    #
+    #     primer_len = len(forward_primer)
+    #
+    #
+    #     # m.group(0):
+    #     # CCAGCAGCTGCGGTAAC
+    #     seq_no_primer = seq_no_adapter[primer_len:]
+    #     print("seq_no_primer:")
+    #     print(seq_no_primer)
+    #
+    #     e.sequence = seq_no_primer
+    #     # print("e.sequence:")
+    #     # print(e.sequence)
+    #
+    #     output.store_entry(e)
+    #
+    #     # TODO: fix
+    #     # TODO cut other lines (score etc.)
+    #     # print("adapter_len = ")
+    #     # print(adapter_len)
+    #     # print(e.sequence)
+    #     # print("seq_no_adapter:")
+    #     # print(seq_no_adapter)
+    #     # print("---")
+    #   
         
     def compare_w_score(self, f_input, file_name, all_dirs):
       for _ in range(50):
@@ -225,38 +224,23 @@ if __name__ == '__main__':
     
     fq_files = files.get_fq_files_info()
     all_dirs = files.get_dirs(fq_files)
-    print(all_dirs)
-
-    # for file_name in fq_files:
-    #     file = open(f)
-    #     if (verbose):
-    #       print f
-    #     while 1:
-    #         line = file.readline()
-    #
-    #         if not line:
-    #           break
-    #         try:
-    print(fq_files)
+    # print(set(all_dirs))
 
     for file_name in fq_files:
-      # file = open(file_name)
-      # if (check_if_verb):
-      # print(file_name)
-      compressed = True
+      compressed  = args.compressed
       
       if compressed:
           file = gzip.open(file_name, 'r')
       else:
           file = open(file_name, 'r')
-
-      output_file_name = file_name + '_adapters_trimmed.fastq'
-      # output = open(output_file_name, "a")
-      if compressed:
-          output_file_name = output_file_name + ".gz"
-          output = gzip.open(output_file_name, 'at')
-      else:
-          output = open(output_file_name, 'a')
+      
+      output = files.get_output_file_pointer(file_name)
+      # output_file_name = file_name + '_adapters_trimmed.fastq'
+      # if compressed:
+      #     output_file_name = output_file_name + ".gz"
+      #     output = gzip.open(output_file_name, 'at')
+      # else:
+      #     output = open(output_file_name, 'a')
         
       cnt = 0
       content = []
@@ -297,10 +281,13 @@ if __name__ == '__main__':
           print(temp_d["sequence"].decode('utf-8'), file=output)
           print(temp_d["optional"].decode('utf-8'), file=output)
           print(temp_d["qual_scores"].decode('utf-8'), file=output)
-          
-
         if not line:
           break
+
+          
+      output.close()
+      file.close()
+
         # try:
         #
         #   # print("file_name")
@@ -324,6 +311,6 @@ if __name__ == '__main__':
         # next
 
       
-    print("Directories: %s" % all_dirs)
-    output.close()
-    file.close()
+
+    print("Directories: %s" % set(all_dirs))
+      
