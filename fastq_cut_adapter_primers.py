@@ -14,17 +14,8 @@ class Utils:
         return True
     except IndexError:
       return False
-    # except:
-    #   raise
-      # print("Unexpected error:", sys.exc_info()[0])
-      # return False
-    return False
 
-  # def print_output(self, one_fastq_dict, output):
-  #   print(one_fastq_dict["header"].decode('utf-8'), file=output)
-  #   print(one_fastq_dict["sequence"].decode('utf-8'), file=output)
-  #   print(one_fastq_dict["optional"].decode('utf-8'), file=output)
-  #   print(one_fastq_dict["qual_scores"].decode('utf-8'), file=output)
+    return False
 
   def print_output(self, one_fastq, output):
     print(one_fastq[0].decode('utf-8').strip(), file=output)
@@ -47,10 +38,7 @@ class Files:
 
     def get_start_dir(self, args):
       if not os.path.exists(args.start_dir):
-          # try:
           print("Input fastq file with the '%s' extension does not exist in %s" % (self.ext, self.start_dir))
-          # except AttributeError:
-          #     print("Input fastq file with a '%s' extension does not exist in ." % (args.ext))
           sys.exit()
       print("Start from %s" % args.start_dir)
       return args.start_dir
@@ -137,6 +125,18 @@ class Reads:
       one_fastq[3] = qual_scores_short
       
       return one_fastq
+
+    def remove_adapters_n_primers(self, one_fastq, file_name):
+
+        adapter = reads.get_adapter(file_name)
+        adapter_len = len(adapter)
+        seq_no_adapter = one_fastq[1][adapter_len:]
+        qual_scores_short = one_fastq[3][adapter_len:]
+
+        one_fastq[1] = seq_no_adapter
+        one_fastq[3] = qual_scores_short
+
+        return one_fastq
 
     # def remove_adapters_n_primers(self, f_input, file_name):
     #   output_file_name = file_name + '_adapters_n_primers_trimmed.fastq'
