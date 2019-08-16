@@ -49,7 +49,7 @@ options=("*.unique.nonchimeric.fa v4v5" "*.unique.nonchimeric.fa v4v5a for Archa
 
 echo "$title"
 PS3="$prompt "
-FULL_OPTION=""
+MORE_OPTIONS=""
 
 verbose_log "gast_dir = $gast_dir"
 verbose_log "RUN_LANE = $RUN_LANE"
@@ -64,19 +64,19 @@ select opt in "${options[@]}"; do
     "*.unique.nonchimeric.fa v4v5a for Archaea" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4v5a; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4; echo "You picked option $REPLY"; break;;
     "*.unique.nonchimeric.fa Euk v4" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refv4e; echo "You picked option $REPLY"; break;;
-    "*.unique.nonchimeric.fa Fungi ITS1" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refits1; FULL_OPTION=" -full "; echo "You picked option $REPLY"; break;;
+    "*.unique.nonchimeric.fa Fungi ITS1" )   NAME_PAT="*.unique.nonchimeric.fa"; REF_DB_NAME=refits1; MORE_OPTIONS=" -full -ignoregaps "; echo "You picked option $REPLY"; break;;
     "*.unique v6" ) NAME_PAT=$REPLY; REF_DB_NAME=refv6;   echo "You picked option $REPLY"; break;;
     "*.unique v6 for Archaea" ) NAME_PAT="*.unique"; REF_DB_NAME=refv6a;   echo "You picked option $REPLY"; break;;
-    "*MAX-MISMATCH-3.unique.nonchimeric.fa full length" ) NAME_PAT=$REPLY; REF_DB_NAME=refssu; FULL_OPTION=" -full ";  echo "You picked option $REPLY"; break;;
+    "*MAX-MISMATCH-3.unique.nonchimeric.fa full length" ) NAME_PAT=$REPLY; REF_DB_NAME=refssu; MORE_OPTIONS=" -full ";  echo "You picked option $REPLY"; break;;
 
     1 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     2 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4v5a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     3 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;    
     4 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refv4e; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
-    5 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refits1; FULL_OPTION=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    5 ) NAME_PAT="*.unique.nonchimeric.fa";        REF_DB_NAME=refits1; MORE_OPTIONS=" -full -ignoregaps "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     6 ) NAME_PAT="*.unique";      REF_DB_NAME=refv6; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
     7 ) NAME_PAT="*.unique";      REF_DB_NAME=refv6a; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
-    8 ) NAME_PAT="*.unique.nonchimeric.fa";                    REF_DB_NAME=refssu; FULL_OPTION=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
+    8 ) NAME_PAT="*.unique.nonchimeric.fa";                    REF_DB_NAME=refssu; MORE_OPTIONS=" -full "; echo "You picked option $REPLY, ref file $REF_DB_NAME"; break;;
 
     # $(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;
     *) echo "Invalid option. Try another one."; continue;;
@@ -86,7 +86,7 @@ select opt in "${options[@]}"; do
 done
 
 verbose_log "REF_DB_NAME = $REF_DB_NAME.fa"
-verbose_log "FULL_OPTION = $FULL_OPTION"
+verbose_log "MORE_OPTIONS = $MORE_OPTIONS"
 verbose_log "NAME_PAT = $NAME_PAT"
 
 # gunzip first!
@@ -118,8 +118,7 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
 # Now the script will iterate $FILE_NUMBER times.
 
   . /xraid/bioware/Modules/etc/profile.modules
-  module load bioware   
-  module load vsearch
+  module load bioware
 
   LISTFILE=./filenames.list
   INFILE=\`sed -n "\${SGE_TASK_ID}p" \$LISTFILE\`
@@ -127,9 +126,9 @@ cat >clust_gast_ill_$RUN_LANE.sh <<InputComesFromHERE
   echo "file name is \$INFILE"
   echo
 
-  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc"
+  echo "/bioware/seqinfo/bin/gast_ill -saveuc -nodup $MORE_OPTIONS -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc"
 
-  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $FULL_OPTION -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc
+  /bioware/seqinfo/bin/gast_ill -saveuc -nodup $MORE_OPTIONS -in $DIRECTORY_NAME/\$INFILE -db $gast_db_path/$REF_DB_NAME.fa -rtax $gast_db_path/$REF_DB_NAME.tax -out $DIRECTORY_NAME/$gast_dir/\$INFILE.gast -uc $DIRECTORY_NAME/$gast_dir/\$INFILE.uc
   
   chmod 666 clust_gast_ill_$RUN_LANE.sh.sge_script.sh.log
   
