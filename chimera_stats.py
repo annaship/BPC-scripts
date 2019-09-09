@@ -107,6 +107,7 @@ def frequency_count(chimeric_file_name):
               print "freq_dict.iteritems: key = %s, val = %s" % (key, val)
               print "ERR freq_dict.iteritems: remove_size(key) = %s, val = %s" % (remove_size(key), val)
           print "chimeric_file_name = %s" % chimeric_file_name
+          print "The most probable cause of this error is an I/O error when part of a header get missing. Can be checked by looking for a 'not int()' key error message at the end of this."
           raise
         except:
           raise
@@ -175,8 +176,18 @@ for file_basename in filenames:
     if (denovo_lines > 0):
         ratio       = count_ratio(ref_lines, denovo_lines)
         
-    if (percent_ref > 0):
-        freq_denovo = frequency_count(denovo_lines_file_name)
+    try:
+    	if (percent_ref > 0):
+    	    freq_denovo = frequency_count(denovo_lines_file_name)
+    except ValueError as err:
+	# As an alternative to dying and making the user do the work, since the error is detectable, 
+	# the pipeline could test and handle corruption by silently rerunning
+	# vsearch on that file until it passes data validation check(s).
+	print "A fatal exception has occurred while processing file: %s" % denovo_lines_file_name
+	print "The content of the exception is \"%s: %s\"" % (type(err), err)
+	print "This is most commonly due to mysterious corruption in the vsearch output file."
+	print "The only known solution is to simply re-run the chimera checking step."
+    	sys.exit(127)
 
     print_put(file_basename, all_lines, ref_lines, denovo_lines, ratio, percent_ref, percent_denovo, freq_ref, freq_denovo)
         
